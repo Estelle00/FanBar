@@ -34,16 +34,23 @@ ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
 
 ## Coverage snapshot
 
-Total line coverage of `Sources/` is about **18% in CI** (October 2026). The CI
+Total line coverage of `Sources/` is about **32% in CI** (October 2026). The CI
 number is the one to track: it is reproducible and doesn't depend on hardware.
 
-The same tests report about 33% on a real Mac because some of them read live
-SMC fans and temperatures. `testModeProgressDoesNotChangeMenuHeight`, the only
-test that renders the full menu, skips itself when no fans are present, as on
-GitHub's macOS runners (VMs). So in CI `FanMenu`, `FanGauge`, `FanRotorView`,
-`FanRotorGraphic` and `HelperStateDisplay` show 0%, and `SMCClient` and
-`TemperatureChart` are much lower than locally. Compare coverage numbers from
-the same environment only.
+A real Mac reports about 33% for the same tests. The menu height test and
+`FanControllerReadingTests` use `FakeFanReadingSource`, so the menu renders the
+same way on GitHub's macOS runners (VMs without SMC fans). Other tests that
+create a `FanController` still read the real SMC when it exists. The remaining
+gap is in a few files whose paths depend on the environment:
+
+- `SMCClient` (about 22% in CI vs 85% locally) decodes live SMC keys, which
+  only exist on real hardware.
+- `FanRotorView` animates from live RPM readings.
+- `TemperatureFanCurve` and `FanBarLocalization` take different branches
+  depending on the machine's state and system language, so either side can be
+  higher.
+
+Compare coverage numbers from the same environment only.
 
 Curve math, widget snapshot and helper logic are well covered everywhere.
 SwiftUI/AppKit view files are near 0%.
