@@ -47,6 +47,7 @@ struct FanBarSettingsView: View {
     @AppStorage(SettingsTab.preferenceKey)
     private var selectedTabRawValue = SettingsTab.cooling.rawValue
     @State private var isFooterLinkHovered = false
+    @State private var showsCompatibility = false
 
     private var displayMode: MenuBarDisplayMode {
         MenuBarDisplayMode(rawValue: displayModeRawValue) ?? .defaultMode
@@ -75,6 +76,9 @@ struct FanBarSettingsView: View {
         // Invisible commands preserve fast keyboard navigation while the
         // visible controls live in AppKit's title-bar toolbar.
         .background(SettingsTabKeyboardShortcuts(selection: $selectedTabRawValue))
+        .sheet(isPresented: $showsCompatibility) {
+            DeviceCompatibilityView(controller: controller)
+        }
         .onChange(of: selectedTabRawValue) { _ in
             SettingsWindowPresenter.shared.resizeToFitContentSoon()
         }
@@ -88,6 +92,15 @@ struct FanBarSettingsView: View {
         // pane carries its status and the curve keeps the first position.
         if controller.helperState != .enabled {
             ControlServiceBanner(controller: controller)
+            Button(fanBarText("查看本机兼容性…", "Check this Mac’s compatibility…")) {
+                showsCompatibility = true
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundColor(.accentColor)
+        } else if controller.compatibilitySnapshot?.fanCount == nil
+            || controller.compatibilitySnapshot?.fanCount == 0 {
+            compatibilitySection
         }
         CoolingPresetTiles(controller: controller)
         FanCurveEditorView(controller: controller)
@@ -183,12 +196,37 @@ struct FanBarSettingsView: View {
 
     @ViewBuilder
     private var generalTab: some View {
+        compatibilitySection
         fanControlSection
         notificationsSection
         appSection
         freeSoftwareNotice
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
+    }
+
+    private var compatibilitySection: some View {
+        SettingsSection(
+            title: fanBarText("设备兼容性", "Device Compatibility"),
+            footer: fanBarText("检测在本机完成，不会自动上传设备信息。", "Checks run locally. Device information is not automatically uploaded.")
+        ) {
+            Button {
+                showsCompatibility = true
+            } label: {
+                HStack(spacing: 16) {
+                    SettingsRowText(
+                        title: fanBarText("本机能力与兼容性", "This Mac’s capabilities and compatibility"),
+                        detail: controller.compatibilitySnapshot?.summary
+                            ?? fanBarText("查看本机可用功能。", "See which features are available on this Mac.")
+                    )
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+                }
+                .settingsRow()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     /// Manual control's prerequisite and its safety net belong together.

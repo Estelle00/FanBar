@@ -89,6 +89,10 @@ ditto "${binary_path}/Sparkle.framework" \
 # conventional app-bundle Frameworks location before signing the binary.
 install_name_tool -add_rpath "@executable_path/../Frameworks" \
     "${bundle_path}/Contents/MacOS/FanBar"
+# SwiftPM resources must travel with the executable; Bundle.module locates this
+# bundle under the application's Resources directory.
+ditto "${binary_path}/FanBar_FanBar.bundle" \
+    "${bundle_path}/Contents/Resources/FanBar_FanBar.bundle"
 cp "Assets/FanBar.icns" "${bundle_path}/Contents/Resources/FanBar.icns"
 ditto "Assets/AppIcons" "${bundle_path}/Contents/Resources/AppIcons"
 cp "App/local.fanbar.helper.plist" \

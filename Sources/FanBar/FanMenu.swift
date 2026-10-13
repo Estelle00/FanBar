@@ -62,9 +62,17 @@ struct FanMenu: View {
             header
 
             if controller.isAvailable {
-                fanPanel
+                if !controller.fans.isEmpty { fanPanel }
                 TemperatureChart(samples: controller.temperatureHistory)
-                modeControl
+                if !controller.fans.isEmpty {
+                    modeControl
+                } else {
+                    Text(fanBarText(
+                        "硬件接口未报告风扇，控制能力尚未验证",
+                        "No fans reported; control is not yet verified"
+                    ))
+                    .font(.caption).foregroundColor(.secondary)
+                }
             } else {
                 unavailableState
             }

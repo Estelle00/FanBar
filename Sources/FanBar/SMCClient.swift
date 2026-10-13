@@ -218,7 +218,7 @@ final class SMCClient: FanReadingSource {
     func fans() throws -> [FanReading] {
         let countValue = try read("FNum")
         let count = Int(countValue.bytes.0)
-        guard (1...8).contains(count) else { throw SMCError.unsupportedKey("FNum", -1) }
+        guard (0...8).contains(count) else { throw SMCError.unsupportedKey("FNum", -1) }
         return try (0..<count).map { index in
             FanReading(index: index,
                        minimumRPM: try rpm(read("F\(index)Mn")),

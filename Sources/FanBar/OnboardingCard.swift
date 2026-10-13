@@ -20,7 +20,7 @@ struct OnboardingCard: View {
     /// Fixed window height. Tall enough to hold the control-service notice on
     /// a genuine first launch (permission is almost never granted yet); when
     /// the notice doesn't apply, the footer spacer absorbs the extra room.
-    static let height: CGFloat = 478
+    static let height: CGFloat = 540
 
     @ObservedObject var controller: FanController
     let onOpenMenu: () -> Void
@@ -28,6 +28,7 @@ struct OnboardingCard: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isVisible = false
+    @State private var showsCompatibility = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -82,6 +83,9 @@ struct OnboardingCard: View {
         .background(Color(NSColor.windowBackgroundColor))
         .opacity(isVisible ? 1 : 0)
         .offset(y: isVisible ? 0 : 8)
+        .sheet(isPresented: $showsCompatibility) {
+            DeviceCompatibilityView(controller: controller)
+        }
         .onAppear {
             if reduceMotion {
                 isVisible = true
@@ -152,6 +156,25 @@ struct OnboardingCard: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
+
+                SettingsChrome.rowDivider
+                Button {
+                    showsCompatibility = true
+                } label: {
+                    HStack(spacing: 10) {
+                        SettingsRowText(
+                            title: fanBarText("本机能力检测", "This Mac’s capabilities"),
+                            detail: controller.compatibilitySnapshot?.summary
+                                ?? fanBarText("查看本机可用功能；检测不会上传信息。", "Check available features; no device information is uploaded.")
+                        )
+                        Spacer(minLength: 8)
+                        Text(fanBarText("查看详情", "Details")).font(.caption).foregroundColor(.accentColor)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
 
                 if controller.helperState != .enabled {
                     SettingsChrome.rowDivider

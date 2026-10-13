@@ -93,6 +93,11 @@ final class FanController: ObservableObject {
         }
     }
 
+    @Published private(set) var compatibilityObservation: CompatibilityObservation?
+    @Published private(set) var manualControlEvidence: CompatibilityControlEvidence = .unverified
+    @Published private(set) var curveControlEvidence: CompatibilityControlEvidence = .unverified
+    lazy var compatibilityDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
+
     @Published private(set) var fans: [FanReading] = []
     @Published private(set) var mode: Mode = .automatic
     @Published private(set) var message = fanBarText("正在读取风扇…", "Reading fans…")
@@ -367,11 +372,14 @@ final class FanController: ObservableObject {
             refreshServiceStatus()
         }
         guard let localClient else { connectAndRefresh(); return }
+        let thermal = localClient.thermalReading()
+        appendTemperature(thermal)
         do {
             fans = try localClient.fans()
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: fans.count, connectionFailed: false
+            )
             helperClient.setExpectedFanCount(fans.count)
-            let thermal = localClient.thermalReading()
-            appendTemperature(thermal)
             evaluateThermalAlerts(using: thermal)
             publishWidgetSnapshot(thermal: thermal)
             if mode == .temperatureCurve {
@@ -383,11 +391,32 @@ final class FanController: ObservableObject {
                 message = fanBarText("由 macOS 自动管理", "Managed automatically by macOS")
             }
         } catch {
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: nil, connectionFailed: false
+            )
             // The IOKit connection can go stale across sleep; reopen next tick.
             self.localClient = nil
             isAvailable = false
             publishUnavailableWidgetSnapshot()
             message = error.localizedDescription
+        }
+    }
+
+    /// Read-only diagnostic path: never refresh modes, register services or issue helper writes.
+    func detectCompatibility() {
+        do {
+            if localClient == nil { localClient = try makeReadingSource() }
+            guard let source = localClient else { return }
+            let thermal = source.thermalReading()
+            let count = try? source.fans().count
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: count, connectionFailed: false
+            )
+            if count == nil { localClient = nil }
+        } catch {
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
+            )
         }
     }
 
@@ -491,6 +520,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setAllFans(rpm: rpm)
+                manualControlEvidence = .requestSucceeded
                 mode = .fixed(rpm)
                 // Remember hand-entered values only once they actually applied.
                 if !Self.fixedRPMPresets.contains(rpm) {
@@ -508,6 +538,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                manualControlEvidence = .requestFailed
                 let failure = fanBarFormat(
                     "控制失败：%@",
                     "Control failed: %@",
@@ -834,6 +865,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setCoolingFraction(fraction)
+                curveControlEvidence = .requestSucceeded
                 completeCurveActivation(
                     preset: preset,
                     profile: profile,
@@ -852,6 +884,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                curveControlEvidence = .requestFailed
                 clearTemperatureCurveState()
                 let failure = fanBarFormat(
                     "%@温控开启失败：%@",
@@ -906,10 +939,12 @@ final class FanController: ObservableObject {
             }
             do {
                 try await self.helperClient.setCoolingFraction(fraction)
+                self.curveControlEvidence = .requestSucceeded
                 guard self.mode == .temperatureCurve else { return }
                 self.curveOutputFraction = fraction
                 self.updateCurveMessage()
             } catch {
+                self.curveControlEvidence = .requestFailed
                 guard self.mode == .temperatureCurve else { return }
                 self.message = fanBarFormat(
                     "智能温控更新失败：%@",
@@ -1188,6 +1223,9 @@ final class FanController: ObservableObject {
             localClient = try makeReadingSource()
             refresh()
         } catch {
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
+            )
             isAvailable = false
             message = error.localizedDescription
         }

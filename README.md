@@ -299,3 +299,11 @@ Thanks to these people for reporting bugs and helping make FanBar better:
     </td>
   </tr>
 </table>
+
+### Local compatibility checks
+
+Open **Settings → General → Device Compatibility** to check individual temperature sensors, fan readings, and control-service/request states. Onboarding and cooling attention states lead to the same view.
+
+Checks stay on this Mac: they do not contact a server, install the service, or change fan speeds. Missing readings and failed attempts do not establish incompatibility. Service readiness and accepted requests do not verify physical RPM; request evidence is session-only.
+
+The bundled catalog matches model and OS/app/helper versions locally. It currently contains no formally verified records and says so explicitly. Reports can be previewed and saved as JSON; this version has no upload endpoint. The closed report schema excludes serials, unique device identifiers, users, paths, processes, and temperature history.

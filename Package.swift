@@ -41,7 +41,8 @@ let package = Package(
                 "FanBarUI",
                 .product(name: "Sparkle", package: "Sparkle")
             ],
-            path: "Sources/FanBar"
+            path: "Sources/FanBar",
+            resources: [.process("Resources")]
         ),
         .executableTarget(
             name: "FanBarWidget",
