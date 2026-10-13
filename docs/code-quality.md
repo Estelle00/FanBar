@@ -36,9 +36,14 @@ ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
 
 Total line coverage of `Sources/` was about 30%. Curve math, temperature chart,
 widget snapshot and SMC decoding are well covered; SwiftUI/AppKit view files
-are near 0%. `FanBarHelper` isn't linked into `FanBarTests`, so the privileged
-helper currently has no unit coverage at all. Moving its restore/validation
-logic into a testable target is the highest-value next step.
+are near 0%.
+
+`FanBarHelperTests` runs the privileged helper against `FakeSMC`, an in-memory
+key table that models per-fan mode keys with the `Ftst` unlock, the older Intel
+`FS! ` bitmask and fpe2 values. It covers input validation, clamping to each
+fan's limits, rollback after a partial write, and handing control back to macOS
+on disconnect, shutdown and driver release. Only `AppleSMCKeyStore` (the IOKit
+calls) and the XPC/code-signing plumbing stay untested.
 
 The lcov file is uploaded as the `coverage-lcov` artifact of each run, so it
 can feed Codecov or SonarCloud later without changing the test step.

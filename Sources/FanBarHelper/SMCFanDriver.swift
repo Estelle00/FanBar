@@ -29,6 +29,41 @@ enum FanHardwareError: LocalizedError {
     }
 }
 
+/// Raw SMC key access. The helper talks to AppleSMC; tests substitute an
+/// in-memory key table so the control logic can run without hardware.
+protocol SMCKeyStore: AnyObject {
+    func read(_ name: String) throws -> FanBarSMCValue
+    func write(_ name: String, _ value: FanBarSMCValue) throws
+}
+
+final class AppleSMCKeyStore: SMCKeyStore {
+    init() throws {
+        let result = fanbar_smc_open()
+        guard result == 0 else { throw FanHardwareError.unavailable(result) }
+    }
+
+    deinit {
+        fanbar_smc_close()
+    }
+
+    func read(_ name: String) throws -> FanBarSMCValue {
+        var value = FanBarSMCValue()
+        let result = fanbar_smc_read(Self.key(name), &value)
+        guard result == 0 else { throw FanHardwareError.operation(name, result) }
+        return value
+    }
+
+    func write(_ name: String, _ value: FanBarSMCValue) throws {
+        var value = value
+        let result = fanbar_smc_write(Self.key(name), &value)
+        guard result == 0 else { throw FanHardwareError.operation(name, result) }
+    }
+
+    private static func key(_ string: String) -> UInt32 {
+        string.utf8.reduce(0) { ($0 << 8) | UInt32($1) }
+    }
+}
+
 struct HardwareFan {
     let index: Int
     let actual: Float
@@ -52,25 +87,44 @@ final class SMCFanDriver {
         case forceMask
     }
 
-    private static let forceMaskKey = "FS! "
+    /// How long to wait for `Ftst` to unlock a fan's mode key.
+    struct UnlockTiming {
+        var settle: TimeInterval
+        var deadline: TimeInterval
+        var pollInterval: TimeInterval
+
+        static let hardware = UnlockTiming(
+            settle: FanControlTiming.manualModeUnlockSettle,
+            deadline: FanControlTiming.manualModeUnlockDeadline,
+            pollInterval: 0.1
+        )
+    }
+
+    static let forceMaskKey = "FS! "
+    private let store: SMCKeyStore
+    private let unlockTiming: UnlockTiming
     private let modeControl: ModeControl?
     private let hasForceTest: Bool
 
-    init() throws {
-        let result = fanbar_smc_open()
-        guard result == 0 else { throw FanHardwareError.unavailable(result) }
-        modeControl = SMCFanDriver.detectModeControl()
-        hasForceTest = (try? SMCFanDriver.read("Ftst")) != nil
+    convenience init() throws {
+        try self.init(store: AppleSMCKeyStore())
+    }
+
+    init(store: SMCKeyStore, unlockTiming: UnlockTiming = .hardware) {
+        self.store = store
+        self.unlockTiming = unlockTiming
+        modeControl = SMCFanDriver.detectModeControl(in: store)
+        hasForceTest = (try? store.read("Ftst")) != nil
     }
 
     deinit {
         // Returning to system policy is more important than preserving a manual preset.
+        // The store closes the SMC connection after this runs.
         try? restoreAutomatic()
-        fanbar_smc_close()
     }
 
     func fans() throws -> [HardwareFan] {
-        let countValue = try Self.read("FNum")
+        let countValue = try store.read("FNum")
         let count = Int(Self.bytes(of: countValue).first ?? 0)
         guard (1...8).contains(count) else {
             throw FanHardwareError.invalidValue("FNum")
@@ -80,10 +134,10 @@ final class SMCFanDriver {
             let isManual = try isManualMode(fan: index)
             return HardwareFan(
                 index: index,
-                actual: try Self.readFloat("F\(index)Ac"),
-                target: try Self.readFloat("F\(index)Tg"),
-                minimum: try Self.readFloat("F\(index)Mn"),
-                maximum: try Self.readFloat("F\(index)Mx"),
+                actual: try readFloat("F\(index)Ac"),
+                target: try readFloat("F\(index)Tg"),
+                minimum: try readFloat("F\(index)Mn"),
+                maximum: try readFloat("F\(index)Mx"),
                 isManual: isManual
             )
         }
@@ -127,7 +181,7 @@ final class SMCFanDriver {
         do {
             for fan in snapshot {
                 try enableManualMode(fan: fan.index)
-                try Self.writeFloat("F\(fan.index)Tg", value: target(fan))
+                try writeFloat("F\(fan.index)Tg", value: target(fan))
             }
         } catch {
             // A partial multi-fan transition is unsafe; roll the whole machine back.
@@ -138,7 +192,7 @@ final class SMCFanDriver {
 
     // swiftlint:disable:next cyclomatic_complexity
     func restoreAutomatic() throws {
-        let countValue = try Self.read("FNum")
+        let countValue = try store.read("FNum")
         let count = Int(Self.bytes(of: countValue).first ?? 0)
         guard (1...8).contains(count) else {
             throw FanHardwareError.invalidValue("FNum")
@@ -150,21 +204,21 @@ final class SMCFanDriver {
                 if case .perFan = modeControl {
                     try setMode(fan: index, manual: false)
                 }
-                try Self.writeFloat("F\(index)Tg", value: 0)
+                try writeFloat("F\(index)Tg", value: 0)
             } catch {
                 if firstError == nil { firstError = error }
             }
         }
         if case .forceMask = modeControl {
             do {
-                try Self.writeBytes(Self.forceMaskKey, bytes: [0, 0])
+                try writeBytes(Self.forceMaskKey, bytes: [0, 0])
             } catch {
                 if firstError == nil { firstError = error }
             }
         }
         if hasForceTest {
             do {
-                try Self.writeBytes("Ftst", bytes: [0])
+                try writeBytes("Ftst", bytes: [0])
             } catch {
                 if firstError == nil { firstError = error }
             }
@@ -179,7 +233,7 @@ final class SMCFanDriver {
             return
         }
         let key = modeKey(index) ?? ""
-        if (try? Self.writeBytes(key, bytes: [1])) != nil {
+        if (try? writeBytes(key, bytes: [1])) != nil {
             return
         }
         guard hasForceTest else {
@@ -187,17 +241,17 @@ final class SMCFanDriver {
         }
 
         let unlockStart = Date()
-        try Self.writeBytes("Ftst", bytes: [1])
-        Thread.sleep(forTimeInterval: FanControlTiming.manualModeUnlockSettle)
+        try writeBytes("Ftst", bytes: [1])
+        Thread.sleep(forTimeInterval: unlockTiming.settle)
 
-        let deadline = Date().addingTimeInterval(FanControlTiming.manualModeUnlockDeadline)
+        let deadline = Date().addingTimeInterval(unlockTiming.deadline)
         while Date() < deadline {
-            if (try? Self.writeBytes(key, bytes: [1])) != nil {
+            if (try? writeBytes(key, bytes: [1])) != nil {
                 let elapsed = Date().timeIntervalSince(unlockStart)
                 Self.log.notice("Fan \(index) manual mode needed Ftst unlock: \(elapsed, format: .fixed(precision: 2))s")
                 return
             }
-            Thread.sleep(forTimeInterval: 0.1)
+            Thread.sleep(forTimeInterval: unlockTiming.pollInterval)
         }
         Self.log.error("Fan \(index) manual mode unlock timed out")
         throw FanHardwareError.unlockTimeout(index)
@@ -211,9 +265,9 @@ final class SMCFanDriver {
     private func isManualMode(fan index: Int) throws -> Bool {
         switch modeControl {
         case .perFan:
-            return (Self.bytes(of: try Self.read(modeKey(index) ?? "")).first ?? 0) == 1
+            return (Self.bytes(of: try store.read(modeKey(index) ?? "")).first ?? 0) == 1
         case .forceMask:
-            return Self.forceMask(from: try Self.read(Self.forceMaskKey)) & (1 << UInt16(index)) != 0
+            return Self.forceMask(from: try store.read(Self.forceMaskKey)) & (1 << UInt16(index)) != 0
         case nil:
             return false
         }
@@ -222,12 +276,12 @@ final class SMCFanDriver {
     private func setMode(fan index: Int, manual: Bool) throws {
         switch modeControl {
         case .perFan:
-            try Self.writeBytes(modeKey(index) ?? "", bytes: [manual ? 1 : 0])
+            try writeBytes(modeKey(index) ?? "", bytes: [manual ? 1 : 0])
         case .forceMask:
-            var mask = Self.forceMask(from: try Self.read(Self.forceMaskKey))
+            var mask = Self.forceMask(from: try store.read(Self.forceMaskKey))
             let bit = UInt16(1) << UInt16(index)
             mask = manual ? (mask | bit) : (mask & ~bit)
-            try Self.writeBytes(Self.forceMaskKey, bytes: [UInt8(mask >> 8), UInt8(mask & 0xff)])
+            try writeBytes(Self.forceMaskKey, bytes: [UInt8(mask >> 8), UInt8(mask & 0xff)])
         case nil:
             throw FanHardwareError.modeKeyMissing
         }
@@ -239,29 +293,18 @@ final class SMCFanDriver {
         return UInt16(raw[0]) << 8 | UInt16(raw[1])
     }
 
-    private static func detectModeControl() -> ModeControl? {
+    private static func detectModeControl(in store: SMCKeyStore) -> ModeControl? {
         for format in ["F%dmd", "F%dMd"] {
             let candidate = String(format: format, 0)
-            if (try? read(candidate)) != nil {
+            if (try? store.read(candidate)) != nil {
                 return .perFan(format)
             }
         }
-        if (try? read(forceMaskKey)) != nil {
+        if (try? store.read(forceMaskKey)) != nil {
             return .forceMask
         }
         log.error("No fan mode key (F0md/F0Md/FS!) found in SMC")
         return nil
-    }
-
-    private static func key(_ string: String) -> UInt32 {
-        string.utf8.reduce(0) { ($0 << 8) | UInt32($1) }
-    }
-
-    private static func read(_ name: String) throws -> FanBarSMCValue {
-        var value = FanBarSMCValue()
-        let result = fanbar_smc_read(key(name), &value)
-        guard result == 0 else { throw FanHardwareError.operation(name, result) }
-        return value
     }
 
     private static func bytes(of value: FanBarSMCValue) -> [UInt8] {
@@ -270,9 +313,9 @@ final class SMCFanDriver {
         }
     }
 
-    private static func readFloat(_ name: String) throws -> Float {
-        let value = try read(name)
-        let raw = bytes(of: value)
+    private func readFloat(_ name: String) throws -> Float {
+        let value = try store.read(name)
+        let raw = Self.bytes(of: value)
         if value.data_size == 4, raw.count >= 4 {
             return raw.withUnsafeBytes { $0.loadUnaligned(as: Float.self) }
         }
@@ -282,8 +325,8 @@ final class SMCFanDriver {
         throw FanHardwareError.invalidValue(name)
     }
 
-    private static func writeFloat(_ name: String, value: Float) throws {
-        let metadata = try read(name)
+    private func writeFloat(_ name: String, value: Float) throws {
+        let metadata = try store.read(name)
         let encoded: [UInt8]
         if metadata.data_size == 4 {
             encoded = withUnsafeBytes(of: value) { Array($0) }
@@ -296,12 +339,12 @@ final class SMCFanDriver {
         try write(name, metadata: metadata, bytes: encoded)
     }
 
-    private static func writeBytes(_ name: String, bytes: [UInt8]) throws {
-        let metadata = try read(name)
+    private func writeBytes(_ name: String, bytes: [UInt8]) throws {
+        let metadata = try store.read(name)
         try write(name, metadata: metadata, bytes: bytes)
     }
 
-    private static func write(
+    private func write(
         _ name: String,
         metadata: FanBarSMCValue,
         bytes: [UInt8]
@@ -313,7 +356,6 @@ final class SMCFanDriver {
                 buffer[index] = byte
             }
         }
-        let result = fanbar_smc_write(key(name), &value)
-        guard result == 0 else { throw FanHardwareError.operation(name, result) }
+        try store.write(name, value)
     }
 }
