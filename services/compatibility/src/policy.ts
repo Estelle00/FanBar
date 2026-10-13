@@ -1,0 +1,30 @@
+export const POLICY_VERSION = '2026-10-13';
+export const RETENTION_DAYS = 90;
+export function policy(origin: string) {
+  return {
+    version: POLICY_VERSION, serviceOrigin: origin, retentionDays: RETENTION_DAYS,
+    maximumReportBytes: 16384, backupMaximumDays: 30,
+    operator: 'FanBar project maintainers',
+    sourceURL: 'https://github.com/helson-lin/FanBar/tree/codex/device-compatibility/services/compatibility',
+    fields: ['schemaVersion', 'reportID', 'device.modelIdentifier', 'device.processor',
+      'device.macOSVersion', 'device.appVersion', 'device.helperVersion', 'fanCount',
+      'capabilities[].capability', 'capabilities[].status', 'capabilities[].reasonCode', 'selectedTemperatureSource'],
+    excluded: ['serialNumber', 'hardwareUUID', 'userName', 'hostName', 'filePaths', 'processes', 'temperatureHistory', 'diagnosticLogs'],
+    rules: [
+      'Extra fields and inconsistent evidence are rejected.',
+      'Reports are private unless the user explicitly opts to publish a reviewed report.',
+      'Reviewed reports contribute to public compatibility counts, including private reports.',
+      'Counts are reports, not unique devices. Retries of one report do not count again.',
+      'Community reports never automatically become developer-verified compatibility.',
+      'Accepted control requests do not prove physical fan RPM.',
+      'Daily keyed network-address values are used only for short-lived rate limiting; no raw IP is stored in D1.',
+      'Cloudflare processes network metadata to deliver and protect the service.',
+      'Report credentials stay out of public data and URLs. D1 stores only their SHA-256 hashes.',
+      'Reports and their contributions expire after 90 days, with scheduled daily cleanup.',
+      'D1 historical restore points may retain deleted data for up to 30 days; online deletion does not erase them immediately.',
+      'Owners can delete a report and remove its contribution using their report credential.',
+      'Hashed report/credential withdrawal markers remain private for 90 days to prevent late request resurrection; no payload is retained.',
+      'Independent developer test records persist until corrected or removed.',
+    ],
+  };
+}

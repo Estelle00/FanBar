@@ -1,13 +1,12 @@
 import AppKit
 import FanBarShared
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// Shared by settings, onboarding and attention states. Closing returns to its source.
 struct DeviceCompatibilityView: View {
     @ObservedObject var controller: FanController
     @Environment(\.presentationMode) private var presentationMode
-    @State private var reportData: Data?
+    @State private var presentation: CompatibilityPresentation?
     @State private var reportError: String?
     private let catalog = CompatibilityCatalog.load()
 
@@ -42,11 +41,11 @@ struct DeviceCompatibilityView: View {
         .frame(width: SettingsChrome.contentWidth, height: 570)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { controller.detectCompatibility() }
-        .sheet(isPresented: Binding(
-            get: { reportData != nil },
-            set: { if !$0 { reportData = nil } }
-        )) {
-            if let data = reportData { CompatibilityReportPreview(data: data) }
+        .sheet(item: $presentation) { item in
+            switch item {
+            case .report(let data): CompatibilityReportPreview(data: data)
+            case .receipts: CompatibilityReceiptsView()
+            }
         }
     }
 
@@ -65,7 +64,7 @@ struct DeviceCompatibilityView: View {
                     Text("macOS \(snapshot.device.macOSVersion) · FanBar \(snapshot.device.appVersion)")
                         .font(.caption).foregroundColor(.secondary)
                     Label(
-                        fanBarText("检测在本机完成，设备信息未上传。", "Checked on this Mac. Device information has not been uploaded."),
+                        fanBarText("检测在本机完成，不会自动上传设备信息。", "Checks run locally. Device information is not automatically uploaded."),
                         systemImage: "checkmark.shield"
                     )
                     .font(.caption).foregroundColor(.secondary).padding(.top, 5)
@@ -153,67 +152,35 @@ struct DeviceCompatibilityView: View {
         VStack(alignment: .leading, spacing: 8) {
             Button(fanBarText("预览兼容性报告…", "Preview compatibility report…")) {
                 do {
-                    reportData = try CompatibilityReport(snapshot: snapshot).jsonData()
+                    presentation = .report(try CompatibilityReport(snapshot: snapshot).jsonData())
                     reportError = nil
                 } catch {
                     reportError = fanBarText("无法生成报告，请重试。", "Unable to create the report. Please retry.")
                 }
             }
             .buttonStyle(.plain).foregroundColor(.accentColor)
-            Text(fanBarText("可保存本地报告；此版本不提供上传。", "Save a local report. Upload is not available in this version."))
+            Text(fanBarText("发送前可预览全部内容；不上报也可正常使用。", "Preview all contents before sending. Reporting is optional."))
                 .font(.caption).foregroundColor(.secondary)
+            Button(fanBarText("上报记录与撤回…", "Submitted reports and withdrawal…")) {
+                presentation = .receipts
+            }
+            .buttonStyle(.plain).foregroundColor(.accentColor)
+            if let configuration = CompatibilityServiceConfiguration.current {
+                Link(fanBarText("查看公开兼容性记录", "View public compatibility records"), destination: configuration.baseURL)
+                    .font(.caption)
+            }
             if let reportError { Text(reportError).font(.caption).foregroundColor(.orange) }
         }
     }
 }
 
-struct CompatibilityReportPreview: View {
-    let data: Data
-    @Environment(\.presentationMode) private var presentationMode
-    @State private var saveError: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(fanBarText("兼容性报告预览", "Compatibility Report Preview")).font(.headline)
-            Text(fanBarText(
-                "仅包含机型、处理器、系统与软件版本、能力状态和随机报告编号。不包含序列号、设备唯一标识、用户名、文件路径、进程列表或温度历史。",
-                "Only model, processor, versions, capability states and report ID. No personal identifiers, logs or temperature history."
-            ))
-            .font(.caption).foregroundColor(.secondary).fixedSize(horizontal: false, vertical: true)
-            ScrollView {
-                Text(String(data: data, encoding: .utf8) ?? "")
-                    .font(.system(size: 11, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading).padding(12)
-            }
-            .frame(height: 240).background(Color(NSColor.textBackgroundColor)).cornerRadius(8)
-            Text(fanBarText(
-                "保存不会上传。自行分享文件时，接收方可以看到以上内容。",
-                "Saving does not upload. If you share the file, the recipient can see these contents."
-            ))
-                .font(.caption).foregroundColor(.secondary)
-            if let saveError { Text(saveError).font(.caption).foregroundColor(.orange) }
-            HStack {
-                Button(fanBarText("取消", "Cancel")) { presentationMode.wrappedValue.dismiss() }
-                    .keyboardShortcut(.cancelAction)
-                Spacer()
-                Button(fanBarText("保存到本地…", "Save locally…"), action: saveLocally)
-            }
-        }
-        .padding(24).frame(width: 510)
-    }
-
-    private func saveLocally() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = "FanBar-compatibility.json"
-        panel.allowedContentTypes = [.json]
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            do {
-                try data.write(to: url, options: .atomic)
-                presentationMode.wrappedValue.dismiss()
-            } catch {
-                saveError = fanBarText("无法保存报告，请选择其他位置后重试。", "Unable to save. Choose another location and retry.")
-            }
+private enum CompatibilityPresentation: Identifiable {
+    case report(Data)
+    case receipts
+    var id: String {
+        switch self {
+        case .report: "report"
+        case .receipts: "receipts"
         }
     }
 }

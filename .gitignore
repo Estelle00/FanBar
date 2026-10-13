@@ -4,3 +4,10 @@ dist/
 *.p12
 *.cer
 *.provisionprofile
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+services/compatibility/.deployment-secrets.json
+services/compatibility/.admin-access.txt

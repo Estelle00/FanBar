@@ -306,4 +306,6 @@ Open **Settings → General → Device Compatibility** to check individual tempe
 
 Checks stay on this Mac: they do not contact a server, install the service, or change fan speeds. Missing readings and failed attempts do not establish incompatibility. Service readiness and accepted requests do not verify physical RPM; request evidence is session-only.
 
-The bundled catalog matches model and OS/app/helper versions locally. It currently contains no formally verified records and says so explicitly. Reports can be previewed and saved as JSON; this version has no upload endpoint. The closed report schema excludes serials, unique device identifiers, users, paths, processes, and temperature history.
+The bundled catalog matches model and OS/app/helper versions locally. It currently contains no formally verified records and says so explicitly. Reports can be previewed and saved as JSON offline. Optional reporting to https://report.getfanbar.com requires explicit consent; raw reports are private unless the user chooses publication after review. Independent withdrawal credentials are saved in this Mac’s Keychain before sending. The closed report schema excludes serials, unique device identifiers, users, paths, processes, and temperature history.
+
+The open-source Workers + D1 service, public matrix, review interface, upload schema and processing rules live in [services/compatibility](services/compatibility/README.md) and [contracts](contracts).

@@ -1,0 +1,176 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "reportID": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "modelIdentifier": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "allOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9]*[0-9]+,[0-9]+$|^unknown$"
+            }
+          ]
+        },
+        "processor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+        },
+        "macOSVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "allOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._+-]+$"
+            }
+          ]
+        },
+        "appVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "allOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._+-]+$"
+            }
+          ]
+        },
+        "helperVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "allOf": [
+            {
+              "type": "string",
+              "pattern": "^[^\\x00-\\x1f\\x7f]+$"
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9._+-]+$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "modelIdentifier",
+        "processor",
+        "macOSVersion",
+        "appVersion",
+        "helperVersion"
+      ],
+      "additionalProperties": false
+    },
+    "fanCount": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 8
+    },
+    "capabilities": {
+      "minItems": 7,
+      "maxItems": 7,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "capability": {
+            "type": "string",
+            "enum": [
+              "cpuTemperature",
+              "gpuTemperature",
+              "ssdTemperature",
+              "batteryTemperature",
+              "fanReadings",
+              "manualControl",
+              "smartCooling"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "notDetected",
+              "temporarilyUnavailable",
+              "requiresAuthorization",
+              "unverified",
+              "requestSucceeded",
+              "requestFailed"
+            ]
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": [
+              "SENSOR_READ_SUCCEEDED",
+              "SENSOR_NOT_DETECTED",
+              "FAN_READ_SUCCEEDED",
+              "NO_FANS_REPORTED",
+              "FAN_READ_FAILED",
+              "SMC_CONNECTION_FAILED",
+              "HELPER_MISSING",
+              "HELPER_AUTHORIZATION_REQUIRED",
+              "NO_CURRENT_FAN_EVIDENCE",
+              "NO_CURVE_SENSOR_EVIDENCE",
+              "CONTROL_NOT_ATTEMPTED",
+              "CONTROL_REQUEST_SUCCEEDED",
+              "CONTROL_REQUEST_FAILED"
+            ]
+          }
+        },
+        "required": [
+          "capability",
+          "status",
+          "reasonCode"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "selectedTemperatureSource": {
+      "type": "string",
+      "enum": [
+        "maxChip",
+        "cpu",
+        "gpu",
+        "ssd"
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "reportID",
+    "device",
+    "capabilities",
+    "selectedTemperatureSource"
+  ],
+  "additionalProperties": false,
+  "title": "FanBar compatibility report v1",
+  "description": "Strict upload allow-list. Additional semantic evidence checks are documented in services/compatibility/PRIVACY.md."
+}
