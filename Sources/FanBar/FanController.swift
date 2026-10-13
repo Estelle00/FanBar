@@ -173,7 +173,8 @@ final class FanController: ObservableObject {
         return minimum...maximum
     }
 
-    private var localClient: SMCClient?
+    private let makeReadingSource: () throws -> FanReadingSource
+    private var localClient: FanReadingSource?
     private let helperClient = HelperClient()
     private let helperService = FanBarServiceManager()
     private let loginItemService = FanBarLoginItemManager()
@@ -233,8 +234,10 @@ final class FanController: ObservableObject {
     init(
         automaticRestoreTestInterval: TimeInterval? = nil,
         notificationCenter: UNUserNotificationCenter? = UNUserNotificationCenter.current(),
-        widgetSnapshotDestination: WidgetSnapshotDestination = .sharedContainer
+        widgetSnapshotDestination: WidgetSnapshotDestination = .sharedContainer,
+        makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() }
     ) {
+        self.makeReadingSource = makeReadingSource
         self.automaticRestoreTestInterval = automaticRestoreTestInterval
         self.notificationCenter = notificationCenter
         self.widgetSnapshotDestination = widgetSnapshotDestination
@@ -1182,7 +1185,7 @@ final class FanController: ObservableObject {
 
     private func connectAndRefresh() {
         do {
-            localClient = try SMCClient()
+            localClient = try makeReadingSource()
             refresh()
         } catch {
             isAvailable = false

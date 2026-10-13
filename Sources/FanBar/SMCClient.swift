@@ -61,7 +61,20 @@ struct ThermalReading: Codable, Equatable {
     }
 }
 
-final class SMCClient {
+/// Unprivileged fan and temperature readings. `SMCClient` reads the real SMC;
+/// tests substitute fixed readings so the UI can run on Macs without fans.
+protocol FanReadingSource: AnyObject {
+    func fans() throws -> [FanReading]
+    func thermalReading(at date: Date) -> ThermalReading
+}
+
+extension FanReadingSource {
+    func thermalReading() -> ThermalReading {
+        thermalReading(at: Date())
+    }
+}
+
+final class SMCClient: FanReadingSource {
     private var cpuTemperatureKeys: [String]?
     private var gpuTemperatureKeys: [String]?
     private var ssdTemperatureKeys: [String]?
