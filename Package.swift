@@ -49,6 +49,11 @@ let package = Package(
             path: "Sources/FanBarWidget"
         ),
         .testTarget(
+            name: "FanBarHelperTests",
+            dependencies: ["FanBarHelper", "AppleSMC", "FanBarShared"],
+            path: "Tests/FanBarHelperTests"
+        ),
+        .testTarget(
             name: "FanBarTests",
             dependencies: ["FanBar", "FanBarShared"],
             path: "Tests/FanBarTests"

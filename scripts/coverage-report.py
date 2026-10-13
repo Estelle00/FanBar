@@ -32,16 +32,18 @@ def run(*args: str) -> str:
     return subprocess.run(args, cwd=ROOT, check=True, capture_output=True, text=True).stdout
 
 
-def find_test_binary(codecov_json: Path) -> Path:
+def find_test_binaries(codecov_json: Path) -> list[Path]:
     build_dir = codecov_json.parent.parent
-    # The native build system emits <Package>PackageTests.xctest; swift-build
+    # The native build system emits one <Package>PackageTests.xctest; swift-build
     # (the default from Swift 6.3) emits one bundle per test target.
     bundles = sorted(build_dir.glob("*.xctest"))
     if not bundles:
         sys.exit(f"No .xctest bundle in {build_dir}; run swift test first.")
-    bundle = bundles[0]
-    binary = bundle / "Contents" / "MacOS" / bundle.stem
-    return binary if binary.exists() else bundle
+    binaries = []
+    for bundle in bundles:
+        binary = bundle / "Contents" / "MacOS" / bundle.stem
+        binaries.append(binary if binary.exists() else bundle)
+    return binaries
 
 
 def export_lcov() -> dict[str, dict[int, int]]:
@@ -49,8 +51,9 @@ def export_lcov() -> dict[str, dict[int, int]]:
     profdata = codecov_json.parent / "default.profdata"
     if not profdata.exists():
         sys.exit(f"Missing {profdata}; run `swift test --enable-code-coverage` first.")
-    binary = find_test_binary(codecov_json)
-    lcov = run("xcrun", "llvm-cov", "export", "-format=lcov", f"-instr-profile={profdata}", str(binary))
+    first, *others = find_test_binaries(codecov_json)
+    objects = [arg for binary in others for arg in ("-object", str(binary))]
+    lcov = run("xcrun", "llvm-cov", "export", "-format=lcov", f"-instr-profile={profdata}", str(first), *objects)
     (ROOT / ".build").mkdir(exist_ok=True)
     (ROOT / ".build" / "coverage.lcov").write_text(lcov)
 
@@ -63,6 +66,7 @@ def export_lcov() -> dict[str, dict[int, int]]:
             current = files.setdefault(path, {}) if keep else None
         elif line.startswith("DA:") and current is not None:
             number, count = line[3:].split(",")[:2]
+            # A file linked into several test bundles appears once per bundle.
             current[int(number)] = max(current.get(int(number), 0), int(count))
     return files
 

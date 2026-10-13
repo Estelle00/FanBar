@@ -8,10 +8,12 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
     private static let log = Logger(subsystem: FanBarService.helperBundleID, category: "service")
     private let listener = NSXPCListener(machServiceName: FanBarService.helperBundleID)
     private let hardwareQueue = DispatchQueue(label: "local.fanbar.helper.hardware")
+    private let makeDriver: () throws -> SMCFanDriver
     private var driver: SMCFanDriver?
     private var activeConnections = 0
 
-    override init() {
+    init(makeDriver: @escaping () throws -> SMCFanDriver = { try SMCFanDriver() }) {
+        self.makeDriver = makeDriver
         super.init()
         listener.delegate = self
     }
@@ -36,23 +38,31 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
             Self.log.error("Rejected XPC client pid \(connection.processIdentifier)")
             return false
         }
-        hardwareQueue.sync {
-            activeConnections += 1
-        }
+        clientDidConnect()
         connection.exportedInterface = NSXPCInterface(with: FanBarHelperProtocol.self)
         connection.exportedObject = self
         connection.invalidationHandler = { [weak self] in
-            guard let self else { return }
-            hardwareQueue.async {
-                self.activeConnections = max(0, self.activeConnections - 1)
-                if self.activeConnections == 0, let driver = self.driver {
-                    Self.log.notice("Last client disconnected; restoring automatic fan control")
-                    try? driver.restoreAutomatic()
-                }
-            }
+            self?.clientDidDisconnect()
         }
         connection.resume()
         return true
+    }
+
+    func clientDidConnect() {
+        hardwareQueue.sync {
+            activeConnections += 1
+        }
+    }
+
+    /// Without a client nobody can steer the fans, so hand them back to macOS.
+    func clientDidDisconnect() {
+        hardwareQueue.async {
+            self.activeConnections = max(0, self.activeConnections - 1)
+            if self.activeConnections == 0, let driver = self.driver {
+                Self.log.notice("Last client disconnected; restoring automatic fan control")
+                try? driver.restoreAutomatic()
+            }
+        }
     }
 
     func getFanCount(reply: @escaping @Sendable (Bool, Int, String?) -> Void) {
@@ -165,7 +175,7 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
 
     private func connectedDriver() throws -> SMCFanDriver {
         if let driver { return driver }
-        let newDriver = try SMCFanDriver()
+        let newDriver = try makeDriver()
         driver = newDriver
         return newDriver
     }
@@ -202,7 +212,12 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
     }
 
     private static func clientRequirementText() -> String? {
-        guard let teamID = ownTeamIdentifier() else { return nil }
+        clientRequirementText(teamID: ownTeamIdentifier())
+    }
+
+    /// Unsigned and ad-hoc helpers have no team, and then no client is trusted.
+    static func clientRequirementText(teamID: String?) -> String? {
+        guard let teamID, !teamID.isEmpty else { return nil }
         return "anchor apple generic and identifier \"\(FanBarService.appBundleID)\" " +
             "and certificate leaf[subject.OU] = \"\(teamID)\""
     }
