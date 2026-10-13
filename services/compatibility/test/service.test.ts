@@ -47,6 +47,14 @@ beforeEach(async () => { await env.DB.batch([
   env.DB.prepare('DELETE FROM withdrawals'),
 ]); });
 describe('consent and closed schema', () => {
+  it('serves every administrator entry without canonical redirect loops', async () => {
+    for (const path of ['/admin', '/admin/', '/admin.html']) {
+      const response = await SELF.fetch(request(path));
+      expect(response.status).toBe(200);
+      expect(response.headers.get('location')).toBeNull();
+      expect(await response.text()).toContain('id="adminToken"');
+    }
+  });
   it('rejects hidden personal fields instead of silently stripping them', async () => {
     const report = fixture();
     const withSerial = { ...report, device: { ...report.device, serialNumber: 'private' } };
