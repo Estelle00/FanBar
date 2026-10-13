@@ -32,11 +32,28 @@ ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit
   `FanCurveEditorView`, `FanMenu`, a few long functions). Search for
   `swiftlint:disable` to find them; remove the marker when the code is split.
 
-## Coverage snapshot (when the gate was introduced)
+## Coverage snapshot
 
-Total line coverage of `Sources/` was about 30%. Curve math, temperature chart,
-widget snapshot and SMC decoding are well covered; SwiftUI/AppKit view files
-are near 0%.
+Total line coverage of `Sources/` is about **32% in CI** (October 2026). The CI
+number is the one to track: it is reproducible and doesn't depend on hardware.
+
+A real Mac reports about 33% for the same tests. The menu height test and
+`FanControllerReadingTests` use `FakeFanReadingSource`, so the menu renders the
+same way on GitHub's macOS runners (VMs without SMC fans). Other tests that
+create a `FanController` still read the real SMC when it exists. The remaining
+gap is in a few files whose paths depend on the environment:
+
+- `SMCClient` (about 22% in CI vs 85% locally) decodes live SMC keys, which
+  only exist on real hardware.
+- `FanRotorView` animates from live RPM readings.
+- `TemperatureFanCurve` and `FanBarLocalization` take different branches
+  depending on the machine's state and system language, so either side can be
+  higher.
+
+Compare coverage numbers from the same environment only.
+
+Curve math, widget snapshot and helper logic are well covered everywhere.
+SwiftUI/AppKit view files are near 0%.
 
 `FanBarHelperTests` runs the privileged helper against `FakeSMC`, an in-memory
 key table that models per-fan mode keys with the `Ftst` unlock, the older Intel
