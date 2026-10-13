@@ -1,5 +1,5 @@
-@testable import FanBarShared
 import XCTest
+@testable import FanBarShared
 
 final class TraditionalChineseConverterTests: XCTestCase {
     private let converter = TraditionalChineseConverter.shared

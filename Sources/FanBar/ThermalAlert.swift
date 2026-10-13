@@ -18,6 +18,7 @@ enum ThermalAlertSettings {
     static func clampedThreshold(_ celsius: Double) -> Double {
         min(max(celsius.rounded(), thresholdRange.lowerBound), thresholdRange.upperBound)
     }
+
     static let notificationIdentifierPrefix = "fanbar.high-temperature"
 }
 

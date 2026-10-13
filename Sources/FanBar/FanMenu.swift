@@ -1,4 +1,7 @@
+// swiftlint:disable file_length type_body_length
+// Legacy size debt: split this file before removing the disable above.
 import AppKit
+import Combine
 import FanBarShared
 import SwiftUI
 
@@ -20,6 +23,7 @@ struct FanMenu: View {
     private var slideInTransition: AnyTransition {
         animatesPanel ? .opacity.combined(with: .move(edge: .top)) : .identity
     }
+
     @AppStorage(FanBarLanguage.preferenceKey)
     private var languageRawValue = FanBarLanguage.defaultValue
 
@@ -112,7 +116,6 @@ struct FanMenu: View {
             .focusable(false)
             .accessibilityLabel(fanBarText("打开 FanBar 设置", "Open FanBar Settings"))
             .help(fanBarText("设置", "Settings"))
-
         }
     }
 
@@ -417,6 +420,7 @@ struct FanMenu: View {
         return choices.sorted()
     }
 
+    // swiftlint:disable:next function_body_length
     private func modeActionFeedbackBanner(
         _ feedback: FanController.ModeActionFeedback
     ) -> some View {
@@ -765,7 +769,6 @@ struct FanMenu: View {
         }
         .padding(.top, 1)
     }
-
 }
 
 /// Timer-driven replacement for TimelineView, which was introduced after macOS 11.

@@ -1,0 +1,81 @@
+# SwiftLint configuration for FanBar.
+#
+# Existing violations are frozen in .swiftlint-baseline.json so CI only fails
+# on violations introduced by new code. Regenerate the baseline after paying
+# down debt with:
+#   swiftlint lint --write-baseline .swiftlint-baseline.json
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - .build
+  - dist
+  - ThirdParty
+  # C/ObjC SMC bridge; no Swift here, but keep it out explicitly.
+  - Sources/AppleSMC
+
+disabled_rules:
+  # Trailing commas are house style (SwiftFormat leaves them alone too).
+  - trailing_comma
+
+opt_in_rules:
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - empty_count
+  - first_where
+  - contains_over_first_not_nil
+  - last_where
+  - sorted_first_last
+  - redundant_nil_coalescing
+  - weak_delegate
+  - discouraged_optional_boolean
+  - fatal_error_message
+  - overridden_super_call
+  - private_action
+  - private_outlet
+  - toggle_bool
+  - unowned_variable_capture
+  - closure_end_indentation
+  - vertical_whitespace_closing_braces
+
+analyzer_rules:
+  - unused_import
+
+cyclomatic_complexity:
+  warning: 10
+  error: 15
+  ignores_case_statements: true
+
+function_body_length:
+  warning: 60
+  error: 120
+
+type_body_length:
+  warning: 400
+  error: 800
+
+file_length:
+  warning: 600
+  error: 1200
+  ignore_comment_only_lines: true
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_urls: true
+  ignores_comments: true
+
+identifier_name:
+  min_length: 2
+  excluded:
+    - x
+    - y
+    - i
+    - id
+
+nesting:
+  type_level: 2
+
+reporter: xcode

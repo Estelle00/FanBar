@@ -1,0 +1,23 @@
+# SwiftFormat configuration for FanBar.
+# Tuned to the existing house style so formatting stays a no-op on current
+# code and CI only flags genuine drift. Check: swiftformat --lint .
+# Fix:   swiftformat .
+
+--swiftversion 6.0
+--exclude .build,dist,ThirdParty,Sources/AppleSMC
+
+--indent 4
+--maxwidth none
+--ranges no-space
+--importgrouping testable-last
+--stripunusedargs closure-only
+--commas inline
+--allman false
+
+# Rules that fight the current style (single-line guards/ifs, compact computed
+# properties, explicit returns, plain numeric literals).
+--disable wrapIfStatementBodies,wrapPropertyBodies,wrapMultilineStatementBraces
+--disable numberFormatting,redundantReturn,hoistPatternLet,hoistTry
+--disable trailingCommas,docComments,environmentEntry,opaqueGenericParameters
+--disable preferKeyPath,conditionalAssignment,noForceUnwrapInTests
+--disable wrapArguments,redundantSelf,indent,hoistAwait

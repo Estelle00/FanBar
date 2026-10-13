@@ -1,6 +1,6 @@
-@testable import FanBarShared
 import Foundation
 import XCTest
+@testable import FanBarShared
 
 /// Keeps the Japanese catalog in step with the `fanBarText` / `fanBarFormat`
 /// call sites, which are the only source of UI copy.

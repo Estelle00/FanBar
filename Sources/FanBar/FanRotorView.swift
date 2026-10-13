@@ -1,3 +1,4 @@
+import Combine
 import FanBarShared
 import FanBarUI
 import SwiftUI

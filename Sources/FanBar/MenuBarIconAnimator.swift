@@ -37,7 +37,7 @@ final class MenuBarIconAnimator {
     private var blinkRemaining = 0
     private var frameCache: [String: NSImage] = [:]
 
-    private let frameQuantum = 15.0           // 24 cached frames per full turn
+    private let frameQuantum = 15.0 // 24 cached frames per full turn
     private let blinkInterval = 0.12
     /// Degrees per second squared used when the fans stop, so the icon slows
     /// down like a rotor spinning down instead of freezing in place.

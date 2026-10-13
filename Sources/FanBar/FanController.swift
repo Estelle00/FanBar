@@ -1,3 +1,5 @@
+// swiftlint:disable file_length type_body_length
+// Legacy size debt: split this file before removing the disable above.
 import AppKit
 import FanBarShared
 import Foundation
@@ -119,6 +121,7 @@ final class FanController: ObservableObject {
         let stored = UserDefaults.standard.integer(forKey: FanController.customFixedRPMKey)
         return stored > 0 ? stored : nil
     }()
+
     @Published private(set) var highTemperatureThresholdCelsius = ThermalAlertSettings.thresholdCelsius
     @Published private(set) var isRequestingHighTemperatureNotificationPermission = false
     @Published private(set) var switchFeedback: SwitchFeedbackSignal?
@@ -256,8 +259,7 @@ final class FanController: ObservableObject {
         if let savedValue = UserDefaults.standard.object(
             forKey: automaticRestorePreferenceKey
         ) as? Int,
-            let savedDuration = AutomaticRestoreDuration(rawValue: savedValue)
-        {
+            let savedDuration = AutomaticRestoreDuration(rawValue: savedValue) {
             defaultAutomaticRestoreDuration = savedDuration
             automaticRestoreDuration = savedDuration
         }
@@ -787,6 +789,7 @@ final class FanController: ObservableObject {
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func enableTemperatureCurve(
         preset: FanCoolingPreset,
         profile: FanCurveProfile,

@@ -337,6 +337,7 @@ struct FanBarApp: App {
     }
 
     /// Exercises interpolation plus the complete curve enable/disable controller path.
+    // swiftlint:disable:next function_body_length
     private static func runTemperatureCurveSmokeTestAndExit() -> Never {
         Task { @MainActor in
             let curve = FanCoolingPreset.balanced.factoryCurve

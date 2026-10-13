@@ -4,8 +4,7 @@ import os
 import Security
 
 final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperProtocol,
-    @unchecked Sendable
-{
+    @unchecked Sendable {
     private static let log = Logger(subsystem: FanBarService.helperBundleID, category: "service")
     private let listener = NSXPCListener(machServiceName: FanBarService.helperBundleID)
     private let hardwareQueue = DispatchQueue(label: "local.fanbar.helper.hardware")
