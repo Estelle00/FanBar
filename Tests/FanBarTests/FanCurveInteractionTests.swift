@@ -8,10 +8,11 @@ final class FanCurveInteractionTests: XCTestCase {
     /// A transient progress state must not resize the menu-bar popover. AppKit
     /// follows the hosting view's fitting size, so any delta is visible jitter.
     @MainActor
-    func testModeProgressDoesNotChangeMenuHeight() {
+    func testModeProgressDoesNotChangeMenuHeight() throws {
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled)
         controller.refresh()
-        XCTAssertTrue(controller.isAvailable)
+        // Needs real SMC fan readings; CI runners are VMs without them.
+        try XCTSkipUnless(controller.isAvailable, "No SMC fans available on this machine")
 
         let host = NSHostingView(rootView: FanMenu(controller: controller))
         host.frame = NSRect(x: 0, y: 0, width: 384, height: 1_000)

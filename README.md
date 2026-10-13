@@ -201,6 +201,9 @@ The helper does not expose arbitrary SMC writes. It only supports reading fans, 
 
 ## 📦 Continuous integration and releases
 
+Pull requests must pass lint, format, zero-warning build, tests and diff
+coverage; see [docs/code-quality.md](docs/code-quality.md).
+
 FanBar uses Sparkle 2 for online updates. The stable feed is the `appcast.xml`
 asset in the latest GitHub Release. Every update must pass Developer ID,
 notarization, and FanBar's independent EdDSA signature verification.

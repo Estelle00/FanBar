@@ -1,3 +1,5 @@
+// swiftlint:disable file_length type_body_length
+// Legacy size debt: split this file before removing the disable above.
 import AppKit
 import FanBarShared
 import SwiftUI
@@ -666,7 +668,6 @@ struct FanCurveCanvas: View {
         )
     }
 
-    @ViewBuilder
     private func axisChrome(plot: CGRect, canvasSize: CGSize) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 8, style: .continuous)

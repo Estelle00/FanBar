@@ -1,0 +1,90 @@
+name: Code quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: zsh {0}
+
+env:
+  # Keep in sync with macos-release.yml so lint/test see the same SDK.
+  DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+  # Minimum line coverage for executable lines added by a pull request.
+  FANBAR_MIN_DIFF_COVERAGE: "60"
+
+jobs:
+  lint:
+    name: SwiftLint + SwiftFormat
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install linters
+        run: brew install swiftlint swiftformat
+
+      - name: SwiftLint (new violations only)
+        # Existing violations live in .swiftlint-baseline.json; --strict turns
+        # any new warning into a failure.
+        run: swiftlint lint --strict --baseline .swiftlint-baseline.json --reporter github-actions-logging
+
+      - name: SwiftFormat
+        run: swiftformat --lint --reporter github-actions-log .
+
+  test:
+    name: Build (0 warnings) + tests + coverage
+    runs-on: macos-15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          # Full history so diff coverage can find the merge base.
+          fetch-depth: 0
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build with warnings as errors
+        run: swift build -Xswiftc -warnings-as-errors -Xcc -Werror
+
+      - name: Run tests with coverage
+        run: swift test --enable-code-coverage
+
+      - name: Coverage report and diff gate
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            python3 scripts/coverage-report.py \
+              --base "origin/${{ github.base_ref }}" \
+              --min-diff "${FANBAR_MIN_DIFF_COVERAGE}"
+          else
+            python3 scripts/coverage-report.py
+          fi
+
+      - name: Upload lcov
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: .build/coverage.lcov
+          if-no-files-found: ignore

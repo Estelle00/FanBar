@@ -24,6 +24,7 @@ final class LegacyStatusItemController: NSObject {
         label.isHidden = true
         return label
     }()
+
     private var stackedLabelLeading: NSLayoutConstraint?
     /// NSPopover keeps its content view alive after closing, so continuous
     /// animations inside it must be told when nobody can see them.

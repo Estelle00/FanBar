@@ -1,6 +1,6 @@
-import Foundation
 import FanBarShared
 import FanBarUI
+import Foundation
 import SwiftUI
 import WidgetKit
 

@@ -1,6 +1,6 @@
 import AppKit
-@testable import FanBar
 import XCTest
+@testable import FanBar
 
 @MainActor
 final class MenuBarIconStyleTests: XCTestCase {

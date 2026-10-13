@@ -80,7 +80,7 @@ int fanbar_smc_open(void) {
     if (__builtin_available(macOS 12.0, *)) {
         master_port = kIOMainPortDefault;
     } else {
-        master_port = kIOMasterPortDefault;
+        master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
     }
     io_service_t service = IOServiceGetMatchingService(master_port, IOServiceMatching("AppleSMC"));
     if (service == IO_OBJECT_NULL) return KERN_FAILURE;
@@ -270,7 +270,7 @@ int fanbar_nvme_temperature(double *temperature) {
     if (__builtin_available(macOS 12.0, *)) {
         master_port = kIOMainPortDefault;
     } else {
-        master_port = kIOMasterPortDefault;
+        master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
     }
 
     // Match the storage service that advertises the public SMART capability

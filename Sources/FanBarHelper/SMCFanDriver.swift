@@ -136,6 +136,7 @@ final class SMCFanDriver {
         }
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func restoreAutomatic() throws {
         let countValue = try Self.read("FNum")
         let count = Int(Self.bytes(of: countValue).first ?? 0)
