@@ -128,10 +128,9 @@ struct DiagnosticUploadView: View {
     }
 
     private func prepare() async {
-        // Yield once so the collection state can render before hardware probes.
-        await Task.yield()
+        let collected = await controller.collectDiagnosticReport()
         guard !Task.isCancelled else { return }
-        report = controller.collectDiagnosticReport()
+        report = collected
         do { history = try store.receipts() } catch { self.error = CompatibilityServiceError.credentialStorage.message }
         guard !Task.isCancelled else { return }
         await loadPolicy()
@@ -191,8 +190,9 @@ struct DiagnosticUploadView: View {
             // Never reuse a withdrawn ID, including requests that timed out before withdrawal.
             if receipt?.reportID == item.reportID {
                 receipt = nil
-                report = controller.collectDiagnosticReport()
+                report = nil
                 consent = false
+                report = await controller.collectDiagnosticReport()
             }
             error = nil
         } catch { self.error = (error as? CompatibilityServiceError ?? .network).message }

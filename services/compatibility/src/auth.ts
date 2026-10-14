@@ -30,7 +30,8 @@ export function requireAdminMutation(request: Request): void {
     throw new HttpError(403, 'SAME_ORIGIN_REQUIRED');
   }
 }
-export async function rateLimit(request: Request, env: Env, write: boolean): Promise<void> {
+export type Limiter = 'read' | 'write' | 'diagnostic';
+export async function rateLimit(request: Request, env: Env, limiter: Limiter): Promise<void> {
   if (!env.LIMIT_SALT) throw new HttpError(503, 'SERVICE_NOT_CONFIGURED');
   const address = request.headers.get('CF-Connecting-IP') ?? (localDevelopment(request, env) ? 'local' : 'unknown');
   // This keyed daily value only reaches the short-lived limiter, never D1 or logs.
@@ -40,7 +41,8 @@ export async function rateLimit(request: Request, env: Env, write: boolean): Pro
   const key = new Uint8Array(await crypto.subtle.sign(
     'HMAC', keyMaterial, new TextEncoder().encode(`${new Date().toISOString().slice(0, 10)}:${address}`)
   ));
-  const result = await (write ? env.WRITE_LIMIT : env.READ_LIMIT).limit({
+  const binding = { read: env.READ_LIMIT, write: env.WRITE_LIMIT, diagnostic: env.DIAGNOSTIC_LIMIT }[limiter];
+  const result = await binding.limit({
     key: Array.from(key, byte => byte.toString(16).padStart(2, '0')).join(''),
   });
   if (!result.success) throw new HttpError(429, 'RATE_LIMITED');

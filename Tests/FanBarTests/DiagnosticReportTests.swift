@@ -4,12 +4,12 @@ import XCTest
 
 @MainActor
 final class DiagnosticReportTests: XCTestCase {
-    func testCollectionIncludesMissingSensorsWithoutChangingControl() throws {
+    func testCollectionIncludesMissingSensorsWithoutChangingControl() async throws {
         let source = FakeFanReadingSource()
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
-                                       makeReadingSource: { source })
+                                       makeReadingSource: { source }, makeDiagnosticSource: { FakeFanReadingSource() })
         let before = controller.mode
-        let report = controller.collectDiagnosticReport()
+        let report = await controller.collectDiagnosticReport()
         XCTAssertEqual(controller.mode, before)
         XCTAssertNotNil(report.thermal)
         XCTAssertNotNil(report.fanCount)
@@ -21,17 +21,35 @@ final class DiagnosticReportTests: XCTestCase {
             "helperStateSource"])
         let thermal = try XCTUnwrap(object["thermal"] as? [String: Any])
         XCTAssertNotNil(thermal["sampledAt"] as? String)
-        let another = controller.collectDiagnosticReport()
+        let another = await controller.collectDiagnosticReport()
         XCTAssertNotEqual(report.diagnosticID, another.diagnosticID)
     }
 
-    func testConnectionFailuresRemainDiagnosableWithoutExceptionText() {
+    func testConnectionFailuresRemainDiagnosableWithoutExceptionText() async {
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
-                                       makeReadingSource: { throw SMCError.unavailable(-536870203) })
-        let report = controller.collectDiagnosticReport()
+                                       makeReadingSource: { throw SMCError.unavailable(-536870203) },
+                                       makeDiagnosticSource: { throw SMCError.unavailable(-536870203) })
+        let report = await controller.collectDiagnosticReport()
         XCTAssertEqual(report.connectionErrorCode, -536870203)
         XCTAssertNil(report.thermal)
         XCTAssertTrue(report.probes.isEmpty)
+    }
+
+    func testCollectionDoesNotBlockTheMainActor() async {
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
+                                       makeReadingSource: { FakeFanReadingSource() },
+                                       makeDiagnosticSource: {
+                                           XCTAssertFalse(Thread.isMainThread)
+                                           Thread.sleep(forTimeInterval: 0.3)
+                                           return FakeFanReadingSource()
+                                       })
+        let collection = Task { await controller.collectDiagnosticReport() }
+        // A main-actor job queued behind the collection must run while the slow source is read,
+        // not after it; the old synchronous collection held the main actor for the whole read.
+        let mainActorTurn = await Task { @MainActor in Date() }.value
+        let report = await collection.value
+        XCTAssertGreaterThan(Date().timeIntervalSince(mainActorTurn), 0.2)
+        XCTAssertNotNil(report.fanCount)
     }
 
     func testReadOnlySensorProbeOnLocalMac() throws {

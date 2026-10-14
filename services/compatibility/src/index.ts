@@ -15,35 +15,36 @@ async function route(request: Request, env: Env): Promise<Response> {
   const path = url.pathname;
   if (path === '/api/diagnostics/policy' && request.method === 'GET') return json(diagnosticPolicy(url.origin));
   if (path === '/api/diagnostics' && request.method === 'POST') {
-    await rateLimit(request, env, true);
+    // Large anonymous payloads get a stricter per-address limiter than reports.
+    await rateLimit(request, env, 'diagnostic');
     return submitDiagnostic(request, env, await boundedJSON(request, 262144));
   }
   const diagnosticMatch = path.match(/^\/api\/diagnostics\/([0-9a-f-]{36})$/i);
   if (diagnosticMatch && request.method === 'DELETE') {
-    await rateLimit(request, env, true);
+    await rateLimit(request, env, 'write');
     return deleteDiagnostic(request, env, diagnosticMatch[1]);
   }
   if (path === '/api/policy'  && request.method === 'GET') return json(policy(url.origin));
   if (path === '/api/reports' && request.method === 'POST') {
-    await rateLimit(request, env, true);
+    await rateLimit(request, env, 'write');
     return submitReport(request, env, await boundedJSON(request));
   }
   const reportMatch = path.match(reportPath);
   if (reportMatch) {
-    await rateLimit(request, env, request.method !== 'GET');
+    await rateLimit(request, env, request.method === 'GET' ? 'read' : 'write');
     if (request.method === 'DELETE' && !reportMatch[2]) return deleteReport(request, env, reportMatch[1]);
     if (request.method === 'GET') return reportMatch[2]
       ? ownerReceipt(request, env, reportMatch[1]) : publicReport(env, reportMatch[1]);
     throw new HttpError(405, 'METHOD_NOT_ALLOWED');
   }
   if (path === '/api/compatibility' && request.method === 'GET') {
-    await rateLimit(request, env, false);
+    await rateLimit(request, env, 'read');
     const model = url.searchParams.get('model') ?? '';
     if (model.length > 64) throw new HttpError(400, 'INVALID_MODEL');
     return publicMatrix(env, model);
   }
   if (path.startsWith('/api/admin/')) {
-    await rateLimit(request, env, request.method !== 'GET');
+    await rateLimit(request, env, request.method === 'GET' ? 'read' : 'write');
     const actor = await administrator(request, env);
     if (request.method !== 'GET') requireAdminMutation(request);
     if (path === '/api/admin/diagnostics' && request.method === 'GET') return diagnosticList(env, url);
@@ -80,6 +81,7 @@ export default {
       if (error instanceof HttpError) {
         const response = json({ error: { code: error.code } }, error.status);
         if (error.status === 429) response.headers.set('Retry-After', '60');
+        if (error.code === 'DIAGNOSTIC_CAPACITY_REACHED') response.headers.set('Retry-After', '3600');
         return secureResponse(response);
       }
       // Explicit logs contain no payload, credentials, request URL, IP or exception text.

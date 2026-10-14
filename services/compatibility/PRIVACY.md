@@ -108,6 +108,10 @@ durations, fan index/mode are included. No arbitrary exception descriptions are 
 App journals use a private local directory and mode 0600 files; no upload occurs until consent.
 Helper log access failures are explicitly flagged, not interpreted as helper absence.
 
+Diagnostic uploads use a stricter keyed per-address limiter (2 per minute) than reports, and
+the service stops accepting new diagnostics after 200 in 24 hours or 5,000 stored, answering
+503 `DIAGNOSTIC_CAPACITY_REACHED`. Retries of an already stored diagnostic still succeed.
+
 Up to 3 recent (7-day) FanBar/Helper .ips crash files are read locally (2 MiB input limit
 each). Only file modification time, fixed process/exception/signal/termination categories,
 termination code, and up to 20 fixed image names and relative offsets survive extraction.

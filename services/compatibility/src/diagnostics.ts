@@ -3,6 +3,12 @@ import { canonical, HttpError, json, reportToken, sameHash, sha256 } from './htt
 import { reportSchema } from './schema.ts';
 
 export const DIAGNOSTIC_POLICY = 'diagnostics-2026-10-14-v3';
+/**
+ * Global ceilings keep anonymous uploads from exhausting D1, which reports share.
+ * Worst case stored: DIAGNOSTIC_STORED_LIMIT x 256 KiB (about 1.25 GiB).
+ */
+export const DIAGNOSTIC_DAILY_LIMIT = 200;
+export const DIAGNOSTIC_STORED_LIMIT = 5000;
 export function diagnosticPolicy(origin: string) {
   return { version: DIAGNOSTIC_POLICY, serviceOrigin: origin, retentionDays: 90, maximumBytes: 262144,
     fields: ['schemaVersion', 'diagnosticID', 'capturedAt', 'device', 'helperState', 'thermal', 'fanCount', 'connectionErrorCode', 'probes', 'recentSamples', 'discovery', 'runtimeEvents', 'crashes', 'runtimeContext', 'helperLogAvailable', 'crashLogAvailable', 'helperStateSource'],
@@ -89,15 +95,25 @@ export async function submitDiagnostic(request: Request, env: Env, body: unknown
   const tokenHash = await sha256(reportToken(request));
   const idHash = await sha256(id);
   const now = new Date().toISOString();
+  const dayAgo = new Date(Date.now() - 86400000).toISOString();
   const expires = new Date(Date.now() + 90 * 86400000).toISOString();
+  // Capacity is checked inside the INSERT so concurrent uploads cannot overshoot it.
+  // Retries of an already stored ID still succeed below once the ceiling is reached.
   const result = await env.DB.prepare(`INSERT INTO diagnostics
     (id, payload, payload_hash, deletion_token_hash, model_identifier, created_at, expires_at)
     SELECT ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS
     (SELECT 1 FROM diagnostic_withdrawals WHERE id_hash = ? AND expires_at > ?)
+      AND (SELECT COUNT(*) FROM diagnostics WHERE created_at > ?) < ?
+      AND (SELECT COUNT(*) FROM diagnostics WHERE expires_at > ?) < ?
     ON CONFLICT(id) DO NOTHING`)
-    .bind(id, text, hash, tokenHash, payload.device.modelIdentifier, now, expires, idHash, now).run();
+    .bind(id, text, hash, tokenHash, payload.device.modelIdentifier, now, expires, idHash, now,
+      dayAgo, DIAGNOSTIC_DAILY_LIMIT, now, DIAGNOSTIC_STORED_LIMIT).run();
   const row = await find(env, id);
-  if (!row) throw new HttpError(409, 'DIAGNOSTIC_WITHDRAWN');
+  if (!row) {
+    const withdrawn = await env.DB.prepare('SELECT 1 FROM diagnostic_withdrawals WHERE id_hash = ? AND expires_at > ?')
+      .bind(idHash, now).first();
+    throw withdrawn ? new HttpError(409, 'DIAGNOSTIC_WITHDRAWN') : new HttpError(503, 'DIAGNOSTIC_CAPACITY_REACHED');
+  }
   if (!sameHash(row.deletion_token_hash, tokenHash) || !sameHash(row.payload_hash, hash)) throw new HttpError(409, 'DIAGNOSTIC_ID_CONFLICT');
   return json({ reportID: id, status: 'received', receivedAt: row.created_at, expiresAt: row.expires_at,
     publishReport: false, policyVersion: DIAGNOSTIC_POLICY }, result.meta.changes === 1 ? 201 : 200);

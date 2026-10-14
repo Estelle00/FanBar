@@ -41,7 +41,7 @@ struct FanReading: Identifiable {
     var id: Int { index }
 }
 
-struct ThermalReading: Codable, Equatable {
+struct ThermalReading: Codable, Equatable, Sendable {
     let sampledAt: Date
     let cpuCelsius: Double?
     let gpuCelsius: Double?

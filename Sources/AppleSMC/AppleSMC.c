@@ -4,6 +4,7 @@
 #include <IOKit/hidsystem/IOHIDServiceClient.h>
 #include <IOKit/storage/nvme/NVMeSMARTLibExternal.h>
 #include <mach/mach.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -68,6 +69,11 @@ typedef struct {
 
 enum { kSMCGetKeyInfo = 9, kSMCReadBytes = 5, kSMCWriteBytes = 6, kSMCMethod = 2 };
 static io_connect_t connection = IO_OBJECT_NULL;
+// The connection is process-wide. Each SMCClient/SMCFanDriver holds one reference, so
+// a short-lived reader on another thread (diagnostics) cannot close the main reader's
+// connection when it is released. Calls through an open connection need no lock.
+static pthread_mutex_t connection_lock = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int connection_users = 0;
 
 static kern_return_t smc_call(SMCParamStruct *input, SMCParamStruct *output) {
     size_t output_size = sizeof(*output);
@@ -75,23 +81,37 @@ static kern_return_t smc_call(SMCParamStruct *input, SMCParamStruct *output) {
 }
 
 int fanbar_smc_open(void) {
-    if (connection != IO_OBJECT_NULL) return KERN_SUCCESS;
-    mach_port_t master_port = MACH_PORT_NULL;
-    if (__builtin_available(macOS 12.0, *)) {
-        master_port = kIOMainPortDefault;
-    } else {
-        master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
+    pthread_mutex_lock(&connection_lock);
+    kern_return_t result = KERN_SUCCESS;
+    if (connection == IO_OBJECT_NULL) {
+        mach_port_t master_port = MACH_PORT_NULL;
+        if (__builtin_available(macOS 12.0, *)) {
+            master_port = kIOMainPortDefault;
+        } else {
+            master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
+        }
+        io_service_t service = IOServiceGetMatchingService(master_port, IOServiceMatching("AppleSMC"));
+        if (service == IO_OBJECT_NULL) {
+            result = KERN_FAILURE;
+        } else {
+            result = IOServiceOpen(service, mach_task_self(), 0, &connection);
+            IOObjectRelease(service);
+            if (result != KERN_SUCCESS) connection = IO_OBJECT_NULL;
+        }
     }
-    io_service_t service = IOServiceGetMatchingService(master_port, IOServiceMatching("AppleSMC"));
-    if (service == IO_OBJECT_NULL) return KERN_FAILURE;
-    kern_return_t result = IOServiceOpen(service, mach_task_self(), 0, &connection);
-    IOObjectRelease(service);
+    if (result == KERN_SUCCESS) connection_users += 1;
+    pthread_mutex_unlock(&connection_lock);
     return result;
 }
 
 void fanbar_smc_close(void) {
-    if (connection != IO_OBJECT_NULL) IOServiceClose(connection);
-    connection = IO_OBJECT_NULL;
+    pthread_mutex_lock(&connection_lock);
+    if (connection_users > 0) connection_users -= 1;
+    if (connection_users == 0 && connection != IO_OBJECT_NULL) {
+        IOServiceClose(connection);
+        connection = IO_OBJECT_NULL;
+    }
+    pthread_mutex_unlock(&connection_lock);
 }
 
 int fanbar_smc_read(uint32_t key, FanBarSMCValue *value) {

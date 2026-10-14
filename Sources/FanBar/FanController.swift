@@ -192,6 +192,7 @@ final class FanController: ObservableObject {
     }
 
     private let makeReadingSource: () throws -> FanReadingSource
+    private let makeDiagnosticSource: @Sendable () throws -> FanReadingSource
     private var localClient: FanReadingSource?
     private let helperClient = HelperClient()
     private let helperService = FanBarServiceManager()
@@ -257,9 +258,11 @@ final class FanController: ObservableObject {
         notificationCenter: UNUserNotificationCenter? = UNUserNotificationCenter.current(),
         widgetSnapshotDestination: WidgetSnapshotDestination = .sharedContainer,
         makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() },
+        makeDiagnosticSource: @escaping @Sendable () throws -> FanReadingSource = { try SMCClient() },
         compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil
     ) {
         self.makeReadingSource = makeReadingSource
+        self.makeDiagnosticSource = makeDiagnosticSource
         if let compatibilityHistoryStore {
             self.compatibilityHistoryStore = compatibilityHistoryStore
         } else if case .sharedContainer = widgetSnapshotDestination {
@@ -476,7 +479,8 @@ final class FanController: ObservableObject {
     }
 
     /// Explicit collection only. Does not call refresh(), change fan modes, or request authorization.
-    func collectDiagnosticReport() -> DiagnosticReport {
+    /// Slow evidence is gathered off the main actor with a dedicated read-only SMC reader.
+    func collectDiagnosticReport() async -> DiagnosticReport {
         let state: String
         switch helperState {
         case .enabled: state = "enabled"
@@ -489,29 +493,20 @@ final class FanController: ObservableObject {
             helperState: state, probes: [])
         report.helperStateSource = "runtime"
         report.runtimeContext = DiagnosticRuntimeContext.current()
-        let helperLogs = RuntimeDiagnostics.helperEvents()
-        report.runtimeEvents = RuntimeDiagnostics.shared.snapshot() + helperLogs.events
-        report.helperLogAvailable = helperLogs.available
-        report.crashes = DiagnosticCrashReader.summaries()
-        report.crashLogAvailable = DiagnosticCrashReader.available
         report.recentSamples = diagnosticSamples.filter { Date().timeIntervalSince($0.sampledAt) <= 60 }
-        do {
-            if localClient == nil { localClient = try makeReadingSource() }
-            guard let source = localClient else { return report }
-            report.thermal = source.thermalReading()
-            report.probes = source.diagnosticProbes()
-            report.discovery = source.diagnosticDiscovery
-            do { report.fanCount = try source.fans().count } catch SMCError.unsupportedKey(let key, let code) {
-                report.probes.append(DiagnosticProbe(sensor: "fan", key: key.count == 4 ? key : nil, result: "readFailed", code: code,
-                    source: "smc", stage: key.count == 4 ? "readBytes" : "decode"))
-            } catch {
-                report.probes.append(DiagnosticProbe(sensor: "fan", key: "FNum", result: "readFailed"))
-            }
-        } catch SMCError.unavailable(let code) {
-            report.connectionErrorCode = code
-        } catch {
-            report.connectionErrorCode = -1
-        }
+        let makeSource = makeDiagnosticSource
+        let evidence = await Task.detached(priority: .userInitiated) {
+            DiagnosticBackgroundEvidence.collect(makeSource: makeSource)
+        }.value
+        report.runtimeEvents = RuntimeDiagnostics.shared.snapshot() + evidence.helperEvents
+        report.helperLogAvailable = evidence.helperLogAvailable
+        report.crashes = evidence.crashes
+        report.crashLogAvailable = evidence.crashLogAvailable
+        report.thermal = evidence.thermal
+        report.fanCount = evidence.fanCount
+        report.connectionErrorCode = evidence.connectionErrorCode
+        report.probes = evidence.probes
+        report.discovery = evidence.discovery
         return report
     }
 
