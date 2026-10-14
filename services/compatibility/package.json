@@ -10,7 +10,7 @@
     "types": "wrangler types --include-runtime=false --strict-vars=false",
     "check": "wrangler types --include-runtime=false --strict-vars=false --check && tsc --noEmit && node scripts/schema.ts --check",
     "schema": "node scripts/schema.ts",
-    "test": "vitest run",
+    "test": "vitest run && node --test test/localization.test.mjs",
     "db:local": "wrangler d1 migrations apply fanbar-compatibility --local",
     "dry-run": "wrangler deploy --dry-run --env production",
     "deploy": "wrangler deploy --env production"

@@ -9,5 +9,5 @@ export default defineConfig({
       ADMIN_TOKEN: 'Z'.repeat(43),
     } },
   }))],
-  test: { setupFiles: ['./test/setup.ts'] },
+  test: { include: ['test/**/*.test.ts'], setupFiles: ['./test/setup.ts'] },
 });

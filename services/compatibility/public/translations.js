@@ -1,0 +1,664 @@
+export const translations = {
+  "CPU 温度": {
+    "en": "CPU temperature",
+    "ja": "CPU 温度"
+  },
+  "GPU 温度": {
+    "en": "GPU temperature",
+    "ja": "GPU 温度"
+  },
+  "SSD 温度": {
+    "en": "SSD temperature",
+    "ja": "SSD 温度"
+  },
+  "电池温度": {
+    "en": "Battery temperature",
+    "ja": "バッテリー温度"
+  },
+  "风扇转速": {
+    "en": "Fan speed",
+    "ja": "ファン回転数"
+  },
+  "风扇读取": {
+    "en": "Fan readings",
+    "ja": "ファンの読み取り"
+  },
+  "手动调速": {
+    "en": "Manual fan control",
+    "ja": "手動ファン制御"
+  },
+  "智能温控": {
+    "en": "Smart cooling",
+    "ja": "スマート冷却"
+  },
+  "已读取": {
+    "en": "Read successfully",
+    "ja": "読み取り成功"
+  },
+  "未检测到": {
+    "en": "Not detected",
+    "ja": "未検出"
+  },
+  "暂时不可用": {
+    "en": "Temporarily unavailable",
+    "ja": "一時的に利用不可"
+  },
+  "需要授权": {
+    "en": "Authorization required",
+    "ja": "承認が必要"
+  },
+  "尚未验证": {
+    "en": "Not verified",
+    "ja": "未検証"
+  },
+  "请求成功": {
+    "en": "Request succeeded",
+    "ja": "リクエスト成功"
+  },
+  "请求失败": {
+    "en": "Request failed",
+    "ja": "リクエスト失敗"
+  },
+  "实测可用": {
+    "en": "Verified available",
+    "ja": "実機で利用可能と確認"
+  },
+  "实测不支持": {
+    "en": "Verified unsupported",
+    "ja": "実機で非対応と確認"
+  },
+  "FanBar · 公开兼容性记录": {
+    "en": "FanBar · Public compatibility records",
+    "ja": "FanBar · 公開互換性記録"
+  },
+  "设备兼容性 · 公开记录": {
+    "en": "Device compatibility · Public records",
+    "ja": "デバイス互換性 · 公開記録"
+  },
+  "收集与处理规则": {
+    "en": "Collection and processing policy",
+    "ja": "収集・処理方針"
+  },
+  "撤回报告": {
+    "en": "Withdraw a report",
+    "ja": "レポートの撤回"
+  },
+  "查看源码 ↗": {
+    "en": "View source ↗",
+    "ja": "ソースコードを見る ↗"
+  },
+  "这台 Mac，能使用哪些功能？": {
+    "en": "Which features work on this Mac?",
+    "ja": "この Mac ではどの機能が使えますか？"
+  },
+  "查看经过审核的社区报告与开发者实测记录。温度读取、风扇读取和实际控制分别判断；没有记录不代表不支持。": {
+    "en": "Explore reviewed community reports and independent developer tests. Temperature readings, fan readings and actual control are assessed separately. No record does not mean unsupported.",
+    "ja": "審査済みのコミュニティレポートと開発者の実機検証を確認できます。温度、ファンの読み取り、実際の制御は個別に評価します。記録がないことは非対応を意味しません。"
+  },
+  "无需账号 · 可下载公开结果": {
+    "en": "No account required · Download public results",
+    "ja": "アカウント不要 · 公開結果をダウンロード可能"
+  },
+  "机型标识": {
+    "en": "Model identifier",
+    "ja": "モデル識別子"
+  },
+  "输入机型标识，例如 Mac14,13": {
+    "en": "Enter a model identifier, e.g. Mac14,13",
+    "ja": "モデル識別子を入力（例：Mac14,13）"
+  },
+  "查询": {
+    "en": "Search",
+    "ja": "検索"
+  },
+  "公开 JSON ↗": {
+    "en": "Public JSON ↗",
+    "ja": "公開 JSON ↗"
+  },
+  "正在加载公开记录…": {
+    "en": "Loading public records…",
+    "ja": "公開記録を読み込み中…"
+  },
+  "社区报告": {
+    "en": "Community reports",
+    "ja": "コミュニティレポート"
+  },
+  "用户主动提交并经审核的检测结果。统计为报告数量，不代表独立设备数量，也不会自动成为开发者验证。": {
+    "en": "Results submitted voluntarily and reviewed. Counts represent reports, not unique devices, and do not automatically become developer verification.",
+    "ja": "ユーザーが自発的に提出し、審査を受けた結果です。件数はレポート数であり、個別のデバイス数ではありません。開発者の検証に自動的に変わることもありません。"
+  },
+  "开发者验证": {
+    "en": "Developer verification",
+    "ja": "開発者の検証"
+  },
+  "对应机型、系统与软件版本的独立实测，附带验证日期和公开依据。控制请求成功不等于实际转速已验证。": {
+    "en": "Independent tests for a specific model, OS and app version, with a date and public evidence. A successful control request does not verify actual fan speed.",
+    "ja": "モデル、OS、アプリのバージョンごとの独立した実機検証です。日付と公開の根拠を添付します。制御リクエストの成功は実際の回転数の検証を意味しません。"
+  },
+  "隐私与撤回": {
+    "en": "Privacy and withdrawal",
+    "ja": "プライバシーと撤回"
+  },
+  "原始报告默认私有。选择公开的报告也需审核后才可查阅；可以使用本机保存的撤回凭证删除报告及其统计贡献。": {
+    "en": "Raw reports are private by default. Reports you choose to publish are viewable only after review. Use the withdrawal credential saved on your device to remove the report and its contribution to statistics.",
+    "ja": "元のレポートは初期設定で非公開です。公開を選択した場合も審査後に閲覧可能になります。端末に保存した撤回用の認証情報で、レポートと統計への寄与を削除できます。"
+  },
+  "报告在线保留 90 天，公开统计随有效报告变化。": {
+    "en": "Reports remain online for 90 days. Public statistics reflect currently valid reports.",
+    "ja": "レポートはオンラインで90日間保存されます。公開統計は有効なレポートに応じて変化します。"
+  },
+  "完整字段 Schema": {
+    "en": "Complete field schema",
+    "ja": "全フィールドのスキーマ"
+  },
+  "处理规则": {
+    "en": "Processing policy",
+    "ja": "処理方針"
+  },
+  "管理入口": {
+    "en": "Administration",
+    "ja": "管理画面"
+  },
+  "正在查询…": {
+    "en": "Searching…",
+    "ja": "検索中…"
+  },
+  "此组合暂无公开记录": {
+    "en": "No public records for this combination",
+    "ja": "この組み合わせの公開記録はありません"
+  },
+  "可先参考 FanBar 的本机检测结果；在应用中主动提交报告，帮助完善兼容性记录。": {
+    "en": "Check FanBar’s local detection results first. You can voluntarily submit a report from the app to improve these records.",
+    "ja": "まず FanBar のローカル検出結果をご確認ください。アプリから任意でレポートを提出し、記録の充実に協力できます。"
+  },
+  "更新 ": {
+    "en": "Updated ",
+    "ja": "更新日 "
+  },
+  "能力": {
+    "en": "Capability",
+    "ja": "機能"
+  },
+  "暂无报告": {
+    "en": "No reports",
+    "ja": "レポートなし"
+  },
+  "存在不同结果，请结合版本与本机检测判断。": {
+    "en": "Results differ. Consider versions and local detection.",
+    "ja": "結果に違いがあります。バージョンとローカル検出結果もご確認ください。"
+  },
+  "依据 · ": {
+    "en": "Evidence · ",
+    "ja": "根拠 · "
+  },
+  "尚未实测": {
+    "en": "Not independently tested",
+    "ja": "独立した実機検証なし"
+  },
+  "当前显示最近 20 个版本组合，输入机型标识缩小范围。": {
+    "en": "Showing the latest 20 version combinations. Enter a model identifier to narrow the results.",
+    "ja": "最新20件のバージョンの組み合わせを表示しています。モデル識別子で絞り込めます。"
+  },
+  "已显示当前有效记录。": {
+    "en": "Showing currently valid records.",
+    "ja": "現在有効な記録を表示しています。"
+  },
+  "暂时无法加载记录，请重试。": {
+    "en": "Unable to load records. Please try again.",
+    "ja": "記録を読み込めません。もう一度お試しください。"
+  },
+  "撤回报告 · FanBar": {
+    "en": "Withdraw a report · FanBar",
+    "ja": "レポートの撤回 · FanBar"
+  },
+  "设备兼容性 · 撤回报告": {
+    "en": "Device compatibility · Withdrawal",
+    "ja": "デバイス互換性 · 撤回"
+  },
+  "撤回你提交的报告": {
+    "en": "Withdraw your report",
+    "ja": "提出したレポートを撤回"
+  },
+  "也可以在 FanBar 的上报记录中撤回。删除后，报告不再被公开查询，也不再计入在线社区统计。": {
+    "en": "You can also withdraw from FanBar’s submission history. After deletion, the report is no longer publicly accessible or included in online community statistics.",
+    "ja": "FanBar の提出履歴からも撤回できます。削除後は公開検索の対象外となり、オンラインのコミュニティ統計にも含まれません。"
+  },
+  "报告编号": {
+    "en": "Report ID",
+    "ja": "レポート ID"
+  },
+  "撤回凭证": {
+    "en": "Withdrawal credential",
+    "ja": "撤回用の認証情報"
+  },
+  "凭证只通过加密请求发送，不写入网址或浏览器存储。请勿将凭证放进公开反馈。": {
+    "en": "The credential is sent only through an encrypted request, never in a URL or browser storage. Do not include it in public feedback.",
+    "ja": "認証情報は暗号化されたリクエストでのみ送信し、URLやブラウザーの保存領域には書き込みません。公開のフィードバックには含めないでください。"
+  },
+  "确认撤回报告": {
+    "en": "Confirm withdrawal",
+    "ja": "撤回を確定"
+  },
+  "在线删除不代表云平台历史恢复点立即清除，详见处理规则。": {
+    "en": "Online deletion does not immediately erase cloud recovery points. See the processing policy.",
+    "ja": "オンラインでの削除は、クラウドの過去の復元ポイントを即座に消去するものではありません。処理方針をご確認ください。"
+  },
+  "请检查报告编号和撤回凭证。": {
+    "en": "Check the report ID and withdrawal credential.",
+    "ja": "レポート ID と撤回用の認証情報をご確認ください。"
+  },
+  "报告已撤回，或已经过期。": {
+    "en": "The report has been withdrawn or has expired.",
+    "ja": "レポートは撤回済み、または期限切れです。"
+  },
+  "公开报告 · FanBar": {
+    "en": "Public report · FanBar",
+    "ja": "公開レポート · FanBar"
+  },
+  "用户选择公开的社区报告": {
+    "en": "Community report published by consent",
+    "ja": "ユーザーが公開を選択したコミュニティレポート"
+  },
+  "公开兼容性报告": {
+    "en": "Public compatibility report",
+    "ja": "公開互換性レポート"
+  },
+  "此报告由用户选择公开，并经审核。它不等同于开发者实测。": {
+    "en": "The user chose to publish this reviewed report. It is not an independent developer test.",
+    "ja": "ユーザーが公開を選択し、審査を受けたレポートです。開発者による独立した実機検証とは異なります。"
+  },
+  "无效的报告编号。": {
+    "en": "Invalid report ID.",
+    "ja": "レポート ID が無効です。"
+  },
+  "用户自愿公开 · 社区报告": {
+    "en": "Published by consent · Community report",
+    "ja": "任意で公開 · コミュニティレポート"
+  },
+  "报告审核 · FanBar": {
+    "en": "Report review · FanBar",
+    "ja": "レポート審査 · FanBar"
+  },
+  "报告审核 · 管理员": {
+    "en": "Report review · Administrator",
+    "ja": "レポート審査 · 管理者"
+  },
+  "公开兼容性页 ↗": {
+    "en": "Public compatibility page ↗",
+    "ja": "公開互換性ページ ↗"
+  },
+  "把报告变成可信的兼容性记录。": {
+    "en": "Turn reports into trustworthy compatibility records.",
+    "ja": "レポートを信頼できる互換性記録に。"
+  },
+  "审核通过只纳入社区统计。开发者验证需要独立实测与公开依据，不能由用户请求成功自动推导。": {
+    "en": "Approval includes a report in community statistics only. Developer verification requires independent tests and public evidence; it cannot be inferred from a successful user request.",
+    "ja": "承認はコミュニティ統計への追加のみを意味します。開発者の検証には独立した実機テストと公開の根拠が必要です。ユーザーのリクエスト成功から自動的に判断はできません。"
+  },
+  "原始报告默认私有": {
+    "en": "Raw reports are private by default",
+    "ja": "元のレポートは初期設定で非公開"
+  },
+  "管理员访问密钥": {
+    "en": "Administrator access key",
+    "ja": "管理者アクセスキー"
+  },
+  "进入审核后台": {
+    "en": "Open review dashboard",
+    "ja": "審査画面を開く"
+  },
+  "审核状态": {
+    "en": "Review status",
+    "ja": "審査状況"
+  },
+  "待审核": {
+    "en": "Pending review",
+    "ja": "審査待ち"
+  },
+  "已纳入统计": {
+    "en": "Included in statistics",
+    "ja": "統計に追加済み"
+  },
+  "已排除": {
+    "en": "Excluded",
+    "ja": "除外済み"
+  },
+  "全部": {
+    "en": "All",
+    "ja": "すべて"
+  },
+  "按机型标识筛选": {
+    "en": "Filter by model identifier",
+    "ja": "モデル識別子で絞り込み"
+  },
+  "FanBar 版本": {
+    "en": "FanBar version",
+    "ja": "FanBar バージョン"
+  },
+  "上一页": {
+    "en": "Previous",
+    "ja": "前へ"
+  },
+  "下一页": {
+    "en": "Next",
+    "ja": "次へ"
+  },
+  "选择一份报告": {
+    "en": "Select a report",
+    "ja": "レポートを選択"
+  },
+  "查看具体字段，再决定是否纳入社区统计。": {
+    "en": "Inspect its fields before including it in community statistics.",
+    "ja": "具体的なフィールドを確認してから、コミュニティ統計に追加するか判断してください。"
+  },
+  "发布独立实测记录": {
+    "en": "Publish an independent test",
+    "ja": "独立した実機検証を公開"
+  },
+  "完成对应功能的实际测试后填写。此记录长期公开，附带来源；填写“手动调速可用”需要实际控制证据。": {
+    "en": "Complete an actual test before submitting. This record remains public with its source. Marking manual control as available requires evidence of actual control.",
+    "ja": "対象機能を実際にテストしてから記入してください。この記録は出典付きで継続的に公開されます。手動制御を利用可能とするには、実際の制御の根拠が必要です。"
+  },
+  "macOS 版本": {
+    "en": "macOS version",
+    "ja": "macOS バージョン"
+  },
+  "Helper 版本": {
+    "en": "Helper version",
+    "ja": "Helper バージョン"
+  },
+  "实测能力": {
+    "en": "Tested capability",
+    "ja": "検証した機能"
+  },
+  "测试结果": {
+    "en": "Test result",
+    "ja": "テスト結果"
+  },
+  "验证日期": {
+    "en": "Verification date",
+    "ja": "検証日"
+  },
+  "公开依据 URL": {
+    "en": "Public evidence URL",
+    "ja": "公開の根拠の URL"
+  },
+  "验证说明": {
+    "en": "Verification notes",
+    "ja": "検証の説明"
+  },
+  "发布实测记录": {
+    "en": "Publish test record",
+    "ja": "検証記録を公開"
+  },
+  "撤下错误的实测记录": {
+    "en": "Remove an incorrect test record",
+    "ja": "誤った検証記録を撤回"
+  },
+  "公开 JSON 中每条开发者验证含记录编号。撤下不会删除用户报告。": {
+    "en": "Each developer verification in public JSON has a record ID. Removing it does not delete user reports.",
+    "ja": "公開 JSON の開発者検証には記録 ID があります。撤回してもユーザーのレポートは削除されません。"
+  },
+  "验证记录编号": {
+    "en": "Verification record ID",
+    "ja": "検証記録 ID"
+  },
+  "撤下记录": {
+    "en": "Remove record",
+    "ja": "記録を撤回"
+  },
+  "正在读取报告…": {
+    "en": "Loading reports…",
+    "ja": "レポートを読み込み中…"
+  },
+  "用户选择公开": {
+    "en": "User chose publication",
+    "ja": "ユーザーが公開を選択"
+  },
+  "原始报告私有": {
+    "en": "Raw report is private",
+    "ja": "元のレポートは非公開"
+  },
+  "当前筛选没有报告。": {
+    "en": "No reports match these filters.",
+    "ja": "条件に一致するレポートはありません。"
+  },
+  "读取完成。凭证和内部哈希不会返回到管理页面。": {
+    "en": "Loaded. Credentials and internal hashes are not returned to this dashboard.",
+    "ja": "読み込み完了。認証情報と内部ハッシュは管理画面に返されません。"
+  },
+  "用户选择公开：审核通过后可通过报告编号查阅。": {
+    "en": "Publication chosen: accessible by report ID after approval.",
+    "ja": "公開を選択：承認後にレポート ID で閲覧できます。"
+  },
+  "原始报告私有：审核通过只贡献汇总统计。": {
+    "en": "Private report: approval contributes only to aggregate statistics.",
+    "ja": "非公開レポート：承認後も集計統計にのみ寄与します。"
+  },
+  "报告编号：": {
+    "en": "Report ID: ",
+    "ja": "レポート ID："
+  },
+  "已检查字段与证据": {
+    "en": "Fields and evidence checked",
+    "ja": "フィールドと根拠を確認済み"
+  },
+  "疑似重复报告": {
+    "en": "Possible duplicate",
+    "ja": "重複の疑い"
+  },
+  "无效报告": {
+    "en": "Invalid report",
+    "ja": "無効なレポート"
+  },
+  "需进一步调查": {
+    "en": "Needs investigation",
+    "ja": "追加調査が必要"
+  },
+  "纳入社区统计": {
+    "en": "Include in community statistics",
+    "ja": "コミュニティ統計に追加"
+  },
+  "排除报告": {
+    "en": "Exclude report",
+    "ja": "レポートを除外"
+  },
+  "恢复待审核": {
+    "en": "Return to pending review",
+    "ja": "審査待ちに戻す"
+  },
+  "最近审核记录": {
+    "en": "Recent review history",
+    "ja": "最近の審査履歴"
+  },
+  "已发布独立实测记录。": {
+    "en": "Independent test published.",
+    "ja": "独立した検証記録を公開しました。"
+  },
+  "请检查验证记录编号。": {
+    "en": "Check the verification record ID.",
+    "ja": "検証記録 ID をご確認ください。"
+  },
+  "实测记录已撤下。": {
+    "en": "Test record removed.",
+    "ja": "検証記録を撤回しました。"
+  },
+  "需要管理员登录。请输入访问密钥，或使用已配置的 Cloudflare Access。": {
+    "en": "Administrator authentication required. Enter the access key or use configured Cloudflare Access.",
+    "ja": "管理者認証が必要です。アクセスキーを入力するか、設定済みの Cloudflare Access をご利用ください。"
+  },
+  "管理员访问尚未配置，服务已拒绝访问。": {
+    "en": "Administrator access is not configured. Access was denied.",
+    "ja": "管理者アクセスが未設定のため、アクセスを拒否しました。"
+  },
+  "请求过于频繁，请稍后重试。": {
+    "en": "Too many requests. Try again later.",
+    "ja": "リクエストが多すぎます。しばらくしてからお試しください。"
+  },
+  "报告不存在、已过期、尚未公开，或撤回凭证不正确。": {
+    "en": "The report is missing, expired, not public, or the withdrawal credential is incorrect.",
+    "ja": "レポートが存在しない、期限切れ、非公開、または撤回用の認証情報が正しくありません。"
+  },
+  "报告不符合字段或能力证据规则。": {
+    "en": "The report does not meet the field or capability evidence rules.",
+    "ja": "レポートがフィールドまたは機能の根拠に関する規則に適合していません。"
+  },
+  "服务尚未完成配置。": {
+    "en": "The service is not configured yet.",
+    "ja": "サービスはまだ設定されていません。"
+  },
+  "管理操作必须从当前服务页面发起。": {
+    "en": "Administrator actions must originate from this service page.",
+    "ja": "管理操作はこのサービスのページから実行してください。"
+  },
+  "请求失败，请稍后重试。": {
+    "en": "Request failed. Try again later.",
+    "ja": "リクエストに失敗しました。しばらくしてからお試しください。"
+  },
+  "收集与处理规则 · FanBar": {
+    "en": "Collection and processing policy · FanBar",
+    "ja": "収集・処理方針 · FanBar"
+  },
+  "公开的收集与处理规则": {
+    "en": "Public collection and processing policy",
+    "ja": "公開の収集・処理方針"
+  },
+  "完整字段": {
+    "en": "All fields",
+    "ja": "全フィールド"
+  },
+  "你能检查我们收集的每个字段。": {
+    "en": "You can inspect every field we collect.",
+    "ja": "収集するすべてのフィールドを確認できます。"
+  },
+  "本机检测不需要上报。只有你预览并确认提交时，报告才会发送到当前 FanBar 报告服务。服务由 FanBar 项目维护者运营，使用 Cloudflare Workers 与 D1。": {
+    "en": "Local detection requires no submission. Reports are sent to this FanBar service only after you preview and confirm them. FanBar maintainers operate the service using Cloudflare Workers and D1.",
+    "ja": "ローカル検出に提出は不要です。プレビューを確認し、提出を承認した場合にのみ、この FanBar サービスへ送信します。FanBar の保守担当者が Cloudflare Workers と D1 で運営しています。"
+  },
+  "上传哪些内容": {
+    "en": "What is uploaded",
+    "ja": "アップロードする内容"
+  },
+  "机型标识、处理器名称、macOS／FanBar／控制服务版本。": {
+    "en": "Model identifier, processor name, macOS, FanBar and control-service versions.",
+    "ja": "モデル識別子、プロセッサ名、macOS・FanBar・制御サービスのバージョン。"
+  },
+  "硬件接口报告的风扇数量（如可获取）、所选温度来源。": {
+    "en": "Fan count reported by the hardware interface, if available, and selected temperature source.",
+    "ja": "ハードウェアインターフェースが報告するファン数（取得可能な場合）と選択した温度ソース。"
+  },
+  "七项能力状态与标准原因码、每次报告随机生成的编号。": {
+    "en": "Seven capability states with standard reason codes and a randomly generated ID for each report.",
+    "ja": "7つの機能状態と標準の理由コード、レポートごとにランダム生成する ID。"
+  },
+  "你是否同意公开单份报告、确认的规则版本。服务器记录接收时间、到期时间和审核状态。": {
+    "en": "Your consent to publish the individual report and the policy version you confirmed. The server records receipt time, expiry and review status.",
+    "ja": "個別レポートの公開への同意と、確認した方針のバージョン。サーバーは受信日時、有効期限、審査状況を記録します。"
+  },
+  "不接收序列号、硬件 UUID、用户名、主机名、文件路径、进程列表、温度历史或诊断日志。": {
+    "en": "We do not accept serial numbers, hardware UUIDs, usernames, hostnames, file paths, process lists, temperature history or diagnostic logs.",
+    "ja": "シリアル番号、ハードウェア UUID、ユーザー名、ホスト名、ファイルパス、プロセス一覧、温度履歴、診断ログは受け付けません。"
+  },
+  "查看严格字段 Schema": {
+    "en": "View the strict field schema",
+    "ja": "厳密なフィールドスキーマを見る"
+  },
+  "；额外字段、不完整能力列表和不一致的证据会被拒绝。": {
+    "en": "; extra fields, incomplete capability lists and inconsistent evidence are rejected.",
+    "ja": "。追加フィールド、不完全な機能一覧、矛盾した根拠は拒否します。"
+  },
+  "哪些数据公开": {
+    "en": "What is public",
+    "ja": "公開するデータ"
+  },
+  "报告默认私有，仅管理员可以查看。经审核的报告会贡献公开的机型与版本汇总，统计为报告数，不代表独立设备数。只有你明确选择公开的单份报告，在审核通过后才可以通过报告编号查阅。罕见机型与版本组合也可能具有辨识度，请在提交前评估。": {
+    "en": "Reports are private by default and visible only to administrators. Reviewed reports contribute to public model and version aggregates. Counts represent reports, not unique devices. An individual report is accessible by ID only if you explicitly chose publication and it passed review. Rare model and version combinations may be identifying; consider this before submitting.",
+    "ja": "レポートは初期設定で非公開で、管理者のみ閲覧できます。審査済みのレポートはモデルとバージョンの公開集計に寄与します。件数はレポート数であり、デバイス数ではありません。明示的に公開を選択し、審査を通過した個別レポートのみ ID で閲覧できます。珍しいモデルとバージョンの組み合わせは識別につながる可能性があるため、提出前にご検討ください。"
+  },
+  "如何判断兼容性": {
+    "en": "How compatibility is assessed",
+    "ja": "互換性の評価方法"
+  },
+  "没有读数或一次失败不等于不支持。控制服务就绪、请求成功和实际转速验证分别处理。社区报告不会自动成为“开发者验证”；开发者实测必须单独发布，附带日期、版本与公开依据。不同结果会保留，不用多数票掩盖差异。": {
+    "en": "A missing reading or one failure does not mean unsupported. Control-service readiness, request success and actual fan-speed verification are treated separately. Community reports do not automatically become developer verification. Independent developer tests must be published separately with dates, versions and public evidence. Conflicting results are preserved rather than hidden by majority voting.",
+    "ja": "読み取りがないことや一度の失敗は非対応を意味しません。制御サービスの準備状態、リクエスト成功、実際の回転数の検証を個別に扱います。コミュニティレポートが開発者の検証に自動的に変わることはありません。開発者の実機検証は日付、バージョン、公開の根拠を付けて別途公開します。異なる結果は残し、多数決で差異を隠しません。"
+  },
+  "网络元数据与安全": {
+    "en": "Network metadata and security",
+    "ja": "ネットワークメタデータとセキュリティ"
+  },
+  "Cloudflare 为传输和保护服务会处理网络地址等元数据。应用数据库不保存原始 IP；服务只将带密钥且每日变化的网络地址摘要送入短期限流计数器，不用于设备追踪。服务日志不记录报告内容、撤回凭证、请求 URL 或网络地址。Cloudflare 自身的基础设施处理不等于不存在。": {
+    "en": "Cloudflare processes metadata such as network addresses to transport and protect the service. The app database does not store raw IP addresses. Only a keyed address digest that changes daily is used in short-lived rate-limit counters, not device tracking. Service logs do not record report contents, withdrawal credentials, request URLs or network addresses. Cloudflare’s own infrastructure processing still exists.",
+    "ja": "Cloudflare は通信と保護のため、ネットワークアドレスなどのメタデータを処理します。アプリのデータベースに生の IP は保存しません。鍵付きで毎日変化するアドレスの要約値を短期の制限カウンターにのみ使い、デバイス追跡には使いません。サービスのログにはレポート内容、撤回用の認証情報、リクエスト URL、ネットワークアドレスを記録しません。Cloudflare 自体の基盤での処理は存在します。"
+  },
+  "管理员接口要求独立访问密钥，或验证已配置的 Cloudflare Access 身份。管理密钥仅保存在后台页面内存中，刷新后需重新输入。撤回凭证每份报告独立生成，通过请求头发送；数据库只存其 SHA-256 哈希。凭证不进入公开数据或网址。所有生产请求使用 HTTPS。": {
+    "en": "Administrator APIs require an independent access key or a verified configured Cloudflare Access identity. The admin key stays only in page memory and must be re-entered after refresh. Each report has its own withdrawal credential, sent in a request header; the database stores only its SHA-256 hash. Credentials never appear in public data or URLs. All production requests use HTTPS.",
+    "ja": "管理 API には独立したアクセスキー、または設定済みの Cloudflare Access の認証が必要です。管理キーはページのメモリにのみ保持し、更新後に再入力が必要です。撤回用の認証情報はレポートごとに生成し、ヘッダーで送信します。データベースには SHA-256 ハッシュのみ保存します。認証情報は公開データや URL に含めません。本番の通信はすべて HTTPS です。"
+  },
+  "保存多久，如何删除": {
+    "en": "Retention and deletion",
+    "ja": "保存期間と削除"
+  },
+  "报告在线保留 90 天，到期即停止公开查询与统计，物理数据由每日清理任务删除。你可以在 FanBar 的上报记录中撤回，也可以使用报告编号和撤回凭证在": {
+    "en": "Reports remain online for 90 days. Expired reports stop appearing in public queries and statistics; daily cleanup removes the stored data. Withdraw from FanBar’s submission history, or use the report ID and credential on the ",
+    "ja": "レポートはオンラインで90日間保存します。期限後は公開検索と統計から除外し、日次の処理でデータを削除します。FanBar の提出履歴から撤回するか、ID と認証情報を使って"
+  },
+  "撤回页面": {
+    "en": "withdrawal page",
+    "ja": "撤回ページ"
+  },
+  "删除。撤回会删除在线报告及相关审核记录，并移除社区统计贡献；独立实测记录不会随用户报告撤回而删除。为防止迟到的请求重新写入同一报告，报告编号与凭证的哈希删除标记会私有保留 90 天，不保留报告内容。": {
+    "en": ". Withdrawal deletes the online report and its review history and removes its contribution to community statistics. Independent test records are not removed when a user report is withdrawn. To block delayed requests from recreating a withdrawn report, hashed report-ID and credential deletion markers remain private for 90 days, without report contents.",
+    "ja": "から削除できます。撤回でオンラインのレポート、審査履歴、統計への寄与を削除します。独立した実機検証はユーザーレポートの撤回では削除しません。遅れたリクエストによる再登録を防ぐため、ID と認証情報のハッシュ削除マーカーのみを非公開で90日間保存し、レポート内容は保存しません。"
+  },
+  "在线删除不代表云平台历史恢复点立即清除。D1 历史恢复点按账户计划保留 7 天（免费）或 30 天（付费），因此历史数据最长还可能保留 30 天；不得把旧备份恢复后直接公开上线。公开数据下载或第三方副本无法由本服务追回。": {
+    "en": "Online deletion does not immediately erase cloud recovery points. D1 recovery points last 7 days on the free plan or 30 days on a paid plan, so historical data may remain for up to 30 additional days. Old backups must not be restored directly into a public service. This service cannot recall downloaded public data or third-party copies.",
+    "ja": "オンラインの削除でクラウドの過去の復元ポイントが即座に消えるわけではありません。D1 は無料プランで7日、有料プランで30日間の復元ポイントを保持するため、過去のデータは最長で追加の30日間残る可能性があります。古いバックアップを復元してそのまま公開することは禁止します。公開データのダウンロードや第三者のコピーは回収できません。"
+  },
+  "源码与变更": {
+    "en": "Source and policy changes",
+    "ja": "ソースコードと方針の変更"
+  },
+  "规则版本为 2026-10-13。规则变化后，旧确认不能直接用于新提交。": {
+    "en": "Policy version: 2026-10-13. After policy changes, previous consent cannot be used directly for new submissions.",
+    "ja": "方針のバージョンは2026-10-13です。変更後の新規提出に以前の同意をそのまま使うことはできません。"
+  },
+  "服务端源码": {
+    "en": "Server source code",
+    "ja": "サーバーのソースコード"
+  },
+  "与": {
+    "en": " and ",
+    "ja": "と"
+  },
+  "机器可读处理规则": {
+    "en": "machine-readable policy",
+    "ja": "機械可読の処理方針"
+  },
+  "公开；问题可在": {
+    "en": " are public. Report issues in the ",
+    "ja": "を公開しています。問題は"
+  },
+  "FanBar 仓库": {
+    "en": "FanBar repository",
+    "ja": "FanBar リポジトリ"
+  },
+  "反馈，请勿在公开反馈中填写撤回凭证。": {
+    "en": ". Do not include withdrawal credentials in public feedback.",
+    "ja": "でご報告ください。公開の報告に撤回用の認証情報を含めないでください。"
+  },
+  "reportCount": {
+    "zh-CN": "{count} 份",
+    "en": "{count} reports",
+    "ja": "{count} 件"
+  },
+  "pageNumber": {
+    "zh-CN": "第 {page} 页",
+    "en": "Page {page}",
+    "ja": "{page} ページ"
+  },
+  "浏览器只保存你选择的界面语言；不保存报告、访问密钥或撤回凭证。": {
+    "en": "The browser saves only your chosen interface language, never reports, access keys or withdrawal credentials.",
+    "ja": "ブラウザーには選択した表示言語のみ保存し、レポート、アクセスキー、撤回用の認証情報は保存しません。"
+  }
+};

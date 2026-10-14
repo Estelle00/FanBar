@@ -11,7 +11,7 @@ export async function administrator(request: Request, env: Env): Promise<string>
     return 'administrator-key';
   }
   if (!env.ACCESS_AUD || !/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(env.ACCESS_TEAM_DOMAIN)) {
-    throw new HttpError(403, 'ADMIN_ACCESS_NOT_CONFIGURED');
+    throw new HttpError(403, env.ADMIN_TOKEN ? 'ADMIN_AUTHENTICATION_REQUIRED' : 'ADMIN_ACCESS_NOT_CONFIGURED');
   }
   const token = request.headers.get('Cf-Access-Jwt-Assertion');
   if (!token) throw new HttpError(403, 'ADMIN_AUTHENTICATION_REQUIRED');

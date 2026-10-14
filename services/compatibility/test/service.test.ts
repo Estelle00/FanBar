@@ -47,6 +47,19 @@ beforeEach(async () => { await env.DB.batch([
   env.DB.prepare('DELETE FROM withdrawals'),
 ]); });
 describe('consent and closed schema', () => {
+  it('asks for authentication when administrator keys are configured', async () => {
+    const response = await SELF.fetch(request('/api/admin/reports'));
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({error:{code:'ADMIN_AUTHENTICATION_REQUIRED'}});
+  });
+  it('serves the root and public pages directly with HTML normalization disabled', async () => {
+    for (const path of ['/', '/index.html', '/privacy.html', '/withdraw.html', '/report.html']) {
+      const response = await SELF.fetch(request(path));
+      expect(response.status).toBe(200);
+      expect(response.headers.get('location')).toBeNull();
+      expect(await response.text()).toContain('/i18n.js');
+    }
+  });
   it('serves every administrator entry without canonical redirect loops', async () => {
     for (const path of ['/admin', '/admin/', '/admin.html']) {
       const response = await SELF.fetch(request(path));

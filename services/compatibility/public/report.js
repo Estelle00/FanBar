@@ -1,2 +1,2 @@
-import {api,message} from './common.js';
-const id=new URL(location.href).searchParams.get('id');const status=document.querySelector('#status');if(!id||!/^[0-9a-f-]{36}$/i.test(id)){status.textContent='无效的报告编号。';}else{try{const report=await api('/api/reports/'+encodeURIComponent(id));const node=document.querySelector('#report');node.textContent=JSON.stringify(report,null,2);node.hidden=false;status.textContent='用户自愿公开 · 社区报告';}catch(error){status.textContent=message(error);}}
+import {t,api,message} from './common.js';
+const id=new URL(location.href).searchParams.get('id');const status=document.querySelector('#status');if(!id||!/^[0-9a-f-]{36}$/i.test(id)){status.textContent=t("无效的报告编号。");}else{try{const report=await api('/api/reports/'+encodeURIComponent(id));const node=document.querySelector('#report');node.textContent=JSON.stringify(report,null,2);node.hidden=false;status.textContent=t("用户自愿公开 · 社区报告");}catch(error){status.textContent=message(error);}}

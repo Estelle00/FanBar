@@ -52,6 +52,9 @@ async function route(request: Request, env: Env): Promise<Response> {
     headers.set('Cache-Control', 'no-store');
     return new Response(response.body, { status: response.status, headers });
   }
+  // HTML canonical redirects are disabled because admin routes resolve assets
+  // internally. Resolve the root explicitly rather than relying on that behavior.
+  if (path === '/') return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
   return env.ASSETS.fetch(request);
 }
 export default {
