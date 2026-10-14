@@ -4,6 +4,7 @@
 #include <IOKit/hidsystem/IOHIDServiceClient.h>
 #include <IOKit/storage/nvme/NVMeSMARTLibExternal.h>
 #include <mach/mach.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -68,6 +69,11 @@ typedef struct {
 
 enum { kSMCGetKeyInfo = 9, kSMCReadBytes = 5, kSMCWriteBytes = 6, kSMCMethod = 2 };
 static io_connect_t connection = IO_OBJECT_NULL;
+// The connection is process-wide. Each SMCClient/SMCFanDriver holds one reference, so
+// a short-lived reader on another thread (diagnostics) cannot close the main reader's
+// connection when it is released. Calls through an open connection need no lock.
+static pthread_mutex_t connection_lock = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int connection_users = 0;
 
 static kern_return_t smc_call(SMCParamStruct *input, SMCParamStruct *output) {
     size_t output_size = sizeof(*output);
@@ -75,26 +81,58 @@ static kern_return_t smc_call(SMCParamStruct *input, SMCParamStruct *output) {
 }
 
 int fanbar_smc_open(void) {
-    if (connection != IO_OBJECT_NULL) return KERN_SUCCESS;
-    mach_port_t master_port = MACH_PORT_NULL;
-    if (__builtin_available(macOS 12.0, *)) {
-        master_port = kIOMainPortDefault;
-    } else {
-        master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
+    pthread_mutex_lock(&connection_lock);
+    kern_return_t result = KERN_SUCCESS;
+    if (connection == IO_OBJECT_NULL) {
+        mach_port_t master_port = MACH_PORT_NULL;
+        if (__builtin_available(macOS 12.0, *)) {
+            master_port = kIOMainPortDefault;
+        } else {
+            master_port = MACH_PORT_NULL; // Same value as the deprecated kIOMasterPortDefault.
+        }
+        io_service_t service = IOServiceGetMatchingService(master_port, IOServiceMatching("AppleSMC"));
+        if (service == IO_OBJECT_NULL) {
+            result = KERN_FAILURE;
+        } else {
+            result = IOServiceOpen(service, mach_task_self(), 0, &connection);
+            IOObjectRelease(service);
+            if (result != KERN_SUCCESS) connection = IO_OBJECT_NULL;
+        }
     }
-    io_service_t service = IOServiceGetMatchingService(master_port, IOServiceMatching("AppleSMC"));
-    if (service == IO_OBJECT_NULL) return KERN_FAILURE;
-    kern_return_t result = IOServiceOpen(service, mach_task_self(), 0, &connection);
-    IOObjectRelease(service);
+    if (result == KERN_SUCCESS) connection_users += 1;
+    pthread_mutex_unlock(&connection_lock);
     return result;
 }
 
 void fanbar_smc_close(void) {
-    if (connection != IO_OBJECT_NULL) IOServiceClose(connection);
-    connection = IO_OBJECT_NULL;
+    pthread_mutex_lock(&connection_lock);
+    if (connection_users > 0) connection_users -= 1;
+    if (connection_users == 0 && connection != IO_OBJECT_NULL) {
+        IOServiceClose(connection);
+        connection = IO_OBJECT_NULL;
+    }
+    pthread_mutex_unlock(&connection_lock);
 }
 
 int fanbar_smc_read(uint32_t key, FanBarSMCValue *value) {
+    int stage = 0;
+    return fanbar_smc_read_diagnostic(key, value, &stage);
+}
+
+int fanbar_smc_key_at_index(uint32_t index, uint32_t *key) {
+    if (connection == IO_OBJECT_NULL || key == NULL) return KERN_INVALID_ARGUMENT;
+    SMCParamStruct input = {0}, output = {0};
+    input.data8 = 8;
+    input.data32 = index;
+    kern_return_t result = smc_call(&input, &output);
+    if (result != KERN_SUCCESS) return result;
+    if (output.result != 0) return 0x10000 | output.result;
+    *key = output.key;
+    return KERN_SUCCESS;
+}
+
+int fanbar_smc_read_diagnostic(uint32_t key, FanBarSMCValue *value, int *stage) {
+    if (stage != NULL) *stage = 1;
     if (connection == IO_OBJECT_NULL || value == NULL) return KERN_INVALID_ARGUMENT;
     SMCParamStruct input = {0}, output = {0};
     input.key = key;
@@ -104,6 +142,9 @@ int fanbar_smc_read(uint32_t key, FanBarSMCValue *value) {
     if (output.result != 0) return 0x10000 | output.result;
 
     input.key_info = output.key_info;
+    value->data_type = input.key_info.data_type;
+    value->data_size = input.key_info.data_size;
+    if (stage != NULL) *stage = 2;
     input.data8 = kSMCReadBytes;
     result = smc_call(&input, &output);
     if (result != KERN_SUCCESS) return result;

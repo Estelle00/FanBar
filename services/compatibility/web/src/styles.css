@@ -1,0 +1,59 @@
+@source "../../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import "@cloudflare/kumo/styles";
+@import "tailwindcss";
+
+/*
+ * FanBar theme: components stay stock Kumo; only the semantic token values change.
+ * Near-neutral greys with a single indigo accent. Status colour appears on small icons only.
+ */
+[data-theme="fanbar"] {
+  --color-kumo-canvas: light-dark(#f7f7f8, #08090a);
+  --color-kumo-base: light-dark(#ffffff, #111214);
+  --color-kumo-elevated: light-dark(#fafafa, #141518);
+  --color-kumo-recessed: light-dark(#f2f2f4, #0c0d0f);
+  --color-kumo-tint: light-dark(#f4f4f6, #18191c);
+  --color-kumo-overlay: light-dark(#ffffff, #18191c);
+  --color-kumo-control: light-dark(#ffffff, #141518);
+  --color-kumo-fill: light-dark(#ebebee, #222327);
+  --color-kumo-fill-hover: light-dark(#f3f3f5, #26282c);
+  --color-kumo-interact: light-dark(#d6d7dc, #34363b);
+  --color-kumo-hairline: light-dark(#ebebee, #1f2024);
+  --color-kumo-line: light-dark(#00000017, #2c2e33);
+  --color-kumo-contrast: light-dark(#1b1c1f, #f7f8f8);
+  --color-kumo-brand: light-dark(#5e6ad2, #5e6ad2);
+  --color-kumo-brand-hover: light-dark(#4e5ac4, #6b76dc);
+  --color-kumo-focus: light-dark(#5e6ad2, #8f8cff);
+  --color-kumo-info: light-dark(#5e6ad2, #8f8cff);
+  --color-kumo-success: light-dark(#3a9a6b, #4cb782);
+  --color-kumo-warning: light-dark(#c28410, #f2c94c);
+  --color-kumo-danger: light-dark(#d6473c, #eb5757);
+  --color-kumo-info-tint: light-dark(#eff0fc, #1a1b30);
+  --color-kumo-success-tint: light-dark(#e9f6ef, #10241a);
+  --color-kumo-warning-tint: light-dark(#fdf6e6, #2a2410);
+  --color-kumo-danger-tint: light-dark(#fdeeec, #2c1414);
+
+  --text-color-kumo-default: light-dark(#1b1c1f, #f7f8f8);
+  --text-color-kumo-strong: light-dark(#0f1012, #ffffff);
+  --text-color-kumo-subtle: light-dark(#5f636b, #a1a6af);
+  --text-color-kumo-placeholder: light-dark(#8a8e96, #6c7078);
+  --text-color-kumo-link: light-dark(#5e6ad2, #8f8cff);
+  --text-color-kumo-info: light-dark(#5e6ad2, #8f8cff);
+  --text-color-kumo-success: light-dark(#2f7d57, #4cb782);
+  --text-color-kumo-warning: light-dark(#8f6106, #f2c94c);
+  --text-color-kumo-danger: light-dark(#b8382e, #eb5757);
+}
+
+/* Kumo has no "results disagree" semantic; FanBar adds this single application token. */
+@theme {
+  --color-fanbar-mixed: light-dark(#b23f8b, #e872c0);
+  --color-fanbar-mixed-tint: light-dark(#fbeef6, #2a1424);
+}
+
+/*
+ * Base UI normally injects this rule as an inline <style>. The CSP forbids inline styles,
+ * so CSPProvider disables the element and the rule ships here instead.
+ */
+.base-ui-disable-scrollbar { scrollbar-width: none; }
+.base-ui-disable-scrollbar::-webkit-scrollbar { display: none; }
+
+.tabular { font-variant-numeric: tabular-nums; }

@@ -1,0 +1,131 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fanbar-compatibility-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-13",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "run_worker_first": true
+  },
+  "vars": {
+    "ENVIRONMENT": "development",
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": ""
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fanbar-compatibility",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "WRITE_LIMIT",
+      "namespace_id": "81001",
+      "simple": {
+        "limit": 10,
+        "period": 60
+      }
+    },
+    {
+      "name": "READ_LIMIT",
+      "namespace_id": "81002",
+      "simple": {
+        "limit": 200,
+        "period": 60
+      }
+    },
+    {
+      "name": "DIAGNOSTIC_LIMIT",
+      "namespace_id": "81005",
+      "simple": {
+        "limit": 2,
+        "period": 60
+      }
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "17 3 * * *"
+    ]
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false
+    }
+  },
+  "env": {
+    "production": {
+      "name": "fanbar-compatibility",
+      "routes": [
+        {
+          "pattern": "report.getfanbar.com",
+          "custom_domain": true
+        }
+      ],
+      "vars": {
+        "ENVIRONMENT": "production",
+        "ACCESS_TEAM_DOMAIN": "",
+        "ACCESS_AUD": ""
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "fanbar-compatibility",
+          "database_id": "296396fc-79f2-4a04-99f8-480467d1b694",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "ratelimits": [
+        {
+          "name": "WRITE_LIMIT",
+          "namespace_id": "81003",
+          "simple": {
+            "limit": 10,
+            "period": 60
+          }
+        },
+        {
+          "name": "READ_LIMIT",
+          "namespace_id": "81004",
+          "simple": {
+            "limit": 200,
+            "period": 60
+          }
+        },
+        {
+          "name": "DIAGNOSTIC_LIMIT",
+          "namespace_id": "81006",
+          "simple": {
+            "limit": 2,
+            "period": 60
+          }
+        }
+      ],
+      "secrets": {
+        "required": [
+          "LIMIT_SALT",
+          "ADMIN_TOKEN"
+        ]
+      }
+    }
+  },
+  "secrets": {
+    "required": [
+      "LIMIT_SALT",
+      "ADMIN_TOKEN"
+    ]
+  }
+}

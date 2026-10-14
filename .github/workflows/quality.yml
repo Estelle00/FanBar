@@ -68,7 +68,36 @@ jobs:
       - name: Build with warnings as errors
         run: swift build -Xswiftc -warnings-as-errors -Xcc -Werror
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: services/compatibility/package-lock.json
+
+      - name: Start local compatibility service for native client integration
+        env:
+          WRANGLER_SEND_METRICS: 'false'
+          WRANGLER_LOG_PATH: /tmp/fanbar-wrangler-ci.log
+        run: |
+          cd services/compatibility
+          npm ci
+          python3 - <<'PY'
+          from pathlib import Path
+          import secrets
+          Path('.dev.vars').write_text('LIMIT_SALT=' + secrets.token_urlsafe(32) + '\nADMIN_TOKEN=' + secrets.token_urlsafe(32) + '\n')
+          PY
+          npm run db:local
+          npm run dev -- --port 8787 --ip 127.0.0.1 > /tmp/fanbar-report-service.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8787/api/policy > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/fanbar-report-service.log
+          exit 1
+
       - name: Run tests with coverage
+        env:
+          FANBAR_COMPATIBILITY_TEST_SERVICE_URL: http://127.0.0.1:8787
         run: swift test --enable-code-coverage
 
       - name: Coverage report and diff gate

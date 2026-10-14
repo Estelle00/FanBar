@@ -66,8 +66,10 @@ temporary_root="$(mktemp -d)"
 trap 'rm -rf "${temporary_root}"' EXIT
 bundle_path="${temporary_root}/FanBar.app"
 mkdir -p "${bundle_path}/Contents/MacOS"
+cp "${binary_path}/FanBarDiagnostics" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
 mkdir -p "${bundle_path}/Contents/Frameworks"
 mkdir -p "${bundle_path}/Contents/Resources"
+cp "scripts/export-diagnostics.command" "${bundle_path}/Contents/Resources/ExportDiagnostics.command"
 mkdir -p "${bundle_path}/Contents/Library/LaunchDaemons"
 mkdir -p "${bundle_path}/Contents/Library/LaunchServices"
 mkdir -p "${bundle_path}/Contents/PlugIns"
@@ -89,6 +91,10 @@ ditto "${binary_path}/Sparkle.framework" \
 # conventional app-bundle Frameworks location before signing the binary.
 install_name_tool -add_rpath "@executable_path/../Frameworks" \
     "${bundle_path}/Contents/MacOS/FanBar"
+# SwiftPM resources must travel with the executable; Bundle.module locates this
+# bundle under the application's Resources directory.
+ditto "${binary_path}/FanBar_FanBar.bundle" \
+    "${bundle_path}/Contents/Resources/FanBar_FanBar.bundle"
 cp "Assets/FanBar.icns" "${bundle_path}/Contents/Resources/FanBar.icns"
 ditto "Assets/AppIcons" "${bundle_path}/Contents/Resources/AppIcons"
 cp "App/local.fanbar.helper.plist" \
@@ -136,6 +142,8 @@ for signable in "${sparkle_signables[@]}"; do
         --sign "${sign_identity}" "${signable}"
 done
 
+codesign "${sign_arguments[@]}" --identifier "local.fanbar.diagnostics" \
+    --sign "${sign_identity}" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
 codesign "${sign_arguments[@]}" --identifier "local.fanbar.helper" \
     --sign "${sign_identity}" \
     "${bundle_path}/Contents/Library/LaunchServices/local.fanbar.helper"
@@ -159,3 +167,6 @@ mkdir -p "${app_output_path:h}"
 rm -rf "${app_output_path}"
 mv "${bundle_path}" "${app_output_path}"
 print "Built ${app_output_path}"
+
+cp "scripts/export-diagnostics.command" "dist/FanBar-Diagnostics.command"
+chmod +x "dist/FanBar-Diagnostics.command"

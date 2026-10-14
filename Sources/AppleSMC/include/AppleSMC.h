@@ -13,6 +13,9 @@ typedef struct {
 int fanbar_smc_open(void);
 void fanbar_smc_close(void);
 int fanbar_smc_read(uint32_t key, FanBarSMCValue *value);
+// stage: 1 = key metadata, 2 = value bytes; output metadata survives a byte-read failure.
+int fanbar_smc_read_diagnostic(uint32_t key, FanBarSMCValue *value, int *stage);
+int fanbar_smc_key_at_index(uint32_t index, uint32_t *key);
 int fanbar_smc_write(uint32_t key, const FanBarSMCValue *value);
 
 // Returns the average temperature of Apple Silicon NAND channels exposed as

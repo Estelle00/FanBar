@@ -93,6 +93,24 @@ final class FanController: ObservableObject {
         }
     }
 
+    @Published private(set) var compatibilityObservation: CompatibilityObservation?
+    @Published private(set) var manualControlEvidence: CompatibilityControlEvidence = .unverified {
+        didSet { persistCompatibilityControlEvidence() }
+    }
+
+    @Published private(set) var curveControlEvidence: CompatibilityControlEvidence = .unverified {
+        didSet { persistCompatibilityControlEvidence() }
+    }
+
+    @Published private(set) var controlEvidenceRecordedAt: Date?
+    private let compatibilityHistoryStore: CompatibilityControlHistoryStore?
+    private var isLoadingControlHistory = true
+    @Published private(set) var isTestingCompatibilityControl = false
+    @Published private(set) var compatibilityControlNeedsRestore = false
+    @Published private(set) var compatibilityControlMessage: String?
+    private var compatibilityControlTask: Task<Void, Never>?
+    lazy var compatibilityDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
+
     @Published private(set) var fans: [FanReading] = []
     @Published private(set) var mode: Mode = .automatic
     @Published private(set) var message = fanBarText("正在读取风扇…", "Reading fans…")
@@ -174,11 +192,13 @@ final class FanController: ObservableObject {
     }
 
     private let makeReadingSource: () throws -> FanReadingSource
+    private let makeDiagnosticSource: @Sendable () throws -> FanReadingSource
     private var localClient: FanReadingSource?
     private let helperClient = HelperClient()
     private let helperService = FanBarServiceManager()
     private let loginItemService = FanBarLoginItemManager()
     private var refreshTimer: Timer?
+    private var diagnosticSamples: [DiagnosticSample] = []
     private let widgetSnapshotDestination: WidgetSnapshotDestination
     private var lastWidgetTimelineReloadDate: Date?
     private var lastWidgetSnapshotPublishDate: Date?
@@ -231,13 +251,25 @@ final class FanController: ObservableObject {
         case disabled
     }
 
+    // Initializes the existing controller dependency graph and restores version-scoped evidence.
+    // swiftlint:disable:next function_body_length
     init(
         automaticRestoreTestInterval: TimeInterval? = nil,
         notificationCenter: UNUserNotificationCenter? = UNUserNotificationCenter.current(),
         widgetSnapshotDestination: WidgetSnapshotDestination = .sharedContainer,
-        makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() }
+        makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() },
+        makeDiagnosticSource: @escaping @Sendable () throws -> FanReadingSource = { try SMCClient() },
+        compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil
     ) {
         self.makeReadingSource = makeReadingSource
+        self.makeDiagnosticSource = makeDiagnosticSource
+        if let compatibilityHistoryStore {
+            self.compatibilityHistoryStore = compatibilityHistoryStore
+        } else if case .sharedContainer = widgetSnapshotDestination {
+            self.compatibilityHistoryStore = CompatibilityControlHistoryStore(defaults: .standard)
+        } else {
+            self.compatibilityHistoryStore = nil
+        }
         self.automaticRestoreTestInterval = automaticRestoreTestInterval
         self.notificationCenter = notificationCenter
         self.widgetSnapshotDestination = widgetSnapshotDestination
@@ -254,6 +286,20 @@ final class FanController: ObservableObject {
         helperBundlePath = Bundle.main.bundleURL
             .resolvingSymlinksInPath()
             .standardizedFileURL.path
+        let historyDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
+        var savedHistory = self.compatibilityHistoryStore?.load(for: historyDevice)
+        if savedHistory == nil, case .sharedContainer = widgetSnapshotDestination,
+           let receipts = try? CompatibilityReceiptStore().receipts(),
+           let recovered = CompatibilityControlHistoryStore.recover(from: receipts, for: historyDevice) {
+            self.compatibilityHistoryStore?.save(recovered)
+            savedHistory = recovered
+        }
+        if let saved = savedHistory {
+            manualControlEvidence = saved.manual
+            curveControlEvidence = saved.curve
+            controlEvidenceRecordedAt = saved.recordedAt
+        }
+        isLoadingControlHistory = false
         if case .disabled = widgetSnapshotDestination {
             temperatureHistory = []
         } else {
@@ -367,11 +413,15 @@ final class FanController: ObservableObject {
             refreshServiceStatus()
         }
         guard let localClient else { connectAndRefresh(); return }
+        let thermal = localClient.thermalReading()
+        appendTemperature(thermal)
         do {
             fans = try localClient.fans()
+            recordDiagnosticSample(thermal: thermal, fanCount: fans.count)
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: fans.count, connectionFailed: false
+            )
             helperClient.setExpectedFanCount(fans.count)
-            let thermal = localClient.thermalReading()
-            appendTemperature(thermal)
             evaluateThermalAlerts(using: thermal)
             publishWidgetSnapshot(thermal: thermal)
             if mode == .temperatureCurve {
@@ -383,12 +433,131 @@ final class FanController: ObservableObject {
                 message = fanBarText("由 macOS 自动管理", "Managed automatically by macOS")
             }
         } catch {
+            recordDiagnosticSample(thermal: thermal, error: error)
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: nil, connectionFailed: false
+            )
             // The IOKit connection can go stale across sleep; reopen next tick.
             self.localClient = nil
             isAvailable = false
             publishUnavailableWidgetSnapshot()
             message = error.localizedDescription
         }
+    }
+
+    /// Read-only diagnostic path: never refresh modes, register services or issue helper writes.
+    func detectCompatibility() {
+        do {
+            if localClient == nil { localClient = try makeReadingSource() }
+            guard let source = localClient else { return }
+            let thermal = source.thermalReading()
+            let count = try? source.fans().count
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: thermal.sampledAt, thermal: thermal, fanCount: count, connectionFailed: false
+            )
+            if count == nil { localClient = nil }
+        } catch {
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
+            )
+        }
+    }
+
+    private func recordDiagnosticSample(thermal: ThermalReading? = nil, fanCount: Int? = nil, error: Error? = nil) {
+        let code: Int32?
+        if let smcError = error as? SMCError {
+            switch smcError {
+            case .unavailable(let value), .unsupportedKey(_, let value), .writeFailed(_, let value): code = value
+            }
+        } else {
+            code = error == nil ? nil : -1
+        }
+        diagnosticSamples.append(DiagnosticSample(sampledAt: Date(), thermal: thermal,
+            fanCount: fanCount, errorCode: code,
+            stage: thermal == nil ? "connect" : fanCount == nil ? "fanRead" : "sample"))
+        diagnosticSamples = Array(diagnosticSamples.suffix(30))
+    }
+
+    /// Explicit collection only. Does not call refresh(), change fan modes, or request authorization.
+    /// Slow evidence is gathered off the main actor with a dedicated read-only SMC reader.
+    func collectDiagnosticReport() async -> DiagnosticReport {
+        let state: String
+        switch helperState {
+        case .enabled: state = "enabled"
+        case .requiresApproval: state = "requiresApproval"
+        case .notRegistered: state = "notRegistered"
+        case .unavailable: state = "unavailable"
+        }
+        var report = DiagnosticReport(diagnosticID: UUID().uuidString.lowercased(),
+            capturedAt: ISO8601DateFormatter().string(from: Date()), device: compatibilityDevice,
+            helperState: state, probes: [])
+        report.helperStateSource = "runtime"
+        report.runtimeContext = DiagnosticRuntimeContext.current()
+        report.recentSamples = diagnosticSamples.filter { Date().timeIntervalSince($0.sampledAt) <= 60 }
+        let makeSource = makeDiagnosticSource
+        let evidence = await Task.detached(priority: .userInitiated) {
+            DiagnosticBackgroundEvidence.collect(makeSource: makeSource)
+        }.value
+        report.runtimeEvents = RuntimeDiagnostics.shared.snapshot() + evidence.helperEvents
+        report.helperLogAvailable = evidence.helperLogAvailable
+        report.crashes = evidence.crashes
+        report.crashLogAvailable = evidence.crashLogAvailable
+        report.thermal = evidence.thermal
+        report.fanCount = evidence.fanCount
+        report.connectionErrorCode = evidence.connectionErrorCode
+        report.probes = evidence.probes
+        report.discovery = evidence.discovery
+        return report
+    }
+
+    private func persistCompatibilityControlEvidence() {
+        guard !isLoadingControlHistory, !isTestingCompatibilityControl, let compatibilityHistoryStore else { return }
+        let record = CompatibilityControlHistory(device: compatibilityDevice, manual: manualControlEvidence,
+            curve: curveControlEvidence, recordedAt: Date())
+        compatibilityHistoryStore.save(record)
+        controlEvidenceRecordedAt = record.recordedAt
+    }
+
+    /// Tests start only from system control, so restoration has one unambiguous target.
+    func testCompatibilityControl() {
+        guard !isBusy, helperState == .enabled, mode == .automatic else { return }
+        isBusy = true
+        isTestingCompatibilityControl = true
+        compatibilityControlMessage = fanBarText("正在测试控制能力并恢复系统控制…", "Testing control and restoring system control…")
+        compatibilityControlTask = Task {
+            await finishPendingCurveUpdate()
+            let fraction = latestThermalReading().flatMap { reading in
+                controlTemperature(from: reading, profile: curveProfile).map { curveProfile.fraction(at: $0) }
+            }
+            let result = await CompatibilityControlTest.run(client: helperClient, curveFraction: fraction)
+            compatibilityControlNeedsRestore = !result.restored
+            if !Task.isCancelled {
+                if result.manual != .unverified { manualControlEvidence = result.manual }
+                if result.curve != .unverified { curveControlEvidence = result.curve }
+            }
+            compatibilityControlMessage = result.restored
+                ? fanBarText("控制测试结束，已恢复系统自动控制。请查看各项结果。",
+                    "Control test finished; system automatic control restored. Review the results below.")
+                : fanBarFormat("恢复系统控制失败：%@。请点击“恢复系统控制”重试。",
+                    "Restoring system control failed: %@. Retry Restore System Control.",
+                    result.restoreError ?? result.controlError ?? "unknown")
+            if let error = result.controlError, result.restored {
+                compatibilityControlMessage = fanBarFormat("控制测试失败：%@。已恢复系统自动控制。",
+                    "Control test failed: %@. System automatic control restored.",
+                    error)
+            }
+            isTestingCompatibilityControl = false
+            if !Task.isCancelled, result.manual != .unverified || result.curve != .unverified {
+                persistCompatibilityControlEvidence()
+            }
+            isBusy = false
+            compatibilityControlTask = nil
+            detectCompatibility()
+        }
+    }
+
+    func cancelCompatibilityControlTest() {
+        compatibilityControlTask?.cancel()
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -491,6 +660,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setAllFans(rpm: rpm)
+                manualControlEvidence = .requestSucceeded
                 mode = .fixed(rpm)
                 // Remember hand-entered values only once they actually applied.
                 if !Self.fixedRPMPresets.contains(rpm) {
@@ -508,6 +678,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                manualControlEvidence = .requestFailed
                 let failure = fanBarFormat(
                     "控制失败：%@",
                     "Control failed: %@",
@@ -834,6 +1005,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setCoolingFraction(fraction)
+                curveControlEvidence = .requestSucceeded
                 completeCurveActivation(
                     preset: preset,
                     profile: profile,
@@ -852,6 +1024,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                curveControlEvidence = .requestFailed
                 clearTemperatureCurveState()
                 let failure = fanBarFormat(
                     "%@温控开启失败：%@",
@@ -906,10 +1079,12 @@ final class FanController: ObservableObject {
             }
             do {
                 try await self.helperClient.setCoolingFraction(fraction)
+                self.curveControlEvidence = .requestSucceeded
                 guard self.mode == .temperatureCurve else { return }
                 self.curveOutputFraction = fraction
                 self.updateCurveMessage()
             } catch {
+                self.curveControlEvidence = .requestFailed
                 guard self.mode == .temperatureCurve else { return }
                 self.message = fanBarFormat(
                     "智能温控更新失败：%@",
@@ -1067,6 +1242,10 @@ final class FanController: ObservableObject {
                 if let readings = try? await helperClient.fans() {
                     fans = readings
                 }
+                compatibilityControlNeedsRestore = false
+                if compatibilityControlMessage != nil {
+                    compatibilityControlMessage = fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored")
+                }
                 clearModeActionFeedback()
                 switchFeedback = .ended(successfully: true)
             } catch {
@@ -1076,6 +1255,7 @@ final class FanController: ObservableObject {
                     error.localizedDescription
                 )
                 message = failure
+                if compatibilityControlMessage != nil { compatibilityControlMessage = failure }
                 failModeAction(
                     failure,
                     offersHelperSettings: helperSettingsActionNeeded(for: error)
@@ -1188,6 +1368,10 @@ final class FanController: ObservableObject {
             localClient = try makeReadingSource()
             refresh()
         } catch {
+            recordDiagnosticSample(error: error)
+            compatibilityObservation = CompatibilityObservation(
+                sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
+            )
             isAvailable = false
             message = error.localizedDescription
         }
