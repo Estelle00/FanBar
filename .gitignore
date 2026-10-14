@@ -11,3 +11,6 @@ node_modules/
 !.dev.vars.example
 services/compatibility/.deployment-secrets.json
 services/compatibility/.admin-access.txt
+
+# Local design drafts and previews
+/docs/design/
