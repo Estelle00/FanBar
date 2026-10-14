@@ -20,14 +20,19 @@ final class CompatibilityServiceIntegrationTests: XCTestCase {
             appVersion: "1.0", helperVersion: "10"
         )
         let observation = CompatibilityObservation(
-            sampledAt: Date(), thermal: ThermalReading(sampledAt: Date(), cpuCelsius: 52, gpuCelsius: nil),
+            sampledAt: Date(), thermal: ThermalReading(sampledAt: Date(), cpuCelsius: 52, gpuCelsius: nil, hasBuiltInBattery: false),
             fanCount: 2, connectionFailed: false
         )
         let snapshot = CompatibilitySnapshot.make(
             device: device, observation: observation, helperState: .enabled,
-            manualEvidence: .unverified, curveEvidence: .unverified
+            manualEvidence: .requestSucceeded, curveEvidence: .requestFailed
         )
-        let report = CompatibilityReport(snapshot: snapshot)
+        var report = CompatibilityReport(snapshot: snapshot)
+        for index in report.capabilities.indices where [.manualControl, .smartCooling].contains(report.capabilities[index].capability) {
+            report.capabilities[index].userConfirmedWorking = true
+        }
+        XCTAssertEqual(report.capabilities.first { $0.capability == .manualControl }?.status, .requestSucceeded)
+        XCTAssertEqual(report.capabilities.first { $0.capability == .smartCooling }?.reasonCode, "CONTROL_REQUEST_FAILED")
         let receipt = CompatibilitySavedReceipt(
             reportID: report.reportID.uuidString.lowercased(), serviceURL: configuration.baseURL,
             deletionToken: try CompatibilitySavedReceipt.makeToken(), reportData: try report.jsonData(),

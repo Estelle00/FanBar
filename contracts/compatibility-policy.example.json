@@ -18,6 +18,7 @@
     "capabilities[].capability",
     "capabilities[].status",
     "capabilities[].reasonCode",
+    "capabilities[].userConfirmedWorking",
     "selectedTemperatureSource"
   ],
   "excluded": [

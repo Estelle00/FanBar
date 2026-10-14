@@ -4,7 +4,7 @@ import { json } from './http.ts';
 interface Combination {
   model_identifier: string; os_version: string; app_version: string; helper_version: string; updated_at: string;
 }
-interface CountRow { capability: Capability; status: Status; count: number }
+interface CountRow { capability: Capability; status: Status; count: number; userConfirmedWorking: number }
 interface VerificationRow {
   id: string; capability: Capability; status: 'verifiedAvailable' | 'verifiedUnsupported';
   notes: string; source_url: string; verified_on: string;
@@ -26,7 +26,8 @@ export async function publicMatrix(env: Env, model: string): Promise<Response> {
     const keys = [group.model_identifier, group.os_version, group.app_version, group.helper_version];
     return [
       env.DB.prepare(`SELECT json_extract(value, '$.capability') AS capability,
-        json_extract(value, '$.status') AS status, COUNT(*) AS count
+        json_extract(value, '$.status') AS status, COUNT(*) AS count,
+        SUM(CASE WHEN json_extract(value, '$.userConfirmedWorking') = 1 THEN 1 ELSE 0 END) AS userConfirmedWorking
         FROM reports, json_each(reports.payload, '$.capabilities')
         WHERE model_identifier = ? AND os_version = ? AND app_version = ? AND helper_version = ?
           AND reports.status = 'approved' AND expires_at > ? GROUP BY json_extract(value, '$.capability'), json_extract(value, '$.status')`)

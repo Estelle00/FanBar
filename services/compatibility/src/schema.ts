@@ -5,11 +5,11 @@ export const capabilities = [
   'fanReadings', 'manualControl', 'smartCooling',
 ] as const;
 export const statuses = [
-  'available', 'notDetected', 'temporarilyUnavailable', 'requiresAuthorization',
+  'available', 'notApplicable', 'notDetected', 'temporarilyUnavailable', 'requiresAuthorization',
   'unverified', 'requestSucceeded', 'requestFailed',
 ] as const;
 export const reasons = [
-  'SENSOR_READ_SUCCEEDED', 'SENSOR_NOT_DETECTED', 'FAN_READ_SUCCEEDED', 'NO_FANS_REPORTED',
+  'SENSOR_READ_SUCCEEDED', 'SENSOR_NOT_DETECTED', 'NO_BUILT_IN_BATTERY', 'FAN_READ_SUCCEEDED', 'NO_FANS_REPORTED',
   'FAN_READ_FAILED', 'SMC_CONNECTION_FAILED', 'HELPER_MISSING', 'HELPER_AUTHORIZATION_REQUIRED',
   'NO_CURRENT_FAN_EVIDENCE', 'NO_CURVE_SENSOR_EVIDENCE', 'CONTROL_NOT_ATTEMPTED',
   'CONTROL_REQUEST_SUCCEEDED', 'CONTROL_REQUEST_FAILED',
@@ -19,6 +19,7 @@ export const version = shortText(40).regex(/^[A-Za-z0-9._+-]+$/);
 export const modelIdentifier = shortText(64).regex(/^[A-Za-z][A-Za-z0-9]*[0-9]+,[0-9]+$|^unknown$/);
 export const capabilitySchema = z.strictObject({
   capability: z.enum(capabilities), status: z.enum(statuses), reasonCode: z.enum(reasons),
+  userConfirmedWorking: z.literal(true).optional(),
 });
 export const reportSchema = z.strictObject({
   schemaVersion: z.literal(1),
@@ -36,6 +37,7 @@ export type Capability = typeof capabilities[number];
 export type Status = typeof statuses[number];
 
 const reasonStatuses: Record<typeof reasons[number], Status> = {
+  NO_BUILT_IN_BATTERY: 'notApplicable',
   SENSOR_READ_SUCCEEDED: 'available', SENSOR_NOT_DETECTED: 'notDetected',
   FAN_READ_SUCCEEDED: 'available', NO_FANS_REPORTED: 'notDetected',
   FAN_READ_FAILED: 'temporarilyUnavailable', SMC_CONNECTION_FAILED: 'temporarilyUnavailable',
@@ -47,6 +49,8 @@ const reasonStatuses: Record<typeof reasons[number], Status> = {
 export function validEvidence(report: Report): boolean {
   if (new Set(report.capabilities.map(row => row.capability)).size !== 7) return false;
   return report.capabilities.every(row => {
+    if (row.reasonCode === 'NO_BUILT_IN_BATTERY') return row.capability === 'batteryTemperature' && row.status === 'notApplicable' && !row.userConfirmedWorking;
+    if (row.userConfirmedWorking && !['manualControl', 'smartCooling'].includes(row.capability)) return false;
     if (reasonStatuses[row.reasonCode] !== row.status) return false;
     const isSensor = row.capability.endsWith('Temperature');
     if (isSensor) return ['SENSOR_READ_SUCCEEDED', 'SENSOR_NOT_DETECTED', 'SMC_CONNECTION_FAILED'].includes(row.reasonCode);

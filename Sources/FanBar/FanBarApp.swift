@@ -20,11 +20,16 @@ final class FanBarAppDelegate: NSObject, NSApplicationDelegate {
         Self.pendingController = nil
         self.controller = controller
         LegacyStatusItemController.shared.install(controller: controller)
+        RuntimeDiagnostics.shared.record(.app, .menuReady, .succeeded)
         if !OnboardingPreferences.hasCompleted {
             DispatchQueue.main.async {
                 OnboardingWindowPresenter.shared.show(controller: controller)
             }
         }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        RuntimeDiagnostics.shared.record(.app, .shutdown, .succeeded)
     }
 
     /// The only SwiftUI scene is an empty `Settings` placeholder. Opening the
@@ -97,10 +102,12 @@ struct FanBarApp: App {
         if CommandLine.arguments.contains("--temperature-curve-smoke-test") {
             Self.runTemperatureCurveSmokeTestAndExit()
         }
+        RuntimeDiagnostics.shared.beginLaunch()
         // Keep Sparkle alive for the full LSUIElement app lifetime. Diagnostic
         // command-line modes exit above and never start network update checks.
         _ = SoftwareUpdateController.shared
         let controller = FanController()
+        RuntimeDiagnostics.shared.record(.app, .controllerReady, .succeeded)
         _controller = StateObject(wrappedValue: controller)
         FanBarAppDelegate.pendingController = controller
         if CommandLine.arguments.contains("--settings-window-smoke-test") {

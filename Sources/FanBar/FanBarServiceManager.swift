@@ -17,8 +17,23 @@ final class FanBarServiceManager {
     static let helperLabel = FanBarService.helperPlistName
 
     private(set) var status: FanBarServiceStatus = .notRegistered
+    private var hasReportedStatus = false
 
     func refresh() {
+        let previous = status
+        defer {
+            if !hasReportedStatus || previous != status {
+                hasReportedStatus = true
+                let outcome: RuntimeDiagnosticEvent.Outcome
+                switch status {
+                case .enabled: outcome = .enabled
+                case .requiresApproval: outcome = .requiresApproval
+                case .notRegistered: outcome = .notRegistered
+                case .unavailable: outcome = .unavailable
+                }
+                RuntimeDiagnostics.shared.record(.service, .status, outcome)
+            }
+        }
         if #available(macOS 13.0, *) {
             let service = SMAppService.daemon(plistName: FanBarService.helperPlistName)
             switch service.status {
@@ -37,6 +52,17 @@ final class FanBarServiceManager {
     }
 
     func register() throws {
+        RuntimeDiagnostics.shared.record(.service, .register, .started)
+        do {
+            try registerService()
+            RuntimeDiagnostics.shared.record(.service, .register, .succeeded)
+        } catch {
+            RuntimeDiagnostics.shared.record(.service, .register, .failed, code: (error as NSError).code)
+            throw error
+        }
+    }
+
+    private func registerService() throws {
         if #available(macOS 13.0, *) {
             try SMAppService.daemon(plistName: FanBarService.helperPlistName).register()
         } else {
@@ -46,6 +72,17 @@ final class FanBarServiceManager {
     }
 
     func unregister() async throws {
+        RuntimeDiagnostics.shared.record(.service, .unregister, .started)
+        do {
+            try await unregisterService()
+            RuntimeDiagnostics.shared.record(.service, .unregister, .succeeded)
+        } catch {
+            RuntimeDiagnostics.shared.record(.service, .unregister, .failed, code: (error as NSError).code)
+            throw error
+        }
+    }
+
+    private func unregisterService() async throws {
         if #available(macOS 13.0, *) {
             try await SMAppService.daemon(plistName: FanBarService.helperPlistName).unregister()
         } else {
@@ -55,6 +92,7 @@ final class FanBarServiceManager {
     }
 
     func openSettings() {
+        RuntimeDiagnostics.shared.record(.service, .openSettings, .started)
         Self.openLoginItemsSettings()
     }
 

@@ -1,3 +1,5 @@
+// Missing sensor or collection evidence is intentionally distinct from false.
+// swiftlint:disable discouraged_optional_boolean
 import AppleSMC
 import FanBarShared
 import Foundation
@@ -45,19 +47,22 @@ struct ThermalReading: Codable, Equatable {
     let gpuCelsius: Double?
     let ssdCelsius: Double?
     let batteryCelsius: Double?
+    let hasBuiltInBattery: Bool?
 
     init(
         sampledAt: Date,
         cpuCelsius: Double?,
         gpuCelsius: Double?,
         ssdCelsius: Double? = nil,
-        batteryCelsius: Double? = nil
+        batteryCelsius: Double? = nil,
+        hasBuiltInBattery: Bool? = nil
     ) {
         self.sampledAt = sampledAt
         self.cpuCelsius = cpuCelsius
         self.gpuCelsius = gpuCelsius
         self.ssdCelsius = ssdCelsius
         self.batteryCelsius = batteryCelsius
+        self.hasBuiltInBattery = hasBuiltInBattery
     }
 }
 
@@ -66,9 +71,17 @@ struct ThermalReading: Codable, Equatable {
 protocol FanReadingSource: AnyObject {
     func fans() throws -> [FanReading]
     func thermalReading(at date: Date) -> ThermalReading
+    func diagnosticProbes() -> [DiagnosticProbe]
+    var diagnosticDiscovery: DiagnosticDiscovery? { get }
 }
 
 extension FanReadingSource {
+    func diagnosticProbes() -> [DiagnosticProbe] {
+        []
+    }
+
+    var diagnosticDiscovery: DiagnosticDiscovery? { nil }
+
     func thermalReading() -> ThermalReading {
         thermalReading(at: Date())
     }
@@ -215,6 +228,87 @@ final class SMCClient: FanReadingSource {
         return celsius
     }
 
+    private(set) var diagnosticDiscovery: DiagnosticDiscovery?
+
+    // Only explicit diagnostics enumerate keys. Normal telemetry retains its existing fast path.
+    // swiftlint:disable:next cyclomatic_complexity
+    func diagnosticProbes() -> [DiagnosticProbe] {
+        var probes: [DiagnosticProbe] = []
+        var known = Set<String>()
+        for (sensor, candidates) in [
+            ("cpu", Self.cpuTemperatureCandidates), ("gpu", Self.gpuTemperatureCandidates),
+            ("ssd", Self.ssdTemperatureCandidates), ("battery", Self.batteryTemperatureCandidates),
+        ] {
+            for name in candidates {
+                known.insert(name)
+                probes.append(diagnosticProbe(name, sensor: sensor, recognized: true))
+            }
+        }
+        var discovery = DiagnosticDiscovery()
+        var unrecognized: [DiagnosticProbe] = []
+        do {
+            let countValue = try read("#KEY")
+            let bytes = withUnsafeBytes(of: countValue.bytes) { Array($0.prefix(4)) }
+            let count = bytes.reduce(0) { ($0 << 8) | Int($1) }
+            discovery.reportedKeyCount = count
+            let started = ProcessInfo.processInfo.systemUptime
+            for index in 0..<min(count, 4096) {
+                if ProcessInfo.processInfo.systemUptime - started > 1.5 {
+                    discovery.truncated = true
+                    break
+                }
+                var code: UInt32 = 0
+                let result = fanbar_smc_key_at_index(UInt32(index), &code)
+                guard result == 0 else { discovery.errorCode = result; break }
+                discovery.scannedKeyCount += 1
+                let bytes = [UInt8((code >> 24) & 255), UInt8((code >> 16) & 255), UInt8((code >> 8) & 255), UInt8(code & 255)]
+                // Upload only temperature-key names, never arbitrary SMC inventory values.
+                guard bytes.first == 84, bytes.allSatisfy({ (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) }),
+                      let name = String(bytes: bytes, encoding: .ascii) else { continue }
+                if discovery.temperatureKeys.count < 512 { discovery.temperatureKeys.append(name) }
+                if !known.contains(name) { unrecognized.append(diagnosticProbe(name, sensor: "unclassified", recognized: false)) }
+            }
+            if discovery.scannedKeyCount < count { discovery.truncated = true }
+        } catch SMCError.unsupportedKey(_, let code) { discovery.errorCode = code } catch { discovery.errorCode = -1 }
+        // Keep the complete bounded key-name inventory, prioritizing useful numeric evidence in the payload.
+        let priority = ["available": 0, "unsupportedFormat": 1, "outOfRange": 2, "readFailed": 3]
+        let remaining = max(0, 240 - probes.count)
+        probes += unrecognized.sorted {
+            let lhs = priority[$0.result] ?? 4, rhs = priority[$1.result] ?? 4
+            return lhs == rhs ? ($0.key ?? "") < ($1.key ?? "") : lhs < rhs
+        }.prefix(remaining)
+        if unrecognized.count > remaining { discovery.truncated = true }
+        diagnosticDiscovery = discovery
+        for (source, readTemperature) in [
+            ("embeddedNVMe", fanbar_embedded_nvme_temperature), ("nvmeSMART", fanbar_nvme_temperature),
+        ] {
+            var value = 0.0
+            let code = readTemperature(&value)
+            probes.append(DiagnosticProbe(sensor: "ssd", key: nil, result: code == 0 ? "available" : "readFailed",
+                value: code == 0 && value.isFinite ? value : nil, code: code, source: source, stage: "fallback"))
+        }
+        probes += BatteryTemperatureReader.diagnosticProbes()
+        return probes
+    }
+
+    private func diagnosticProbe(_ name: String, sensor: String, recognized: Bool) -> DiagnosticProbe {
+        var raw = FanBarSMCValue()
+        var stage: Int32 = 0
+        let code = fanbar_smc_read_diagnostic(key(name), &raw, &stage)
+        let decoded = code == 0 ? temperature(raw) : nil
+        let value = decoded.flatMap { $0.isFinite ? $0 : nil }
+        let result: String
+        if code != 0 { result = "readFailed" } else if let value {
+            result = (10...120).contains(value) ? "available" : "outOfRange"
+        } else { result = "unsupportedFormat" }
+        let bytes = withUnsafeBytes(of: raw.bytes) { Array($0.prefix(Int(min(raw.data_size, 8)))) }
+        return DiagnosticProbe(sensor: sensor, key: name, result: result, value: value, code: code,
+            source: "smc", stage: stage == 1 ? "keyInfo" : "readBytes",
+            dataType: stage == 2 ? String(format: "%08x", raw.data_type) : nil,
+            dataSize: stage == 2 ? Int(raw.data_size) : nil,
+            rawBytes: code == 0 ? bytes.map { String(format: "%02x", $0) }.joined() : nil, recognized: recognized)
+    }
+
     func fans() throws -> [FanReading] {
         let countValue = try read("FNum")
         let count = Int(countValue.bytes.0)
@@ -256,7 +350,12 @@ final class SMCClient: FanReadingSource {
                 embeddedNVMe: embeddedNVMeTemperature,
                 smart: nvmeTemperature
             ),
-            batteryCelsius: average(batteryValues)
+            batteryCelsius: BatteryTemperatureResolver.resolve(
+                smcValues: batteryValues,
+                smartBattery: BatteryTemperatureReader.smartBattery,
+                batteryPack: BatteryTemperatureReader.batteryPack
+            ),
+            hasBuiltInBattery: BatteryTemperatureReader.hasBuiltInBattery()
         )
     }
 }
@@ -275,3 +374,5 @@ enum StorageTemperatureResolver {
         return embeddedNVMe() ?? smart()
     }
 }
+
+// swiftlint:enable discouraged_optional_boolean

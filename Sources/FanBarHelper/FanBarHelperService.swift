@@ -19,13 +19,24 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
     }
 
     func run() {
+        RuntimeDiagnostics.shared.record(.helper, .startup, .succeeded)
         listener.resume()
         RunLoop.current.run()
     }
 
     func restoreForShutdown() {
         hardwareQueue.sync {
-            try? driver?.restoreAutomatic()
+            RuntimeDiagnostics.shared.record(.helper, .shutdown, .started)
+            do {
+                if let driver {
+                    try driver.restoreAutomatic()
+                    RuntimeDiagnostics.shared.record(.helper, .restoreAutomatic, .succeeded)
+                }
+                RuntimeDiagnostics.shared.record(.helper, .shutdown, .succeeded)
+            } catch {
+                RuntimeDiagnostics.shared.record(.helper, .restoreAutomatic, .failed, code: Self.diagnosticCode(error))
+                RuntimeDiagnostics.shared.record(.helper, .shutdown, .failed)
+            }
             driver = nil
         }
     }
@@ -35,9 +46,11 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
         shouldAcceptNewConnection connection: NSXPCConnection
     ) -> Bool {
         guard Self.isAuthorizedClient(connection) else {
+            RuntimeDiagnostics.shared.record(.helper, .authorize, .rejected)
             Self.log.error("Rejected XPC client pid \(connection.processIdentifier)")
             return false
         }
+        RuntimeDiagnostics.shared.record(.helper, .connect, .accepted)
         clientDidConnect()
         connection.exportedInterface = NSXPCInterface(with: FanBarHelperProtocol.self)
         connection.exportedObject = self
@@ -60,7 +73,13 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
             self.activeConnections = max(0, self.activeConnections - 1)
             if self.activeConnections == 0, let driver = self.driver {
                 Self.log.notice("Last client disconnected; restoring automatic fan control")
-                try? driver.restoreAutomatic()
+                RuntimeDiagnostics.shared.record(.helper, .recovery, .started)
+                do {
+                    try driver.restoreAutomatic()
+                    RuntimeDiagnostics.shared.record(.helper, .recovery, .succeeded)
+                } catch {
+                    RuntimeDiagnostics.shared.record(.helper, .recovery, .failed, code: Self.diagnosticCode(error))
+                }
             }
         }
     }
@@ -70,6 +89,7 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
             do {
                 reply(true, try self.connectedDriver().fans().count, nil)
             } catch {
+                RuntimeDiagnostics.shared.record(.helper, .fanCount, .failed, code: Self.diagnosticCode(error))
                 reply(false, 0, error.localizedDescription)
             }
         }
@@ -88,6 +108,8 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
                 }
                 reply(true, fan.actual, fan.minimum, fan.maximum, fan.isManual, nil)
             } catch {
+                RuntimeDiagnostics.shared.record(.helper,
+                    .fanRead, .failed, code: Self.diagnosticCode(error), fanIndex: (0...7).contains(index) ? index : nil)
                 reply(false, 0, 0, 0, false, error.localizedDescription)
             }
         }
@@ -160,16 +182,38 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
     ) {
         hardwareQueue.async {
             let start = Date()
+            let action: RuntimeDiagnosticEvent.Action
+            switch String(describing: operation) {
+            case "setAllFans": action = .fixedRPM
+            case "setCoolingPreset": action = .preset
+            case "setCoolingFraction", "setAllFansToEightyPercent": action = .curve
+            default: action = .restoreAutomatic
+            }
+            let requestID = UUID().uuidString.lowercased()
+            RuntimeDiagnostics.shared.record(.helper, action, .started, requestID: requestID)
             do {
                 try body(self.connectedDriver())
                 let elapsed = Date().timeIntervalSince(start)
+                RuntimeDiagnostics.shared.record(.helper, action, .succeeded, requestID: requestID, durationMS: elapsed * 1000)
                 Self.log.notice("\(operation, privacy: .public) succeeded in \(elapsed, format: .fixed(precision: 2))s")
                 reply(true, nil)
             } catch {
                 let elapsed = Date().timeIntervalSince(start)
+                RuntimeDiagnostics.shared.record(.helper, action, .failed, requestID: requestID,
+                    code: Self.diagnosticCode(error), durationMS: elapsed * 1000)
                 Self.log.error("\(operation, privacy: .public) failed after \(elapsed, format: .fixed(precision: 2))s: \(error.localizedDescription, privacy: .public)")
                 reply(false, error.localizedDescription)
             }
+        }
+    }
+
+    private static func diagnosticCode(_ error: Error) -> Int {
+        guard let hardware = error as? FanHardwareError else { return (error as NSError).code }
+        switch hardware {
+        case .unavailable(let code), .operation(_, let code): return Int(code)
+        case .invalidValue: return -10001
+        case .unlockTimeout: return -10002
+        case .modeKeyMissing: return -10003
         }
     }
 

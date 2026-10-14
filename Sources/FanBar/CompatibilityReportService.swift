@@ -129,6 +129,35 @@ final class CompatibilityReportService: CompatibilityReportServing {
         return result
     }
 
+    func diagnosticPolicy() async throws -> DiagnosticPolicy {
+        let data = try await perform(URLRequest(url: configuration.url(path: "api/diagnostics/policy")))
+        let policy = try JSONDecoder().decode(DiagnosticPolicy.self, from: data)
+        let origin = configuration.baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard policy.version == DiagnosticPolicy.supportedVersion, policy.retentionDays == 90,
+              policy.maximumBytes == 262144, policy.serviceOrigin == origin
+        else { throw CompatibilityServiceError.policyChanged }
+        return policy
+    }
+
+    func submitDiagnostic(_ receipt: CompatibilitySavedReceipt) async throws -> CompatibilitySubmissionResponse {
+        guard receipt.serviceURL == configuration.baseURL else { throw CompatibilityServiceError.notConfigured }
+        var request = Self.submissionRequest(receipt)
+        request.url = configuration.url(path: "api/diagnostics")
+        let data = try await perform(request)
+        let result = try JSONDecoder().decode(CompatibilitySubmissionResponse.self, from: data)
+        guard result.reportID.lowercased() == receipt.reportID.lowercased(), !result.publishReport,
+              result.policyVersion == DiagnosticPolicy.supportedVersion else { throw CompatibilityServiceError.server }
+        return result
+    }
+
+    func withdrawDiagnostic(_ receipt: CompatibilitySavedReceipt) async throws {
+        guard receipt.serviceURL == configuration.baseURL else { throw CompatibilityServiceError.notConfigured }
+        var request = URLRequest(url: configuration.url(path: "api/diagnostics/\(receipt.reportID)"))
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(receipt.deletionToken)", forHTTPHeaderField: "Authorization")
+        _ = try await perform(request)
+    }
+
     static func submissionRequest(_ receipt: CompatibilitySavedReceipt) -> URLRequest {
         var request = URLRequest(url: receipt.serviceURL.appendingPathComponent("api/reports"))
         request.httpMethod = "POST"
@@ -161,6 +190,7 @@ final class CompatibilityReportService: CompatibilityReportServing {
         guard let response = response as? HTTPURLResponse, data.count <= 131072 else { throw CompatibilityServiceError.server }
         switch response.statusCode {
         case 200, 201, 204: return data
+        case 400, 413: throw CompatibilityServiceError.invalidReport
         case 429: throw CompatibilityServiceError.rateLimited
         case 409:
             let error = try? JSONDecoder().decode(ServiceErrorBody.self, from: data)
@@ -196,4 +226,12 @@ struct CompatibilitySavedReceipt: Codable, Equatable, Identifiable {
             .replacingOccurrences(of: "/", with: "_")
             .replacingOccurrences(of: "=", with: "")
     }
+}
+
+struct DiagnosticPolicy: Decodable {
+    static let supportedVersion = "diagnostics-2026-10-14-v3"
+    let version: String
+    let serviceOrigin: String
+    let retentionDays: Int
+    let maximumBytes: Int
 }

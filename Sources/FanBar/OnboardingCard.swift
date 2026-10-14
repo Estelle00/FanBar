@@ -17,10 +17,8 @@ enum OnboardingPreferences {
 /// The first screen FanBar shows. It explains the unusual menu-bar-only app
 /// model before handing the user directly into the real popover.
 struct OnboardingCard: View {
-    /// Fixed window height. Tall enough to hold the control-service notice on
-    /// a genuine first launch (permission is almost never granted yet); when
-    /// the notice doesn't apply, the footer spacer absorbs the extra room.
-    static let height: CGFloat = 540
+    static let width: CGFloat = 580
+    static let height: CGFloat = 560
 
     @ObservedObject var controller: FanController
     let onOpenMenu: () -> Void
@@ -28,34 +26,41 @@ struct OnboardingCard: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isVisible = false
-    @State private var showsCompatibility = false
 
     var body: some View {
         VStack(spacing: 0) {
-            statusBarIllustration
-                .padding(.top, 34)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    statusBarIllustration
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
 
-            VStack(spacing: 10) {
-                Text(fanBarText("FanBar 已经在运行", "FanBar is running"))
-                    .font(.system(size: 25, weight: .semibold, design: .rounded))
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(fanBarText("FanBar 已经在运行", "FanBar is running"))
+                            .font(.system(size: 27, weight: .semibold))
 
-                Text(fanBarText(
-                    "它常驻在屏幕顶部的菜单栏，不会显示在程序坞中。",
-                    "It lives in the menu bar at the top of your screen and does not appear in the Dock."
-                ))
-                .font(.system(size: 14))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 390)
+                        Text(fanBarText(
+                            "它常驻在屏幕顶部的菜单栏，不会显示在程序坞中。",
+                            "It lives in the menu bar at the top of your screen and does not appear in the Dock."
+                        ))
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    featuresCard
+
+                    if controller.helperState != .enabled {
+                        controlServiceNotice
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.top, 24)
+                .padding(.bottom, 24)
             }
-            .padding(.top, 25)
 
-            featuresCard
-                .padding(.horizontal, 34)
-                .padding(.top, 26)
-
-            Spacer(minLength: 24)
+            Divider()
 
             HStack {
                 Button(fanBarText("稍后", "Not now"), action: onDismiss)
@@ -72,20 +77,18 @@ struct OnboardingCard: View {
                             .font(.system(size: 11, weight: .semibold))
                     }
                 }
-                .buttonStyle(DefaultButtonStyle())
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
             }
-            .padding(.horizontal, 26)
-            .padding(.vertical, 20)
-            .background(Color.primary.opacity(0.035))
+            .padding(.horizontal, 32)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.windowBackgroundColor))
         }
-        .frame(width: 520, height: Self.height)
+        .frame(width: Self.width, height: Self.height)
         .background(Color(NSColor.windowBackgroundColor))
         .opacity(isVisible ? 1 : 0)
         .offset(y: isVisible ? 0 : 8)
-        .sheet(isPresented: $showsCompatibility) {
-            DeviceCompatibilityView(controller: controller)
-        }
         .onAppear {
             if reduceMotion {
                 isVisible = true
@@ -134,14 +137,10 @@ struct OnboardingCard: View {
         }
     }
 
-    /// One grouped card instead of bare rows on the window background: the
-    /// same inset-card language as the settings window and the menu panel's
-    /// own gauge panel, so this first screen reads as FanBar rather than a
-    /// generic system dialog.
     private var featuresCard: some View {
         SettingsChrome.settingsCard {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 20) {
                     onboardingFeature(
                         icon: "gauge.with.dots.needle.67percent",
                         title: fanBarText("查看实时状态", "Check live status"),
@@ -154,12 +153,11 @@ struct OnboardingCard: View {
                         detail: fanBarText("日常使用可保持系统自动管理", "Keep automatic control for everyday use")
                     )
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(20)
 
                 SettingsChrome.rowDivider
                 Button {
-                    showsCompatibility = true
+                    CompatibilityWindowPresenter.shared.show(controller: controller)
                 } label: {
                     HStack(spacing: 10) {
                         SettingsRowText(
@@ -168,28 +166,23 @@ struct OnboardingCard: View {
                                 ?? fanBarText("查看本机可用功能；检测不会上传信息。", "Check available features; no device information is uploaded.")
                         )
                         Spacer(minLength: 8)
-                        Text(fanBarText("查看详情", "Details")).font(.caption).foregroundColor(.accentColor)
+                        Text(fanBarText("查看详情", "Details"))
+                            .font(.caption)
+                            .foregroundColor(.accentColor)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-
-                if controller.helperState != .enabled {
-                    SettingsChrome.rowDivider
-                    controlServiceNotice
-                }
             }
         }
     }
 
-    /// Adjusting fans needs a one-time, Team-ID-scoped permission that a brand
-    /// new install has not granted yet. Naming that up front — using the same
-    /// per-state copy the menu panel and settings share (`HelperStateDisplay`)
-    /// — means the first thing a user tries to control never silently no-ops.
-    /// It shares the features card above it rather than floating its own
-    /// separate colored panel; only the row tint carries the emphasis.
     private var controlServiceNotice: some View {
         let state = controller.helperState
         return HStack(alignment: .top, spacing: 10) {
@@ -197,9 +190,9 @@ struct OnboardingCard: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(fanBarText("按需调整散热需要一次性授权", "Adjusting cooling needs one-time permission"))
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                 Text(state.noticeDetail)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -207,13 +200,12 @@ struct OnboardingCard: View {
 
             if let actionTitle = state.actionTitle {
                 Button(actionTitle, action: controller.performHelperAction)
-                    .buttonStyle(.plain)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.accentColor)
+                    .buttonStyle(.bordered)
+                    .controlSize(.regular)
+                    .fixedSize()
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 13)
+        .padding(16)
         .background(state.tint.opacity(0.08))
         .accessibilityElement(children: .contain)
     }

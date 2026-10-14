@@ -1,3 +1,5 @@
+// Localization keys and user-facing paragraphs remain intact for catalog extraction.
+// swiftlint:disable line_length
 import Foundation
 
 /// Japanese copy for every `fanBarText` / `fanBarFormat` call, keyed by the
@@ -11,6 +13,56 @@ enum JapaneseCatalog {
     }
 
     static let strings: [String: String] = [
+        "Also includes bounded launch, approval, XPC, and control events from the last 24 hours and sanitized crash summaries. Files stay local until you confirm upload.": "直近24時間の制限付き起動・承認・XPC・制御イベントと、個人情報を除いたクラッシュ概要も含みます。送信を確認するまでファイルは本機に保存されます。",
+        "If FanBar cannot open, run the supplied FanBar-Diagnostics.command to export diagnostics without starting the app.": "FanBarが開かない場合は、付属のFanBar-Diagnostics.commandでアプリを起動せずに診断を書き出せます。",
+
+        "More": "その他",
+        "Upload diagnostic logs…": "診断ログをアップロード…",
+        "Upload diagnostic logs": "診断ログをアップロード",
+        "Help investigate missing temperatures and sensor failures. Collection only reads information and does not adjust fans.": "温度が表示されない問題やセンサー読み取りの失敗を調査します。収集は読み取り専用で、ファンは調整しません。",
+        "Includes device versions, recent samples (up to one minute), sensor probes, data formats and raw bytes, fallback results, and error codes.": "機器のバージョン、最大直近1分のサンプル、センサー検出、データ形式と元のバイト列、代替取得元の結果、エラーコードを含みます。",
+        "Excludes serial numbers, usernames, file paths, process lists, and system logs.": "シリアル番号、ユーザー名、ファイルパス、プロセス一覧、システムログは含みません。",
+        "View log details": "ログの詳細を表示",
+        "Collecting diagnostics…": "診断情報を収集中…",
+        "Uploaded. Share the diagnostic ID with the developer.": "アップロードしました。診断番号を開発者にお伝えください。",
+        "Copy diagnostic ID": "診断番号をコピー",
+        "Logs are visible only to administrators, excluded from public compatibility statistics, and retained online for 90 days. Withdraw them below.": "ログは管理者のみ閲覧でき、公開互換性統計には含まれません。オンラインで90日間保存され、以下から撤回できます。",
+        "Cloud restore points may retain data for up to 30 more days. Cloudflare processes network metadata to deliver the service.": "クラウドの復元ポイントには最大30日間追加で残る場合があります。Cloudflare は通信に必要なネットワークメタデータを処理します。",
+        "I agree to upload these diagnostic logs for troubleshooting": "問題の調査のため、この診断ログの送信に同意します",
+        "Fetch upload rules": "アップロード規則を取得",
+        "Diagnostic history and withdrawal": "診断ログの送信履歴と撤回",
+        "Retry upload": "アップロードを再試行",
+        "Withdraw": "撤回",
+        "Export logs…": "ログを書き出す…",
+        "Close": "閉じる",
+        "Uploading…": "アップロード中…",
+        "Confirm upload": "アップロードを確認",
+
+        "Public records": "公開記録",
+        "Control tests restore system automatic control. Results are saved locally; retest after version changes.": "制御テスト後はシステムの自動制御に戻ります。結果はこの Mac に保存され、バージョン変更後は再テストが必要です。",
+        "Temperatures and Sensors": "温度とセンサー",
+        "Normal (no built-in battery)": "正常（内蔵バッテリーなし）",
+        "This Mac has no built-in battery; battery temperature testing is not needed.": "この Mac には内蔵バッテリーがないため、バッテリー温度の確認は不要です。",
+        "Control results recorded": "制御結果の記録日時",
+        "Works on this Mac (user confirmed)": "この Mac で動作確認済み（ユーザー確認）",
+        "Deselect all": "すべて選択解除",
+        "Select all tested features": "動作確認項目をすべて選択",
+        "Local hands-on confirmation (optional)": "この Mac での動作確認（任意）",
+        "Select only if you have actually used the feature and confirmed it works. Uploaded as user confirmation; automatic results stay unchanged.": "実際に機能を使用し、正常に動作した場合のみ選択してください。ユーザーの確認として送信され、自動確認の結果は変更されません。",
+        "I have used %@ on this Mac and confirmed it works": "この Mac で%@を実際に使用し、動作を確認しました",
+        "Upload report…": "レポートを送信…",
+        "No control result yet. Click Check Again to test.": "制御操作の結果がありません。「再確認」でテストできます。",
+        "Restore request accepted, but automatic mode was not confirmed by readback.": "復帰要求は受け付けられましたが、自動モードへの復帰を読み戻しで確認できません。",
+        "Restoring system control failed: %@. Retry Restore System Control.": "システム制御への復帰に失敗しました：%@。「システム制御に戻す」で再試行してください。",
+        "Control test failed: %@. System automatic control restored.": "制御テストに失敗しました：%@。システムの自動制御には復帰しました。",
+        "Testing control and restoring system control…": "制御能力をテストし、システム制御に戻しています…",
+        "Control test finished; system automatic control restored. Review the results below.": "制御テストが終了し、システムの自動制御に戻りました。各項目の結果をご確認ください。",
+        "Test fan control?": "ファン制御をテストしますか？",
+        "Fan speed will change briefly to test manual control and the current cooling curve, then return to system automatic control. Fan noise may change.": "手動制御と現在の温度制御カーブをテストするため、ファンの回転数を一時的に変更し、その後システムの自動制御に戻します。ファンの音が変わる場合があります。",
+        "Start test": "テストを開始",
+        "Switch to system automatic control before testing.": "テスト前にシステムの自動制御に切り替えてください。",
+        "Restore system control": "システム制御に戻す",
+
         "90 days online. Reviewed reports feed public counts; raw reports stay private. Cloudflare handles network data.":
             "オンラインで 90 日間保存します。審査済みレポートを公開集計に使いますが、元のレポートは非公開です。Cloudflare が通信メタデータを処理します。",
         "Also publish this report after review": "このレポートを審査後に公開する",
@@ -28,7 +80,6 @@ enum JapaneseCatalog {
         "Invalid report. Check this Mac again and create a new report.": "レポートが無効です。再確認して新しいレポートを作成してください。",
         "No submitted reports on this Mac.": "この Mac に送信記録はありません。",
         "Prepare submission · review rules": "送信準備・ルールを確認",
-        "Preview all contents before sending. Reporting is optional.": "送信前にすべての内容を確認できます。送信は任意です。",
         "Rare model and version combinations may be identifiable.": "珍しい機種とバージョンの組み合わせは識別につながる場合があります。",
         "Report ID or content conflicts. Create a new report.": "レポート ID または内容が競合しています。新しいレポートを作成してください。",
         "Report received. Publication depends on review.": "レポートを受信しました。公開は審査結果によります。",
@@ -60,7 +111,6 @@ enum JapaneseCatalog {
         "Check this Mac’s compatibility…": "この Mac の互換性を確認…",
         "Checks run locally. Device information is not automatically uploaded.": "確認はこの Mac 上で行います。デバイス情報は自動送信しません。",
         "Compatibility Report Preview": "互換性レポートのプレビュー",
-        "Current Capabilities": "現在利用できる機能",
         "Details": "詳細",
         "Device Compatibility": "デバイスの互換性",
         "Done": "完了",
@@ -71,10 +121,7 @@ enum JapaneseCatalog {
         "Fans readable; control needs authorization": "ファン情報を取得できます。制御には許可が必要です",
         "Fans readable; review individual results": "ファン情報を取得できます。各項目の結果を確認してください",
         "GPU temperature": "GPU 温度",
-        "Last checked": "最終確認",
         "Manual fan control": "ファンの手動制御",
-        "Missing readings do not establish incompatibility. Checks are read-only; control evidence is session-only.":
-            "測定値がない場合も非対応とは限りません。確認は読み取り専用です。制御結果は今回の起動中のものです。",
         "No current reading; this does not establish incompatibility.": "現在の測定値がありません。非対応とは限りません。",
         "No fans reported; control is not yet verified": "ファン情報がありません。制御機能は未確認です",
         "No record does not mean unsupported. Refer to this Mac’s results.": "記録がなくても非対応とは限りません。この Mac の確認結果を参照してください。",
@@ -86,14 +133,12 @@ enum JapaneseCatalog {
         "Not yet verified": "未確認",
         "Only model, chip, versions, capability states and report ID. No personal identifiers, logs or temperatures.":
             "機種、プロセッサ、バージョン、機能の状態、レポート ID のみを含みます。個人識別情報、ログ、温度履歴は含みません。",
-        "Preview compatibility report…": "互換性レポートをプレビュー…",
         "Reading verified": "読み取り確認済み",
         "Request failed": "リクエスト失敗",
         "Request succeeded": "リクエスト成功",
         "SSD temperature": "SSD 温度",
         "Save locally…": "ローカルに保存…",
         "See which features are available on this Mac.": "この Mac で利用できる機能を確認します。",
-        "Service status does not prove control works; detection never changes fan speed.": "サービスの状態だけでは制御の成功を確認できません。確認時に回転数は変更しません。",
         "Smart cooling": "スマート冷却",
         "Temperature monitoring available; fan reading failed": "温度監視は利用できます。ファンの読み取りに失敗しました",
         "Temperatures and fans readable; control needs authorization": "温度とファン情報を取得できます。制御には許可が必要です",
@@ -102,8 +147,8 @@ enum JapaneseCatalog {
         "The catalog ships with the app and is matched locally.": "一覧はアプリに同梱され、この Mac 上で照合します。",
         "The control service is missing. Reinstall the signed FanBar app.": "制御サービスがありません。署名済みの FanBar を再インストールしてください。",
         "The interface reports zero fans; physical configuration is not inferred.": "インターフェイスが報告したファン数はゼロです。物理構成は推定しません。",
-        "The latest request this session failed; incompatibility is not inferred.": "今回の起動中に直近の制御リクエストが失敗しました。非対応とは判断しません。",
-        "The service accepted a request this session; physical RPM is not verified.": "今回の起動中にサービスがリクエストを受け付けました。実際の回転数は未確認です。",
+        "The latest control request failed; incompatibility is not inferred.": "今回の起動中に直近の制御リクエストが失敗しました。非対応とは判断しません。",
+        "The latest control request was accepted; physical RPM is not verified.": "今回の起動中にサービスがリクエストを受け付けました。実際の回転数は未確認です。",
         "This Mac’s capabilities": "この Mac の機能",
         "This Mac’s capabilities and compatibility": "この Mac の機能と互換性",
         "Unable to connect to the hardware interface. Retry.": "ハードウェアの読み取りインターフェイスに接続できません。再試行してください。",
@@ -349,3 +394,5 @@ enum JapaneseCatalog {
         "≈ %@ RPM": "≈ %@ RPM",
     ]
 }
+
+// swiftlint:enable line_length

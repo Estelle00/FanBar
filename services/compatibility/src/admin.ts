@@ -1,5 +1,7 @@
 import { boundedJSON, HttpError, json } from './http.ts';
 import { reviewSchema, verificationSchema } from './schema.ts';
+import { annotate, reportComparison } from './insights.ts';
+import type { ReportRow } from './reports.ts';
 import { findReport } from './reports.ts';
 
 export async function reportList(env: Env, url: URL): Promise<Response> {
@@ -7,13 +9,15 @@ export async function reportList(env: Env, url: URL): Promise<Response> {
   if (!['pending', 'approved', 'rejected', 'all'].includes(status)) throw new HttpError(400, 'INVALID_FILTER');
   const model = (url.searchParams.get('model') ?? '').slice(0, 64);
   const version = (url.searchParams.get('appVersion') ?? '').slice(0, 40);
-  const offset = Math.min(100000, Math.max(0, Number(url.searchParams.get('offset')) || 0));
+  const offset = Math.min(100000, Math.max(0, Math.floor(Number(url.searchParams.get('offset')) || 0)));
   const rows = await env.DB.prepare(`SELECT id, model_identifier, os_version, app_version, helper_version,
-    publish_report, status, created_at, expires_at FROM reports
+    publish_report, status, created_at, expires_at, payload FROM reports
     WHERE expires_at > ? AND (? = 'all' OR status = ?) AND (? = '' OR model_identifier = ?)
       AND (? = '' OR app_version = ?) ORDER BY created_at DESC, id LIMIT 51 OFFSET ?`)
-    .bind(new Date().toISOString(), status, status, model, model, version, version, offset).all();
-  return json({ reports: rows.results.slice(0, 50), hasMore: rows.results.length > 50, offset });
+    .bind(new Date().toISOString(), status, status, model, model, version, version, offset).all<Omit<ReportRow, 'payload_hash' | 'deletion_token_hash' | 'policy_version'>>();
+  const page = rows.results.slice(0, 50);
+  const annotations = await annotate(env, page);
+  return json({ reports: page.map(({ payload, ...row }) => ({ ...row, ...annotations.get(row.id) })), hasMore: rows.results.length > 50, offset });
 }
 export async function reportDetail(env: Env, id: string): Promise<Response> {
   const row = await findReport(env, id);
@@ -22,7 +26,7 @@ export async function reportDetail(env: Env, id: string): Promise<Response> {
     .bind(row.id).all();
   // Token/hash columns never leave D1, even in the admin API.
   return json({ report: JSON.parse(row.payload), status: row.status, publishReport: row.publish_report === 1,
-    receivedAt: row.created_at, expiresAt: row.expires_at, reviews: reviews.results });
+    receivedAt: row.created_at, expiresAt: row.expires_at, reviews: reviews.results, comparison: await reportComparison(env, row) });
 }
 export async function reviewReport(request: Request, env: Env, id: string, actor: string): Promise<Response> {
   const row = await findReport(env, id);
@@ -38,7 +42,8 @@ export async function reviewReport(request: Request, env: Env, id: string, actor
 }
 export async function createVerification(request: Request, env: Env, actor: string): Promise<Response> {
   const body = verificationSchema.safeParse(await boundedJSON(request, 4096));
-  if (!body.success || Number.isNaN(Date.parse(body.data.verifiedOn)) || body.data.verifiedOn > new Date().toISOString().slice(0, 10)) {
+  if (!body.success || Number.isNaN(Date.parse(body.data.verifiedOn))
+      || new Date(body.data.verifiedOn).toISOString().slice(0, 10) !== body.data.verifiedOn || body.data.verifiedOn > new Date().toISOString().slice(0, 10)) {
     throw new HttpError(400, 'INVALID_VERIFICATION');
   }
   const value = body.data;

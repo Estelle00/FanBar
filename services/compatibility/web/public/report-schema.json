@@ -118,6 +118,7 @@
             "type": "string",
             "enum": [
               "available",
+              "notApplicable",
               "notDetected",
               "temporarilyUnavailable",
               "requiresAuthorization",
@@ -131,6 +132,7 @@
             "enum": [
               "SENSOR_READ_SUCCEEDED",
               "SENSOR_NOT_DETECTED",
+              "NO_BUILT_IN_BATTERY",
               "FAN_READ_SUCCEEDED",
               "NO_FANS_REPORTED",
               "FAN_READ_FAILED",
@@ -143,6 +145,10 @@
               "CONTROL_REQUEST_SUCCEEDED",
               "CONTROL_REQUEST_FAILED"
             ]
+          },
+          "userConfirmedWorking": {
+            "type": "boolean",
+            "const": true
           }
         },
         "required": [

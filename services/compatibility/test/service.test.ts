@@ -53,11 +53,19 @@ describe('consent and closed schema', () => {
     expect(await response.json()).toEqual({error:{code:'ADMIN_AUTHENTICATION_REQUIRED'}});
   });
   it('serves the root and public pages directly with HTML normalization disabled', async () => {
-    for (const path of ['/', '/index.html', '/privacy.html', '/withdraw.html', '/report.html']) {
+    const pages: Record<string, string> = {
+      '/': 'index', '/index.html': 'index', '/privacy.html': 'privacy', '/withdraw.html': 'withdraw', '/report.html': 'report',
+    };
+    for (const [path, page] of Object.entries(pages)) {
       const response = await SELF.fetch(request(path));
       expect(response.status).toBe(200);
       expect(response.headers.get('location')).toBeNull();
-      expect(await response.text()).toContain('/i18n.js');
+      expect(response.headers.get('Content-Security-Policy')).toContain("script-src 'self'");
+      const html = await response.text();
+      expect(html).toContain('<div id="root"></div>');
+      expect(html).toMatch(new RegExp(`<script type="module" crossorigin src="/assets/${page}-[\\w-]+\\.js"></script>`));
+      // The CSP allows only same-origin files: no inline scripts or styles in the built pages.
+      expect(html).not.toMatch(/<script>|<style|style=/);
     }
   });
   it('serves every administrator entry without canonical redirect loops', async () => {
@@ -65,7 +73,8 @@ describe('consent and closed schema', () => {
       const response = await SELF.fetch(request(path));
       expect(response.status).toBe(200);
       expect(response.headers.get('location')).toBeNull();
-      expect(await response.text()).toContain('id="adminToken"');
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(await response.text()).toMatch(/src="\/assets\/admin-[\w-]+\.js"/);
     }
   });
   it('rejects hidden personal fields instead of silently stripping them', async () => {
@@ -193,5 +202,151 @@ describe('admin boundaries', () => {
     }, { Authorization: 'Bearer ' + env.ADMIN_TOKEN, 'X-FanBar-Admin': '1', Origin: 'http://localhost' }));
     expect(response.status).toBe(201); const data = await matrix();
     expect(data.groups[0].community).toEqual([]); expect(data.groups[0].developerVerifications).toHaveLength(1);
+  });
+});
+
+describe('admin insights', () => {
+  const adminGet = (path: string) => SELF.fetch(request(path, 'GET', undefined, {
+    Authorization: 'Bearer ' + env.ADMIN_TOKEN,
+  }));
+
+  it('protects all insight endpoints and handles an empty database', async () => {
+    for (const path of ['/api/admin/overview', '/api/admin/audit', '/api/admin/verifications']) {
+      expect((await SELF.fetch(request(path))).status).toBe(403);
+      expect((await adminGet(path)).status).toBe(200);
+    }
+    const overview = await (await adminGet('/api/admin/overview')).json<any>();
+    expect(overview.queue).toEqual({ pending: 0, oldestPendingAt: null, inspected: 0 });
+    expect(overview.daily).toHaveLength(14);
+    expect(overview.week.received).toBe(0);
+    expect(overview.attention.verificationCandidates).toEqual([]);
+    expect((await adminGet('/api/admin/audit?type=invalid')).status).toBe(400);
+  });
+
+  it('annotates duplicates and new models without exposing raw payloads or hashes', async () => {
+    const first = fixture(); const second = fixture();
+    await submit(first); await submit(second);
+    const response = await adminGet('/api/admin/reports');
+    const list = await response.json<any>();
+    expect(list.reports).toHaveLength(2);
+    for (const row of list.reports) {
+      expect(row.flags).toEqual(expect.arrayContaining(['duplicate', 'newModel']));
+      expect(row.duplicateOf).toHaveLength(1);
+      expect(row).not.toHaveProperty('payload');
+      expect(row).not.toHaveProperty('deletion_token_hash');
+    }
+    const overview = await (await adminGet('/api/admin/overview')).json<any>();
+    expect(overview.queue.pending).toBe(2);
+    expect(overview.week.received).toBe(2);
+    expect(overview.attention.duplicates).toHaveLength(2);
+    expect(overview.attention.newModels).toHaveLength(2);
+  });
+
+  it('compares same-version evidence, excludes self and expired reports', async () => {
+    const first = fixture(); await submit(first); await review(first.reportID);
+    let detail = await (await adminGet('/api/admin/reports/' + first.reportID)).json<any>();
+    expect(detail.comparison.otherApprovedReports).toBe(0);
+    expect(detail.comparison.flags).not.toContain('conflict');
+    const second = fixture();
+    second.capabilities[0] = { capability: 'cpuTemperature', status: 'notDetected', reasonCode: 'SENSOR_NOT_DETECTED' };
+    await submit(second);
+    detail = await (await adminGet('/api/admin/reports/' + second.reportID)).json<any>();
+    expect(detail.comparison.otherApprovedReports).toBe(1);
+    expect(detail.comparison.conflicts).toEqual(['cpuTemperature']);
+    expect(detail.comparison.capabilities[0].existing).toEqual([{ status: 'available', count: 1 }]);
+    await env.DB.prepare('UPDATE reports SET expires_at = ? WHERE id = ?').bind('2000-01-01', first.reportID).run();
+    detail = await (await adminGet('/api/admin/reports/' + second.reportID)).json<any>();
+    expect(detail.comparison.flags).not.toContain('conflict');
+    expect(detail.comparison.otherApprovedReports).toBe(0);
+  });
+
+  it('suggests independent tests without automatically verifying community requests', async () => {
+    for (let index = 0; index < 5; index++) {
+      const report = fixture(); await submit(report); await review(report.reportID);
+    }
+    const data = await (await adminGet('/api/admin/verifications')).json<any>();
+    expect(data.verifications).toEqual([]);
+    expect(data.candidateMinimum).toBe(5);
+    expect(data.candidates).toHaveLength(1);
+    expect(data.candidates[0]).toMatchObject({ capability: 'manualControl', reports: 5 });
+    const audit = await (await adminGet('/api/admin/audit?type=report')).json<any>();
+    expect(audit.entries).toHaveLength(5);
+    expect(audit.entries[0]).toMatchObject({ objectType: 'report', status: 'approved', modelIdentifier: 'Mac14,13' });
+    expect((await matrix()).groups[0].developerVerifications).toEqual([]);
+    const verification = {
+      modelIdentifier: 'Mac14,13', macOSVersion: '15.0.0', appVersion: '1.0', helperVersion: '10',
+      capability: 'manualControl', status: 'verifiedAvailable', notes: 'Independent test',
+      sourceURL: 'https://github.com/helson-lin/FanBar', verifiedOn: new Date().toISOString().slice(0, 10),
+    };
+    const headers = { Authorization: 'Bearer ' + env.ADMIN_TOKEN, 'X-FanBar-Admin': '1', Origin: 'http://localhost' };
+    expect((await SELF.fetch(request('/api/admin/verifications', 'POST', {
+      ...verification, verifiedOn: '2025-02-30',
+    }, headers))).status).toBe(400);
+    const published = await SELF.fetch(request('/api/admin/verifications', 'POST', verification, headers));
+    expect(published.status).toBe(201);
+    const { verificationID } = await published.json<{ verificationID: string }>();
+    const after = await (await adminGet('/api/admin/verifications')).json<any>();
+    expect(after.candidates).toEqual([]);
+    expect(after.verifications[0]).toMatchObject({ id: verificationID, sourceURL: verification.sourceURL });
+    expect((await adminGet('/api/admin/audit?offset=0.5')).status).toBe(200);
+    expect((await adminGet('/api/admin/reports?offset=0.5')).status).toBe(200);
+    const verificationAudit = await (await adminGet('/api/admin/audit?type=verification')).json<any>();
+    expect(verificationAudit.entries[0]).toMatchObject({ objectID: verificationID, status: 'verifiedAvailable' });
+    expect((await SELF.fetch(request('/api/admin/verifications/' + verificationID, 'DELETE', undefined, headers))).status).toBe(204);
+    const removed = await (await adminGet('/api/admin/verifications')).json<any>();
+    expect(removed.verifications).toEqual([]);
+    expect(removed.candidates).toHaveLength(1);
+  });
+});
+
+
+describe('user hands-on confirmations', () => {
+  it('retains optional control confirmations without changing automatic statuses', async () => {
+    const report = fixture();
+    const data = { ...report, capabilities: report.capabilities.map(row => ({ ...row,
+      ...(['manualControl', 'smartCooling'].includes(row.capability) ? { userConfirmedWorking: true } : {}),
+    })) };
+    const headers = { Authorization: 'Bearer ' + token, 'X-FanBar-Policy-Version': POLICY_VERSION, 'X-FanBar-Publish-Report': '1' };
+    expect((await SELF.fetch(request('/api/reports', 'POST', data, headers))).status).toBe(201);
+    expect((await SELF.fetch(request('/api/reports', 'POST', data, headers))).status).toBe(200);
+    await review(report.reportID);
+    const publicData = await (await SELF.fetch(request('/api/reports/' + report.reportID))).json<any>();
+    expect(publicData.report.capabilities.find((row: any) => row.capability === 'manualControl')).toMatchObject({ status: 'requestSucceeded', userConfirmedWorking: true });
+    expect(publicData.report.capabilities.find((row: any) => row.capability === 'smartCooling')).toMatchObject({ status: 'unverified', userConfirmedWorking: true });
+    const distribution = await (await SELF.fetch(request('/api/compatibility'))).json<any>();
+    expect(distribution.groups[0].community.find((row: any) => row.capability === 'manualControl').userConfirmedWorking).toBe(1);
+    expect(distribution.groups[0].developerVerifications).toEqual([]);
+  });
+  it('rejects confirmations on sensors and values other than true', async () => {
+    for (const [index, confirmation] of [[0, true], [5, false], [5, 'true']]) {
+      const report = fixture();
+      const capabilities = report.capabilities.map((row, at) => at === index ? { ...row, userConfirmedWorking: confirmation } : row);
+      expect((await SELF.fetch(request('/api/reports', 'POST', { ...report, capabilities }, {
+        Authorization: 'Bearer ' + token, 'X-FanBar-Policy-Version': POLICY_VERSION, 'X-FanBar-Publish-Report': '0',
+      }))).status).toBe(400);
+    }
+  });
+});
+
+
+describe('machines without a built-in battery', () => {
+  it('accepts an explicit non-applicable battery result and preserves it publicly', async () => {
+    const report = fixture();
+    report.capabilities[3] = { capability: 'batteryTemperature', status: 'notApplicable', reasonCode: 'NO_BUILT_IN_BATTERY' };
+    expect((await submit(report, true)).status).toBe(201);
+    await review(report.reportID);
+    const data = await (await SELF.fetch(request('/api/reports/' + report.reportID))).json<{ report: Report }>();
+    expect(data.report.capabilities[3]).toEqual(report.capabilities[3]);
+    expect((await matrix()).groups[0].community.some(row => row.status === 'notApplicable')).toBe(true);
+  });
+  it('rejects using absence of a battery for other capabilities or claiming a reading', async () => {
+    for (const index of [0, 4, 5]) {
+      const report = fixture();
+      report.capabilities[index] = { ...report.capabilities[index], status: 'notApplicable', reasonCode: 'NO_BUILT_IN_BATTERY' };
+      expect((await submit(report)).status).toBe(400);
+    }
+    const report = fixture();
+    report.capabilities[3] = { capability: 'batteryTemperature', status: 'available', reasonCode: 'NO_BUILT_IN_BATTERY' };
+    expect((await submit(report)).status).toBe(400);
   });
 });

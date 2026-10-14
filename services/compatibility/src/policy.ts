@@ -8,7 +8,7 @@ export function policy(origin: string) {
     sourceURL: 'https://github.com/helson-lin/FanBar/tree/codex/device-compatibility/services/compatibility',
     fields: ['schemaVersion', 'reportID', 'device.modelIdentifier', 'device.processor',
       'device.macOSVersion', 'device.appVersion', 'device.helperVersion', 'fanCount',
-      'capabilities[].capability', 'capabilities[].status', 'capabilities[].reasonCode', 'selectedTemperatureSource'],
+      'capabilities[].capability', 'capabilities[].status', 'capabilities[].reasonCode', 'capabilities[].userConfirmedWorking', 'selectedTemperatureSource'],
     excluded: ['serialNumber', 'hardwareUUID', 'userName', 'hostName', 'filePaths', 'processes', 'temperatureHistory', 'diagnosticLogs'],
     rules: [
       'Extra fields and inconsistent evidence are rejected.',

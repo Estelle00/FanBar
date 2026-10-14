@@ -3,6 +3,7 @@ import { POLICY_VERSION, RETENTION_DAYS } from './policy.ts';
 import { reportSchema, validEvidence } from './schema.ts';
 
 export interface ReportRow {
+  model_identifier: string; os_version: string; app_version: string; helper_version: string;
   id: string; payload: string; payload_hash: string; deletion_token_hash: string;
   publish_report: number; policy_version: string; status: string; created_at: string; expires_at: string;
 }
@@ -80,6 +81,8 @@ export async function cleanup(env: Env): Promise<void> {
   const now = new Date().toISOString();
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400000).toISOString();
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM diagnostics WHERE expires_at <= ?').bind(now),
+    env.DB.prepare('DELETE FROM diagnostic_withdrawals WHERE expires_at <= ?').bind(now),
     env.DB.prepare(`DELETE FROM reviews WHERE (object_type = 'report' AND object_id IN
       (SELECT id FROM reports WHERE expires_at <= ?)) OR reviewed_at < ?`).bind(now, cutoff),
     env.DB.prepare('DELETE FROM reports WHERE expires_at <= ?').bind(now),

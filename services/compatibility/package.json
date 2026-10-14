@@ -6,24 +6,36 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "wrangler dev --local",
+    "dev": "vite build && wrangler dev --local",
+    "dev:web": "vite",
+    "build": "vite build",
     "types": "wrangler types --include-runtime=false --strict-vars=false",
-    "check": "wrangler types --include-runtime=false --strict-vars=false --check && tsc --noEmit && node scripts/schema.ts --check",
+    "check": "wrangler types --include-runtime=false --strict-vars=false --check && tsc --noEmit && tsc -p web --noEmit && node scripts/schema.ts --check",
     "schema": "node scripts/schema.ts",
-    "test": "vitest run && node --test test/localization.test.mjs",
+    "test": "vite build && vitest run && node --test test/localization.test.mjs",
     "db:local": "wrangler d1 migrations apply fanbar-compatibility --local",
-    "dry-run": "wrangler deploy --dry-run --env production",
-    "deploy": "wrangler deploy --env production"
+    "dry-run": "vite build && wrangler deploy --dry-run --env production",
+    "deploy": "vite build && wrangler deploy --env production"
   },
   "dependencies": {
     "jose": "6.2.12",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/kumo": "2.14.0",
     "@cloudflare/vitest-plugin": "1.4.1",
     "@cloudflare/workers-types": "5.20261013.1",
+    "@phosphor-icons/react": "2.1.10",
+    "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
+    "vite": "8.3.4",
     "vitest": "4.1.11",
     "wrangler": "4.150.0"
   }

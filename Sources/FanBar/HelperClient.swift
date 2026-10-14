@@ -5,10 +5,16 @@ struct HelperClientError: LocalizedError, Sendable {
     let message: String
     /// Connection failures need a system-settings action; hardware errors do not.
     let isConnectionFailure: Bool
+    var diagnosticCode: Int?
 
     init(message: String, isConnectionFailure: Bool = false) {
         self.message = message
         self.isConnectionFailure = isConnectionFailure
+        // Older helpers already include numeric SMC codes in the localized reply.
+        // Extract only that bounded number; never persist the free-form message.
+        if let match = message.range(of: #"[（(]-?[0-9]{1,11}[）)]$"#, options: .regularExpression) {
+            diagnosticCode = Int(message[match].dropFirst().dropLast())
+        }
     }
 
     var errorDescription: String? { message }
@@ -114,42 +120,65 @@ final class HelperClient: @unchecked Sendable {
         current?.invalidate()
     }
 
-    func fans() async throws -> [FanReading] {
-        let count = try await fanCount()
-        var readings: [FanReading] = []
-        for index in 0..<count {
-            readings.append(try await fan(index))
+    private func trace<Value>(_ action: RuntimeDiagnosticEvent.Action, value: Double? = nil,
+                              _ operation: () async throws -> Value) async throws -> Value {
+        let requestID = UUID().uuidString.lowercased()
+        let started = ProcessInfo.processInfo.systemUptime
+        RuntimeDiagnostics.shared.record(.control, action, .started, requestID: requestID, value: value)
+        do {
+            let result = try await DiagnosticRequestContext.$id.withValue(requestID) { try await operation() }
+            RuntimeDiagnostics.shared.record(.control, action, .succeeded, requestID: requestID,
+                durationMS: (ProcessInfo.processInfo.systemUptime - started) * 1000)
+            return result
+        } catch {
+            RuntimeDiagnostics.shared.record(.control, action, .failed, requestID: requestID,
+                code: (error as? HelperClientError)?.diagnosticCode ?? (error as NSError).code,
+                durationMS: (ProcessInfo.processInfo.systemUptime - started) * 1000)
+            throw error
         }
-        return readings
+    }
+
+    func fans() async throws -> [FanReading] {
+        try await trace(.fanRead) {
+            let count = try await fanCount()
+            var readings: [FanReading] = []
+            for index in 0..<count {
+                let reading = try await fan(index)
+                readings.append(reading)
+                RuntimeDiagnostics.shared.record(.control, .readback, .succeeded, value: Double(reading.currentRPM),
+                    fanIndex: index, manual: reading.isManual)
+            }
+            return readings
+        }
     }
 
     func setAllFans(rpm: Int) async throws {
-        try await callVoid { proxy, reply in
-            proxy.setAllFans(rpm: Float(rpm), reply: reply)
+        try await trace(.fixedRPM, value: Double(rpm)) {
+            try await callVoid { proxy, reply in proxy.setAllFans(rpm: Float(rpm), reply: reply) }
         }
     }
 
     func setCoolingPreset(_ preset: FanCoolingPreset) async throws {
-        try await callVoid { proxy, reply in
-            proxy.setCoolingPreset(preset.rawValue, reply: reply)
+        try await trace(.preset, value: Double(preset.rawValue)) {
+            try await callVoid { proxy, reply in proxy.setCoolingPreset(preset.rawValue, reply: reply) }
         }
     }
 
     func setCoolingFraction(_ fraction: Float) async throws {
-        try await callVoid { proxy, reply in
-            proxy.setCoolingFraction(fraction, reply: reply)
+        try await trace(.curve, value: Double(fraction)) {
+            try await callVoid { proxy, reply in proxy.setCoolingFraction(fraction, reply: reply) }
         }
     }
 
     func setAllFansToEightyPercent() async throws {
-        try await callVoid { proxy, reply in
-            proxy.setAllFansToEightyPercent(reply: reply)
+        try await trace(.curve, value: 0.8) {
+            try await callVoid { proxy, reply in proxy.setAllFansToEightyPercent(reply: reply) }
         }
     }
 
     func restoreAutomatic() async throws {
-        try await callVoid { proxy, reply in
-            proxy.restoreAutomatic(reply: reply)
+        try await trace(.restoreAutomatic) {
+            try await callVoid { proxy, reply in proxy.restoreAutomatic(reply: reply) }
         }
     }
 
@@ -261,7 +290,9 @@ final class HelperClient: @unchecked Sendable {
         continuation: CheckedContinuation<Value, Error>,
         after timeout: TimeInterval? = nil
     ) {
+        let requestID = DiagnosticRequestContext.id
         gate.scheduleTimeout(after: timeout ?? requestTimeout) { [weak self] in
+            RuntimeDiagnostics.shared.record(.xpc, .timeout, .failed, requestID: requestID, value: timeout ?? self?.requestTimeout)
             self?.invalidateConnection()
             continuation.resume(
                 throwing: HelperClientError(
@@ -279,7 +310,9 @@ final class HelperClient: @unchecked Sendable {
         error handler: @escaping @Sendable (Error) -> Void
     ) -> FanBarHelperProtocol? {
         let connection = activeConnection()
+        let requestID = DiagnosticRequestContext.id
         return connection.remoteObjectProxyWithErrorHandler { error in
+            RuntimeDiagnostics.shared.record(.xpc, .connect, .failed, requestID: requestID, code: (error as NSError).code)
             handler(HelperClientError(
                 message: error.localizedDescription,
                 isConnectionFailure: true
@@ -299,10 +332,13 @@ final class HelperClient: @unchecked Sendable {
         )
         let generation = connectionGenerations.issue()
         newConnection.remoteObjectInterface = NSXPCInterface(with: FanBarHelperProtocol.self)
+        RuntimeDiagnostics.shared.record(.xpc, .connect, .started, value: Double(generation))
         newConnection.invalidationHandler = { [weak self] in
+            RuntimeDiagnostics.shared.record(.xpc, .invalidated, .observed, value: Double(generation))
             self?.clearConnection(generation: generation)
         }
         newConnection.interruptionHandler = { [weak self] in
+            RuntimeDiagnostics.shared.record(.xpc, .interrupted, .observed, value: Double(generation))
             self?.clearConnection(generation: generation)
         }
         newConnection.resume()

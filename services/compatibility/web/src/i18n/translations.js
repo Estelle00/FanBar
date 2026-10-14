@@ -1,4 +1,52 @@
 export const translations = {
+  "上次未记录正常退出；需结合崩溃摘要判断，也可能是强制退出或关机。": {"en": "The previous run has no normal-exit marker. Check crash summaries; force quit or shutdown may also explain it.", "ja": "前回は正常終了が記録されていません。クラッシュ概要と照合してください。強制終了や電源断の可能性もあります。"},
+  "曾处于等待系统授权状态，请对照后续状态变化。": {"en": "System approval was pending. Compare subsequent state transitions.", "ja": "システムの承認待ち状態がありました。以降の状態変化を確認してください。"},
+  "存在控制服务超时，请按请求编号对照连接与控制事件。": {"en": "Control service timeouts occurred. Correlate connection and control events by request ID.", "ja": "制御サービスのタイムアウトがあります。要求番号で接続と制御イベントを照合してください。"},
+  "未能读取 Helper 事件，不能据此认定 Helper 没有运行。": {"en": "Helper events could not be read. This does not prove the helper was not running.", "ja": "Helperのイベントを読み取れませんでした。Helperが動作していないとは断定できません。"},
+  "无法访问崩溃日志目录，空列表不代表没有崩溃。": {"en": "The crash-log directory is inaccessible. An empty list does not establish that no crash occurred.", "ja": "クラッシュログのフォルダーにアクセスできません。空の一覧でもクラッシュがなかったとは限りません。"},
+  "崩溃摘要": {"en": "Crash summaries", "ja": "クラッシュ概要"},
+  "运行事件时间线": {"en": "Runtime event timeline", "ja": "動作イベントの時系列"},
+  "时间": {"en": "Time", "ja": "時刻"},
+  "组件 / 操作": {"en": "Component / action", "ja": "コンポーネント / 操作"},
+  "结果 / 错误码": {"en": "Outcome / error code", "ja": "結果 / エラーコード"},
+  "参数 / 耗时": {"en": "Value / duration", "ja": "値 / 所要時間"},
+  "请求编号": {"en": "Request ID", "ja": "要求番号"},
+  "运行诊断还包含最近 24 小时内有界保留的启动、授权、连接与控制事件，最近 10 分钟可读取的 Helper 事件，以及最近 7 天内最多 3 份崩溃摘要。只提取异常类型、终止代码和固定模块名与偏移，不上传完整崩溃文件、路径、原始错误描述或系统日志。": {"en": "Runtime diagnostics also include bounded launch, approval, connection, and control events from the last 24 hours; readable helper events from the last 10 minutes; and up to 3 crash summaries from the last 7 days. Only exception types, termination codes, and fixed module names and offsets are extracted. Complete crash files, paths, arbitrary error descriptions, and system logs are excluded.", "ja": "動作診断には直近24時間の制限付き起動・承認・接続・制御イベント、読み取り可能な直近10分のHelperイベント、直近7日で最大3件のクラッシュ概要も含みます。例外型、終了コード、固定モジュール名とオフセットのみ抽出し、完全なクラッシュファイル、パス、任意のエラー文、システムログは送信しません。"},
+
+  "诊断还包含最近一分钟内最多 30 次采样、温度键的数据类型与最多 8 字节原始值、有限的温度键枚举及其截断状态、SSD 和电池备用来源的读取结果。日志上限为 256 KiB。": {"en":"Diagnostics also include up to 30 samples from the last minute, temperature-key data types and up to 8 raw bytes, bounded temperature-key enumeration with truncation state, and SSD and battery fallback results. The maximum log size is 256 KiB.","ja":"診断には直近1分の最大30サンプル、温度キーの型と最大8バイトの元の値、制限付き温度キー列挙と打ち切り状態、SSDとバッテリーの代替取得結果も含まれます。ログの上限は256 KiBです。"},
+  "SMC 连接失败，请先排查设备访问或连接恢复。": {"en": "SMC connection failed. Investigate device access or connection recovery first.", "ja": "SMCへの接続に失敗しました。機器へのアクセスと接続の復帰を確認してください。"},
+  "发现应用尚未识别的有效温度键，需要补充机型传感器映射。": {"en": "Valid temperature keys are not recognized by the app. Extend the model sensor mapping.", "ja": "アプリが未対応の有効な温度キーがあります。機種のセンサー対応表の追加が必要です。"},
+  "存在无法解码的数据格式，请结合类型、长度和原始字节检查解码器。": {"en": "Some data formats cannot be decoded. Inspect type, length, and raw bytes.", "ja": "解読できないデータ形式があります。型、長さ、元のバイト列でデコーダーを確認してください。"},
+  "部分读数被有效范围过滤，请检查原始值与单位。": {"en": "Some readings were filtered as out of range. Check raw values and units.", "ja": "一部の値が有効範囲外として除外されています。元の値と単位を確認してください。"},
+  "传感器枚举未完成，当前结果不能代表全部硬件键。": {"en": "Sensor enumeration was incomplete. These results do not cover every hardware key.", "ja": "センサーの列挙は未完了です。すべてのハードウェアキーを網羅していません。"},
+  "诊断线索": {"en": "Diagnostic clues", "ja": "診断の手がかり"},
+  "最近采样数": {"en": "Recent samples", "ja": "直近のサンプル数"},
+  "探测条目": {"en": "Probe entries", "ja": "検出項目数"},
+  "扫描键数": {"en": "Keys scanned", "ja": "走査したキー数"},
+  "错误码": {"en": "Error code", "ja": "エラーコード"},
+  "来源 / 键": {"en": "Source / key", "ja": "取得元 / キー"},
+  "阶段 / 结果": {"en": "Stage / result", "ja": "段階 / 結果"},
+  "读数 / 错误码": {"en": "Reading / error code", "ja": "読み取り値 / エラーコード"},
+  "类型 / 长度 / 原始字节": {"en": "Type / size / raw bytes", "ja": "型 / 長さ / 元のバイト列"},
+  "完整诊断数据": {"en": "Complete diagnostic data", "ja": "診断データ全体"},
+
+  "查看详情": {"en":"View details","ja":"詳細を表示"},
+  "刷新": {"en":"Refresh","ja":"更新"},
+  "诊断日志": {"en": "Diagnostic logs", "ja": "診断ログ"},
+  "诊断编号": {"en": "Diagnostic ID", "ja": "診断番号"},
+  "日志仅管理员可见，保留 90 天，不参与兼容性统计。": {"en": "Logs are visible only to administrators, retained for 90 days, and excluded from compatibility statistics.", "ja": "ログは管理者のみ閲覧でき、90日間保存されます。互換性統計には含まれません。"},
+  "最近 50 份诊断日志；更早的记录可通过诊断编号查询。": {"en": "Latest 50 diagnostic logs; look up older records by diagnostic ID.", "ja": "最新50件の診断ログです。過去の記録は診断番号で検索できます。"},
+  "兼容性报告不接收序列号、硬件 UUID、用户名、主机名、文件路径、进程列表、温度历史或诊断日志。": {"en": "Compatibility reports exclude serial numbers, hardware UUIDs, usernames, hostnames, file paths, process lists, temperature history, and diagnostic logs.", "ja": "互換性レポートにはシリアル番号、ハードウェアUUID、ユーザー名、ホスト名、ファイルパス、プロセス一覧、温度履歴、診断ログを含めません。"},
+  "诊断日志需单独预览并确认上传，包含设备版本、本次温度读数、传感器键、探测结果、错误码和控制服务状态。不收集系统日志、序列号、用户名、文件路径或进程列表。": {"en": "Diagnostic logs require a separate preview and confirmation. They include device versions, current temperatures, sensor keys, probe results, error codes, and control service state. System logs, serial numbers, usernames, file paths, and process lists are excluded.", "ja": "診断ログは別途プレビューと送信確認が必要です。機器のバージョン、現在の温度、センサーキー、検出結果、エラーコード、制御サービスの状態を含みます。システムログ、シリアル番号、ユーザー名、ファイルパス、プロセス一覧は収集しません。"},
+  "日志仅管理员可见，不公开、不参与兼容性统计。在线保留 90 天，可在客户端诊断上传记录中撤回；历史恢复点最长还可能保留 30 天。每份诊断单独生成随机编号和撤回凭证，数据库仅保存凭证哈希。": {"en": "Logs are visible only to administrators and excluded from public records and statistics. They are retained online for 90 days and can be withdrawn in the app. Historical restore points may retain them for up to 30 more days. Each diagnostic has a random ID and withdrawal credential; only its hash is stored in the database.", "ja": "ログは管理者のみ閲覧でき、公開記録や統計には含まれません。オンラインで90日間保存され、アプリから撤回できます。復元ポイントには最大30日間追加で残る場合があります。診断ごとにランダムな番号と撤回用認証情報を生成し、データベースには認証情報のハッシュのみ保存します。"},
+
+  "正常（无内置电池）": { "en": "Normal (no built-in battery)", "ja": "正常（内蔵バッテリーなし）" },
+  "可选的手动调速、智能温控本机实测确认，由用户主动勾选；不替代自动检测或开发者验证。": {"en": "Optional user-selected hands-on confirmations for manual control and smart cooling; separate from automatic checks and developer verification.", "ja": "手動制御とスマート温度制御の任意の動作確認。ユーザーが選択するもので、自動確認や開発者の検証とは別です。"},
+  "本机实测可用（用户确认）": {"en": "Works on this Mac (user confirmed)", "ja": "この Mac で動作確認済み（ユーザー確認）"},
+  "自动检测：{status}": {"en": "Automatic check: {status}", "ja": "自動確認：{status}"},
+  "用户确认在本机实际使用可用，不等同于开发者独立实测。": {"en": "Users confirmed it works in actual use on their Macs; this is separate from independent developer tests.", "ja": "ユーザーが自分の Mac で実際に動作を確認しています。開発者による独立検証とは別です。"},
+  "用户确认本机实测可用：{count} 份报告": {"en": "User-confirmed working: {count} reports", "ja": "ユーザーの動作確認：{count} 件のレポート"},
+
   "CPU 温度": {
     "en": "CPU temperature",
     "ja": "CPU 温度"
@@ -556,7 +604,7 @@ export const translations = {
     "ja": "個別レポートの公開への同意と、確認した方針のバージョン。サーバーは受信日時、有効期限、審査状況を記録します。"
   },
   "不接收序列号、硬件 UUID、用户名、主机名、文件路径、进程列表、温度历史或诊断日志。": {
-    "en": "We do not accept serial numbers, hardware UUIDs, usernames, hostnames, file paths, process lists, temperature history or diagnostic logs.",
+    "en": "We do not accept serial numbers, hardware UUIDs, usernames, hostnames, file paths, process lists, temperature history or diagnostic logs. ",
     "ja": "シリアル番号、ハードウェア UUID、ユーザー名、ホスト名、ファイルパス、プロセス一覧、温度履歴、診断ログは受け付けません。"
   },
   "查看严格字段 Schema": {
@@ -620,7 +668,7 @@ export const translations = {
     "ja": "ソースコードと方針の変更"
   },
   "规则版本为 2026-10-13。规则变化后，旧确认不能直接用于新提交。": {
-    "en": "Policy version: 2026-10-13. After policy changes, previous consent cannot be used directly for new submissions.",
+    "en": "Policy version: 2026-10-13. After policy changes, previous consent cannot be used directly for new submissions. ",
     "ja": "方針のバージョンは2026-10-13です。変更後の新規提出に以前の同意をそのまま使うことはできません。"
   },
   "服务端源码": {
@@ -660,5 +708,109 @@ export const translations = {
   "浏览器只保存你选择的界面语言；不保存报告、访问密钥或撤回凭证。": {
     "en": "The browser saves only your chosen interface language, never reports, access keys or withdrawal credentials.",
     "ja": "ブラウザーには選択した表示言語のみ保存し、レポート、アクセスキー、撤回用の認証情報は保存しません。"
+  },
+  "审核报告": {
+    "en": "Review reports",
+    "ja": "レポートの審査"
+  },
+  "报告结果": {
+    "en": "Reported result",
+    "ja": "レポートの結果"
+  },
+  "原因码": {
+    "en": "Reason code",
+    "ja": "理由コード"
+  },
+  "原始字段": {
+    "en": "Raw fields",
+    "ja": "元のフィールド"
+  },
+  "审核理由": {
+    "en": "Review reason",
+    "ja": "審査理由"
+  },
+  "结果不一致": {
+    "en": "Results differ",
+    "ja": "結果が一致しない"
+  },
+  "可用": {
+    "en": "Works",
+    "ja": "利用可能"
+  },
+  "请求成功，待实测": {
+    "en": "Request succeeded, awaiting test",
+    "ja": "リクエスト成功・実機検証待ち"
+  },
+  "未读取": {
+    "en": "Not read",
+    "ja": "読み取りなし"
+  },
+  "暂无证据": {
+    "en": "No evidence yet",
+    "ja": "根拠なし"
+  },
+  "开发者实测": {
+    "en": "Developer test",
+    "ja": "開発者の実機検証"
+  },
+  "≥10 份报告": {
+    "en": "≥10 reports",
+    "ja": "10 件以上"
+  },
+  "1–9 份报告": {
+    "en": "1–9 reports",
+    "ja": "1〜9 件"
+  },
+  "点击表格中的任一格，查看结果分布与依据。": {
+    "en": "Select any cell to see how reports break down and what supports the result.",
+    "ja": "表のセルを選ぶと、結果の内訳と根拠を確認できます。"
+  },
+  "开发者实测 {count} 项": {
+    "en": "{count} developer tests",
+    "ja": "開発者の実機検証 {count} 件"
+  },
+  "报告结果一致，可以作为参考。": {
+    "en": "Reports agree, so this result is a useful reference.",
+    "ja": "レポートの結果は一致しており、参考にできます。"
+  },
+  "系统接受了控制请求，但还没有证据证明风扇转速确实改变。": {
+    "en": "The system accepted the control request, but there is no evidence yet that the fan speed actually changed.",
+    "ja": "システムは制御リクエストを受け付けましたが、ファン回転数が実際に変わった根拠はまだありません。"
+  },
+  "报告中没有成功读取或执行。这不等于已证实不支持。": {
+    "en": "Reports did not read or perform this successfully. That does not prove it is unsupported.",
+    "ja": "レポートでは読み取りや実行に成功していません。非対応が確認されたわけではありません。"
+  },
+  "目前没有报告，也没有开发者实测。": {
+    "en": "There are no reports and no developer tests yet.",
+    "ja": "レポートも開発者の実機検証もまだありません。"
+  },
+  "开发者实测确认在此版本组合下不可用。": {
+    "en": "A developer test confirmed this does not work with this version combination.",
+    "ja": "開発者の実機検証で、このバージョンの組み合わせでは利用できないことを確認しました。"
+  },
+  "关闭": {
+    "en": "Close",
+    "ja": "閉じる"
+  },
+  "开发者已在对应版本实机验证。": {
+    "en": "A developer verified this on real hardware with these versions.",
+    "ja": "開発者がこのバージョンの実機で検証しました。"
+  },
+  "报告数是份数，不是设备数。": {
+    "en": "Counts are reports, not distinct devices.",
+    "ja": "件数はレポート数で、デバイス数ではありません。"
+  },
+  "实测记录不完整，或验证日期晚于今天。": {
+    "en": "The test record is incomplete, or the verification date is in the future.",
+    "ja": "検証記録が不完全か、検証日が今日より後になっています。"
+  },
+  "证据等级 {level}/3": {
+    "en": "Evidence level {level}/3",
+    "ja": "根拠レベル {level}/3"
+  },
+  "接收于 {date}": {
+    "en": "Received {date}",
+    "ja": "{date} に受信"
   }
 };

@@ -1,6 +1,8 @@
+import { deleteDiagnostic, diagnosticList, diagnosticPolicy, submitDiagnostic } from './diagnostics.ts';
 import { administrator, localDevelopment, rateLimit, requireAdminMutation } from './auth.ts';
 import { createVerification, deleteVerification, reportDetail, reportList, reviewReport } from './admin.ts';
 import { boundedJSON, HttpError, json, secureResponse } from './http.ts';
+import { auditLog, overview, verificationList } from './insights.ts';
 import { publicMatrix } from './matrix.ts';
 import { policy } from './policy.ts';
 import { cleanup, deleteReport, ownerReceipt, publicReport, submitReport } from './reports.ts';
@@ -11,7 +13,17 @@ const verificationPath = /^\/api\/admin\/verifications\/([0-9a-f-]{36})$/i;
 async function route(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
-  if (path === '/api/policy' && request.method === 'GET') return json(policy(url.origin));
+  if (path === '/api/diagnostics/policy' && request.method === 'GET') return json(diagnosticPolicy(url.origin));
+  if (path === '/api/diagnostics' && request.method === 'POST') {
+    await rateLimit(request, env, true);
+    return submitDiagnostic(request, env, await boundedJSON(request, 262144));
+  }
+  const diagnosticMatch = path.match(/^\/api\/diagnostics\/([0-9a-f-]{36})$/i);
+  if (diagnosticMatch && request.method === 'DELETE') {
+    await rateLimit(request, env, true);
+    return deleteDiagnostic(request, env, diagnosticMatch[1]);
+  }
+  if (path === '/api/policy'  && request.method === 'GET') return json(policy(url.origin));
   if (path === '/api/reports' && request.method === 'POST') {
     await rateLimit(request, env, true);
     return submitReport(request, env, await boundedJSON(request));
@@ -34,6 +46,10 @@ async function route(request: Request, env: Env): Promise<Response> {
     await rateLimit(request, env, request.method !== 'GET');
     const actor = await administrator(request, env);
     if (request.method !== 'GET') requireAdminMutation(request);
+    if (path === '/api/admin/diagnostics' && request.method === 'GET') return diagnosticList(env, url);
+    if (path === '/api/admin/overview' && request.method === 'GET') return overview(env);
+    if (path === '/api/admin/audit' && request.method === 'GET') return auditLog(env, url);
+    if (path === '/api/admin/verifications' && request.method === 'GET') return verificationList(env);
     if (path === '/api/admin/reports' && request.method === 'GET') return reportList(env, url);
     const match = path.match(adminReportPath);
     if (match && request.method === 'GET' && !match[2]) return reportDetail(env, match[1]);

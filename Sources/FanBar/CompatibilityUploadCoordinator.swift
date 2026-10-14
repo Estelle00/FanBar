@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 final class CompatibilityUploadCoordinator: ObservableObject {
-    let data: Data
+    @Published private(set) var data: Data
     let configuration: CompatibilityServiceConfiguration?
     private let api: (any CompatibilityReportServing)?
     private let store: any CompatibilityReceiptStoring
@@ -25,6 +25,22 @@ final class CompatibilityUploadCoordinator: ObservableObject {
         self.api = api ?? configuration.map { CompatibilityReportService(configuration: $0) }
         self.store = store
         self.receipt = receipt
+    }
+
+    func isUserConfirmedWorking(_ capability: CompatibilityCapability) -> Bool {
+        (try? JSONDecoder().decode(CompatibilityReport.self, from: data))?
+            .capabilities.first { $0.capability == capability }?.userConfirmedWorking == true
+    }
+
+    func setUserConfirmedWorking(_ capability: CompatibilityCapability, confirmed: Bool) {
+        guard receipt == nil, !isSending, [.manualControl, .smartCooling].contains(capability) else { return }
+        do {
+            var report = try JSONDecoder().decode(CompatibilityReport.self, from: data)
+            guard let index = report.capabilities.firstIndex(where: { $0.capability == capability }) else { return }
+            report.capabilities[index].userConfirmedWorking = confirmed ? true : nil
+            data = try report.jsonData()
+            error = nil
+        } catch { self.error = .invalidReport }
     }
 
     func loadPolicy() async {

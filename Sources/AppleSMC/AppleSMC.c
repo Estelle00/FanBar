@@ -95,6 +95,24 @@ void fanbar_smc_close(void) {
 }
 
 int fanbar_smc_read(uint32_t key, FanBarSMCValue *value) {
+    int stage = 0;
+    return fanbar_smc_read_diagnostic(key, value, &stage);
+}
+
+int fanbar_smc_key_at_index(uint32_t index, uint32_t *key) {
+    if (connection == IO_OBJECT_NULL || key == NULL) return KERN_INVALID_ARGUMENT;
+    SMCParamStruct input = {0}, output = {0};
+    input.data8 = 8;
+    input.data32 = index;
+    kern_return_t result = smc_call(&input, &output);
+    if (result != KERN_SUCCESS) return result;
+    if (output.result != 0) return 0x10000 | output.result;
+    *key = output.key;
+    return KERN_SUCCESS;
+}
+
+int fanbar_smc_read_diagnostic(uint32_t key, FanBarSMCValue *value, int *stage) {
+    if (stage != NULL) *stage = 1;
     if (connection == IO_OBJECT_NULL || value == NULL) return KERN_INVALID_ARGUMENT;
     SMCParamStruct input = {0}, output = {0};
     input.key = key;
@@ -104,6 +122,9 @@ int fanbar_smc_read(uint32_t key, FanBarSMCValue *value) {
     if (output.result != 0) return 0x10000 | output.result;
 
     input.key_info = output.key_info;
+    value->data_type = input.key_info.data_type;
+    value->data_size = input.key_info.data_size;
+    if (stage != NULL) *stage = 2;
     input.data8 = kSMCReadBytes;
     result = smc_call(&input, &output);
     if (result != KERN_SUCCESS) return result;

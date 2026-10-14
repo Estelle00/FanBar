@@ -1,4 +1,5 @@
 import AppKit
+import FanBarShared
 import SwiftUI
 import XCTest
 @testable import FanBar
@@ -17,10 +18,122 @@ final class DeviceCompatibilityLayoutTests: XCTestCase {
             let host = NSHostingView(rootView: DeviceCompatibilityView(controller: controller))
             host.frame = NSRect(x: 0, y: 0, width: 560, height: 570)
             host.layoutSubtreeIfNeeded()
-            XCTAssertEqual(host.fittingSize.width, 560, accuracy: 0.5)
-            XCTAssertEqual(host.fittingSize.height, 570, accuracy: 0.5)
+            XCTAssertEqual(host.bounds.width, 560, accuracy: 0.5)
+            XCTAssertEqual(host.bounds.height, 570, accuracy: 0.5)
             XCTAssertEqual(controller.mode, .automatic)
             XCTAssertNotNil(controller.compatibilitySnapshot)
+        }
+    }
+
+    func testStandaloneWindowCanResizeAndRepeatedOpeningReusesIt() throws {
+        _ = NSApplication.shared
+        guard let visible = NSScreen.main?.visibleFrame, visible.width >= 640, visible.height >= 520 else {
+            throw XCTSkip("Window resize validation requires an accessible display")
+        }
+        let target = NSSize(width: min(800, visible.width - 80), height: min(720, visible.height - 100))
+        let presenter = CompatibilityWindowPresenter()
+        let source = FakeFanReadingSource()
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled, makeReadingSource: { source })
+        let window = presenter.show(controller: controller)
+        defer { presenter.close() }
+        XCTAssertTrue(window.styleMask.contains(.resizable))
+        XCTAssertNil(window.sheetParent)
+        window.setContentSize(target)
+        window.contentView?.layoutSubtreeIfNeeded()
+        XCTAssertEqual(window.contentView?.bounds.width ?? 0, target.width, accuracy: 0.5)
+        XCTAssertEqual(window.contentView?.bounds.height ?? 0, target.height, accuracy: 0.5)
+        XCTAssertEqual(window.contentView?.subviews.first?.bounds.height ?? 0, target.height, accuracy: 0.5)
+        XCTAssertTrue(presenter.show(controller: controller) === window)
+        XCTAssertEqual(window.contentView?.bounds.width ?? 0, target.width, accuracy: 0.5)
+        if let path = ProcessInfo.processInfo.environment["FANBAR_DESIGN_CAPTURE_PATH"] {
+            let savedLanguage = UserDefaults.standard.object(forKey: FanBarLanguage.preferenceKey)
+            defer {
+                if let savedLanguage {
+                    UserDefaults.standard.set(savedLanguage, forKey: FanBarLanguage.preferenceKey)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: FanBarLanguage.preferenceKey)
+                }
+            }
+            for (name, appearance, size) in [
+                ("light", NSAppearance.Name.aqua, NSSize(width: 740, height: 780)),
+                ("dark", NSAppearance.Name.darkAqua, NSSize(width: 740, height: 780)),
+                ("narrow", NSAppearance.Name.aqua, NSSize(width: 560, height: 640)),
+                ("english", NSAppearance.Name.aqua, NSSize(width: 560, height: 640)),
+            ] {
+                if name == "english" {
+                    UserDefaults.standard.set(FanBarLanguage.english.rawValue, forKey: FanBarLanguage.preferenceKey)
+                    let host = window.contentView?.subviews.first as? NSHostingView<DeviceCompatibilityView>
+                    host?.rootView = DeviceCompatibilityView(controller: controller)
+                }
+                window.appearance = NSAppearance(named: appearance)
+                window.setContentSize(size)
+                window.contentView?.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+                let view = try XCTUnwrap(window.contentView)
+                let bitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+                view.cacheDisplay(in: view.bounds, to: bitmap)
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("compatibility-\(name).png"))
+            }
+        }
+    }
+
+    func testOnboardingFitsItsWindowInChineseAndEnglishWithoutChangingControl() {
+        let saved = UserDefaults.standard.object(forKey: FanBarLanguage.preferenceKey)
+        defer {
+            if let saved {
+                UserDefaults.standard.set(saved, forKey: FanBarLanguage.preferenceKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FanBarLanguage.preferenceKey)
+            }
+        }
+        let controller = FanController(
+            notificationCenter: nil, widgetSnapshotDestination: .disabled, makeReadingSource: { FakeFanReadingSource() }
+        )
+        for language in [FanBarLanguage.chinese, .english] {
+            UserDefaults.standard.set(language.rawValue, forKey: FanBarLanguage.preferenceKey)
+            let host = NSHostingView(rootView: OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {}))
+            host.layoutSubtreeIfNeeded()
+            XCTAssertEqual(host.fittingSize.width, OnboardingCard.width, accuracy: 0.5)
+            XCTAssertEqual(host.fittingSize.height, OnboardingCard.height, accuracy: 0.5)
+            XCTAssertEqual(controller.mode, .automatic)
+            XCTAssertFalse(controller.isTestingCompatibilityControl)
+        }
+    }
+
+    func testOnboardingDesignCapture() throws {
+        guard let path = ProcessInfo.processInfo.environment["FANBAR_ONBOARDING_CAPTURE_PATH"] else { return }
+        _ = NSApplication.shared
+        let savedLanguage = UserDefaults.standard.object(forKey: FanBarLanguage.preferenceKey)
+        defer {
+            if let savedLanguage {
+                UserDefaults.standard.set(savedLanguage, forKey: FanBarLanguage.preferenceKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: FanBarLanguage.preferenceKey)
+            }
+        }
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
+                                       makeReadingSource: { FakeFanReadingSource() })
+        for (name, appearance, language) in [
+            ("light", NSAppearance.Name.aqua, FanBarLanguage.chinese),
+            ("dark", NSAppearance.Name.darkAqua, FanBarLanguage.chinese),
+            ("english", NSAppearance.Name.aqua, FanBarLanguage.english),
+        ] {
+            UserDefaults.standard.set(language.rawValue, forKey: FanBarLanguage.preferenceKey)
+            let host = NSHostingView(rootView: OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {}))
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: OnboardingCard.height),
+                                  styleMask: [.titled], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = host
+            window.appearance = NSAppearance(named: appearance)
+            window.makeKeyAndOrderFront(nil)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+            try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("onboarding-\(name).png"))
+            window.close()
         }
     }
 

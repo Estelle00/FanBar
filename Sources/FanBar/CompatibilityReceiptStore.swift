@@ -11,7 +11,11 @@ protocol CompatibilityReceiptStoring {
 /// Credentials are local, non-synchronizing Keychain items, never report exports or UserDefaults.
 @MainActor
 struct CompatibilityReceiptStore: CompatibilityReceiptStoring {
-    private let service = "local.fanbar.compatibility.receipts"
+    private let service: String
+
+    init(service: String = "local.fanbar.compatibility.receipts") {
+        self.service = service
+    }
 
     func save(_ receipt: CompatibilitySavedReceipt) throws {
         let data = try JSONEncoder().encode(receipt)

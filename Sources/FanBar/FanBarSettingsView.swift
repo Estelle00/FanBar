@@ -47,7 +47,6 @@ struct FanBarSettingsView: View {
     @AppStorage(SettingsTab.preferenceKey)
     private var selectedTabRawValue = SettingsTab.cooling.rawValue
     @State private var isFooterLinkHovered = false
-    @State private var showsCompatibility = false
 
     private var displayMode: MenuBarDisplayMode {
         MenuBarDisplayMode(rawValue: displayModeRawValue) ?? .defaultMode
@@ -76,9 +75,6 @@ struct FanBarSettingsView: View {
         // Invisible commands preserve fast keyboard navigation while the
         // visible controls live in AppKit's title-bar toolbar.
         .background(SettingsTabKeyboardShortcuts(selection: $selectedTabRawValue))
-        .sheet(isPresented: $showsCompatibility) {
-            DeviceCompatibilityView(controller: controller)
-        }
         .onChange(of: selectedTabRawValue) { _ in
             SettingsWindowPresenter.shared.resizeToFitContentSoon()
         }
@@ -93,7 +89,7 @@ struct FanBarSettingsView: View {
         if controller.helperState != .enabled {
             ControlServiceBanner(controller: controller)
             Button(fanBarText("查看本机兼容性…", "Check this Mac’s compatibility…")) {
-                showsCompatibility = true
+                CompatibilityWindowPresenter.shared.show(controller: controller)
             }
             .buttonStyle(.plain)
             .font(.caption)
@@ -211,7 +207,7 @@ struct FanBarSettingsView: View {
             footer: fanBarText("检测在本机完成，不会自动上传设备信息。", "Checks run locally. Device information is not automatically uploaded.")
         ) {
             Button {
-                showsCompatibility = true
+                CompatibilityWindowPresenter.shared.show(controller: controller)
             } label: {
                 HStack(spacing: 16) {
                     SettingsRowText(

@@ -25,7 +25,7 @@ final class OnboardingWindowPresenter: NSObject, NSWindowDelegate {
         )
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: OnboardingCard.height),
+            contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: OnboardingCard.height),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false

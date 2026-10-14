@@ -66,8 +66,10 @@ temporary_root="$(mktemp -d)"
 trap 'rm -rf "${temporary_root}"' EXIT
 bundle_path="${temporary_root}/FanBar.app"
 mkdir -p "${bundle_path}/Contents/MacOS"
+cp "${binary_path}/FanBarDiagnostics" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
 mkdir -p "${bundle_path}/Contents/Frameworks"
 mkdir -p "${bundle_path}/Contents/Resources"
+cp "scripts/export-diagnostics.command" "${bundle_path}/Contents/Resources/ExportDiagnostics.command"
 mkdir -p "${bundle_path}/Contents/Library/LaunchDaemons"
 mkdir -p "${bundle_path}/Contents/Library/LaunchServices"
 mkdir -p "${bundle_path}/Contents/PlugIns"
@@ -140,6 +142,8 @@ for signable in "${sparkle_signables[@]}"; do
         --sign "${sign_identity}" "${signable}"
 done
 
+codesign "${sign_arguments[@]}" --identifier "local.fanbar.diagnostics" \
+    --sign "${sign_identity}" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
 codesign "${sign_arguments[@]}" --identifier "local.fanbar.helper" \
     --sign "${sign_identity}" \
     "${bundle_path}/Contents/Library/LaunchServices/local.fanbar.helper"
@@ -163,3 +167,6 @@ mkdir -p "${app_output_path:h}"
 rm -rf "${app_output_path}"
 mv "${bundle_path}" "${app_output_path}"
 print "Built ${app_output_path}"
+
+cp "scripts/export-diagnostics.command" "dist/FanBar-Diagnostics.command"
+chmod +x "dist/FanBar-Diagnostics.command"

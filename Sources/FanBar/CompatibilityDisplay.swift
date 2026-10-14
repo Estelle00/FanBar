@@ -18,6 +18,7 @@ extension CompatibilityCapability {
 extension CompatibilityStatus {
     var title: String {
         switch self {
+        case .notApplicable: fanBarText("正常（无内置电池）", "Normal (no built-in battery)")
         case .available: fanBarText("已验证可读取", "Reading verified")
         case .notDetected: fanBarText("本次未检测到", "Not detected this time")
         case .temporarilyUnavailable: fanBarText("暂时不可用", "Temporarily unavailable")
@@ -30,7 +31,7 @@ extension CompatibilityStatus {
 
     var symbol: String {
         switch self {
-        case .available, .requestSucceeded: "checkmark.circle"
+        case .available, .requestSucceeded, .notApplicable: "checkmark.circle"
         case .requiresAuthorization: "lock"
         case .temporarilyUnavailable, .requestFailed: "exclamationmark.circle"
         case .notDetected, .unverified: "questionmark.circle"
@@ -39,7 +40,7 @@ extension CompatibilityStatus {
 
     var tint: Color {
         switch self {
-        case .available, .requestSucceeded: .green
+        case .available, .requestSucceeded, .notApplicable: .green
         case .requiresAuthorization, .temporarilyUnavailable, .requestFailed: .orange
         case .notDetected, .unverified: .secondary
         }
@@ -49,6 +50,8 @@ extension CompatibilityStatus {
 extension CompatibilityResult {
     var detail: String {
         switch reasonCode {
+        case "NO_BUILT_IN_BATTERY":
+            fanBarText("本机没有内置电池，无需检测电池温度。", "This Mac has no built-in battery; battery temperature testing is not needed.")
         case "SENSOR_READ_SUCCEEDED":
             fanBarText("本次已获取有效读数。", "A valid reading was obtained this time.")
         case "SENSOR_NOT_DETECTED":
@@ -70,11 +73,11 @@ extension CompatibilityResult {
         case "NO_CURVE_SENSOR_EVIDENCE":
             fanBarText("当前没有可用于温控的温度读数。", "No temperature reading is currently available for curve control.")
         case "CONTROL_REQUEST_SUCCEEDED":
-            fanBarText("本次运行中控制服务已接受请求，不代表实际转速已验证。", "The service accepted a request this session; physical RPM is not verified.")
+            fanBarText("最近一次控制请求已被接受，不代表实际转速已验证。", "The latest control request was accepted; physical RPM is not verified.")
         case "CONTROL_REQUEST_FAILED":
-            fanBarText("本次运行中最近的控制请求失败，不据此判断机型不支持。", "The latest request this session failed; incompatibility is not inferred.")
+            fanBarText("最近一次控制请求失败，不据此判断机型不支持。", "The latest control request failed; incompatibility is not inferred.")
         default:
-            fanBarText("控制服务状态不代表实际调速成功；检测不会改变转速。", "Service status does not prove control works; detection never changes fan speed.")
+            fanBarText("尚无控制操作结果，可点击“重新检测”。", "No control result yet. Click Check Again to test.")
         }
     }
 }

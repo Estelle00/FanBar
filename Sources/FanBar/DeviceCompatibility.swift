@@ -1,3 +1,5 @@
+// Missing sensor or collection evidence is intentionally distinct from false.
+// swiftlint:disable discouraged_optional_boolean
 import Darwin
 import Foundation
 
@@ -21,6 +23,17 @@ struct CompatibilityDevice: Codable, Equatable {
         )
     }
 
+    var displayName: String {
+        Self.modelNames[modelIdentifier] ?? modelIdentifier
+    }
+
+    private static let modelNames: [String: String] = {
+        guard let url = Bundle.module.url(forResource: "mac-model-names", withExtension: "json"),
+              let data = try? Data(contentsOf: url),
+              let names = try? JSONDecoder().decode([String: String].self, from: data) else { return [:] }
+        return names
+    }()
+
     private static var architecture: String {
         #if arch(arm64)
         "Apple Silicon"
@@ -41,6 +54,7 @@ struct CompatibilityDevice: Codable, Equatable {
 
 enum CompatibilityStatus: String, Codable {
     case available
+    case notApplicable
     case notDetected
     case temporarilyUnavailable
     case requiresAuthorization
@@ -65,6 +79,7 @@ struct CompatibilityResult: Codable, Equatable, Identifiable {
     let capability: CompatibilityCapability
     let status: CompatibilityStatus
     let reasonCode: String
+    var userConfirmedWorking: Bool?
     var id: CompatibilityCapability { capability }
 }
 
@@ -77,7 +92,7 @@ struct CompatibilityObservation: Equatable {
 }
 
 /// A successful helper reply is evidence of a request, not proof of physical RPM.
-enum CompatibilityControlEvidence: String {
+enum CompatibilityControlEvidence: String, Codable {
     case unverified
     case requestSucceeded
     case requestFailed
@@ -90,6 +105,8 @@ struct CompatibilitySnapshot: Equatable {
     let curveSensor: FanCurveSensor
     let results: [CompatibilityResult]
 
+    // Bounded orchestration is covered by failure, cancellation, and restoration tests.
+    // swiftlint:disable:next function_body_length
     static func make(
         device: CompatibilityDevice,
         observation: CompatibilityObservation,
@@ -106,7 +123,10 @@ struct CompatibilitySnapshot: Equatable {
             (.batteryTemperature, thermal?.batteryCelsius),
         ]
         var results = readings.map { capability, value in
-            CompatibilityResult(
+            if capability == .batteryTemperature, thermal?.hasBuiltInBattery == false {
+                return CompatibilityResult(capability: capability, status: .notApplicable, reasonCode: "NO_BUILT_IN_BATTERY")
+            }
+            return CompatibilityResult(
                 capability: capability,
                 status: value.map { $0.isFinite && (10...120).contains($0) } == true
                     ? .available : observation.connectionFailed ? .temporarilyUnavailable : .notDetected,
@@ -178,7 +198,7 @@ struct CompatibilityReport: Codable {
     let reportID: UUID
     let device: CompatibilityDevice
     let fanCount: Int?
-    let capabilities: [CompatibilityResult]
+    var capabilities: [CompatibilityResult]
     let selectedTemperatureSource: FanCurveSensor
 
     init(snapshot: CompatibilitySnapshot) {
@@ -228,3 +248,5 @@ struct CompatibilityCatalog: Codable {
         }
     }
 }
+
+// swiftlint:enable discouraged_optional_boolean

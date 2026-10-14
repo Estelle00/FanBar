@@ -6,7 +6,8 @@ let package = Package(
     platforms: [.macOS(.v11)],
     products: [
         .executable(name: "FanBar", targets: ["FanBar"]),
-        .executable(name: "FanBarHelper", targets: ["FanBarHelper"])
+        .executable(name: "FanBarHelper", targets: ["FanBarHelper"]),
+        .executable(name: "FanBarDiagnostics", targets: ["FanBarDiagnostics"])
     ],
     dependencies: [
         // Pin release tooling and the embedded updater to the same audited build.
@@ -44,6 +45,7 @@ let package = Package(
             path: "Sources/FanBar",
             resources: [.process("Resources")]
         ),
+        .executableTarget(name: "FanBarDiagnostics", dependencies: ["FanBarShared"], path: "Sources/FanBarDiagnostics"),
         .executableTarget(
             name: "FanBarWidget",
             dependencies: ["FanBarShared", "FanBarUI"],

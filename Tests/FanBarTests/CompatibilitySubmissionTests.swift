@@ -170,7 +170,8 @@ final class CompatibilitySubmissionTests: XCTestCase {
     }
 
     func testConfigurationRejectsUnsafeDestinations() throws {
-        for value in ["http://report.getfanbar.com", "https://user:secret@report.getfanbar.com", "https://report.getfanbar.com?token=secret"] {
+        for value in ["http://report.getfanbar.com", "https://user:secret@report.getfanbar.com",
+            "https://report.getfanbar.com?token=secret"] {
             XCTAssertNil(CompatibilityServiceConfiguration(url: try XCTUnwrap(URL(string: value))))
         }
         let local = try XCTUnwrap(URL(string: "http://127.0.0.1:8787"))
@@ -229,6 +230,58 @@ final class CompatibilitySubmissionTests: XCTestCase {
         RunLoop.main.run(until: Date().addingTimeInterval(0.03))
         host.layoutSubtreeIfNeeded()
         return host.fittingSize
+    }
+
+    func testUploadEntryLoadsRulesWithoutSendingUntilConfirmed() async throws {
+        let store = MemoryCompatibilityReceipts()
+        let service = StubCompatibilityService(policy: try policy(), store: store)
+        let data = try reportData()
+        let upload = CompatibilityUploadCoordinator(data: data, configuration: try configuration(), api: service, store: store)
+        let host = NSHostingView(rootView: CompatibilityReportPreview(data: data, preparesSubmission: true, coordinator: upload))
+        host.frame = NSRect(x: 0, y: 0, width: 510, height: 550)
+        host.layoutSubtreeIfNeeded()
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+        XCTAssertEqual(service.policyCalls, 1)
+        XCTAssertNotNil(upload.policy)
+        XCTAssertTrue(service.submissions.isEmpty)
+        XCTAssertTrue(store.items.isEmpty)
+    }
+
+    func testHandsOnConfirmationChangesPreviewAndUploadWithoutReplacingDetection() async throws {
+        let store = MemoryCompatibilityReceipts()
+        let service = StubCompatibilityService(policy: try policy(), store: store)
+        let upload = CompatibilityUploadCoordinator(data: try reportData(), configuration: try configuration(), api: service, store: store)
+        let initial = try JSONDecoder().decode(CompatibilityReport.self, from: upload.data)
+        XCTAssertFalse(upload.isUserConfirmedWorking(.manualControl))
+        upload.setUserConfirmedWorking(.manualControl, confirmed: true)
+        upload.setUserConfirmedWorking(.smartCooling, confirmed: true)
+        upload.setUserConfirmedWorking(.cpuTemperature, confirmed: true)
+        let confirmed = try JSONDecoder().decode(CompatibilityReport.self, from: upload.data)
+        XCTAssertEqual(confirmed.reportID, initial.reportID)
+        XCTAssertEqual(confirmed.capabilities.first { $0.capability == .manualControl }?.status,
+            initial.capabilities.first { $0.capability == .manualControl }?.status)
+        XCTAssertTrue(upload.isUserConfirmedWorking(.manualControl))
+        XCTAssertFalse(upload.isUserConfirmedWorking(.cpuTemperature))
+        await upload.loadPolicy()
+        service.failNextSubmission = true
+        await upload.submit(consent: true, publishReport: false)
+        let sent = try XCTUnwrap(service.submissions.first?.reportData)
+        XCTAssertEqual(sent, upload.data)
+        upload.setUserConfirmedWorking(.manualControl, confirmed: false)
+        XCTAssertTrue(upload.isUserConfirmedWorking(.manualControl))
+        await upload.submit(consent: true, publishReport: false)
+        XCTAssertEqual(service.submissions.last?.reportData, sent)
+    }
+
+    func testUncheckingConfirmationOmitsOptionalField() throws {
+        let upload = CompatibilityUploadCoordinator(data: try reportData())
+        upload.setUserConfirmedWorking(.manualControl, confirmed: true)
+        upload.setUserConfirmedWorking(.manualControl, confirmed: false)
+        XCTAssertFalse(upload.isUserConfirmedWorking(.manualControl))
+        let json = try XCTUnwrap(String(bytes: upload.data, encoding: .utf8))
+        XCTAssertFalse(json.contains("userConfirmedWorking"))
     }
 
     func testTokensAreIndependentPerReport() throws {
