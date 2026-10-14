@@ -1,3 +1,4 @@
+import FanBarShared
 import Foundation
 import Security
 
@@ -33,7 +34,7 @@ struct CompatibilityServiceConfiguration: Equatable {
 }
 
 struct CompatibilityServicePolicy: Codable {
-    static let supportedVersion = "2026-10-13"
+    static let supportedVersion = ServiceContract.Compatibility.policyVersion
     let version: String
     let serviceOrigin: String
     let retentionDays: Int
@@ -42,7 +43,8 @@ struct CompatibilityServicePolicy: Codable {
 
     func validate(for configuration: CompatibilityServiceConfiguration) throws {
         guard version == Self.supportedVersion,
-              retentionDays == 90, maximumReportBytes == 16384,
+              retentionDays == ServiceContract.Compatibility.retentionDays,
+              maximumReportBytes == ServiceContract.Compatibility.maximumReportBytes,
               let origin = URL(string: serviceOrigin),
               origin.host == configuration.baseURL.host,
               origin.scheme == configuration.baseURL.scheme,
@@ -133,8 +135,9 @@ final class CompatibilityReportService: CompatibilityReportServing {
         let data = try await perform(URLRequest(url: configuration.url(path: "api/diagnostics/policy")))
         let policy = try JSONDecoder().decode(DiagnosticPolicy.self, from: data)
         let origin = configuration.baseURL.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard policy.version == DiagnosticPolicy.supportedVersion, policy.retentionDays == 90,
-              policy.maximumBytes == 262144, policy.serviceOrigin == origin
+        guard policy.version == DiagnosticPolicy.supportedVersion,
+              policy.retentionDays == ServiceContract.Diagnostics.retentionDays,
+              policy.maximumBytes == ServiceContract.Diagnostics.maximumBytes, policy.serviceOrigin == origin
         else { throw CompatibilityServiceError.policyChanged }
         return policy
     }
@@ -229,7 +232,7 @@ struct CompatibilitySavedReceipt: Codable, Equatable, Identifiable {
 }
 
 struct DiagnosticPolicy: Decodable {
-    static let supportedVersion = "diagnostics-2026-10-14-v3"
+    static let supportedVersion = ServiceContract.Diagnostics.policyVersion
     let version: String
     let serviceOrigin: String
     let retentionDays: Int

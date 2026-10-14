@@ -39,7 +39,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--output"), CommandLine.arg
 
 do {
     let bytes = try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted, .sortedKeys])
-    guard bytes.count <= 262144 else { throw NSError(domain: "FanBarDiagnostics", code: 1) }
+    guard bytes.count <= ServiceContract.Diagnostics.maximumBytes else { throw NSError(domain: "FanBarDiagnostics", code: 1) }
     try bytes.write(to: output, options: .atomic)
     try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: output.path)
     print("诊断已导出 / Diagnostics exported: \(output.path)")

@@ -41,7 +41,7 @@ final class CompatibilityControlHistoryTests: XCTestCase {
         let date = Date(timeIntervalSince1970: 1_700_000_000)
         let receipt = CompatibilitySavedReceipt(reportID: report.reportID.uuidString,
             serviceURL: try XCTUnwrap(URL(string: "https://report.getfanbar.com")), deletionToken: "test",
-            reportData: try report.jsonData(), publishReport: false, policyVersion: "2026-10-13", createdAt: date)
+            reportData: try report.jsonData(), publishReport: false, policyVersion: CompatibilityServicePolicy.supportedVersion, createdAt: date)
         let saved = try XCTUnwrap(CompatibilityControlHistoryStore.recover(from: [receipt], for: device))
         XCTAssertEqual(saved.manual, .requestSucceeded)
         XCTAssertEqual(saved.curve, .unverified)
