@@ -14,6 +14,7 @@ struct DiagnosticUploadView: View {
     @State private var history: [CompatibilitySavedReceipt] = []
     @State private var consent = false
     @State private var busy = false
+    @State private var preparationTask: Task<Void, Never>?
     @State private var error: String?
     private let store = CompatibilityReceiptStore(service: "local.fanbar.diagnostics.receipts")
 
@@ -48,7 +49,7 @@ struct DiagnosticUploadView: View {
                             .font(.caption).foregroundColor(.secondary)
                         DisclosureGroup(fanBarText("查看日志详情", "View log details")) {
                             Text((try? report.jsonData()).flatMap { String(data: $0, encoding: .utf8) } ?? "")
-                                .font(.system(size: 10, design: .monospaced)).textSelection(.enabled)
+                                .font(.system(size: 10, design: .monospaced)).fanBarSelectableText()
                                 .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
                         }.font(.caption)
                     } else {
@@ -56,7 +57,7 @@ struct DiagnosticUploadView: View {
                     }
                     if let response = receipt?.response {
                         Text(fanBarText("上传成功，请将诊断编号提供给开发者。", "Uploaded. Share the diagnostic ID with the developer.")).font(.headline)
-                        Text(response.reportID).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        Text(response.reportID).font(.system(.caption, design: .monospaced)).fanBarSelectableText()
                         Button(fanBarText("复制诊断编号", "Copy diagnostic ID")) {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(response.reportID, forType: .string)
@@ -85,7 +86,7 @@ struct DiagnosticUploadView: View {
                         DisclosureGroup(fanBarText("诊断上传记录与撤回", "Diagnostic history and withdrawal")) {
                             ForEach(history) { item in
                                 VStack(alignment: .leading, spacing: 6) {
-                                    Text(item.reportID).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                                    Text(item.reportID).font(.system(.caption, design: .monospaced)).fanBarSelectableText()
                                     HStack {
                                         Text(item.createdAt, style: .date).font(.caption).foregroundColor(.secondary)
                                         Spacer()
@@ -115,14 +116,25 @@ struct DiagnosticUploadView: View {
             }
         }
         .padding(24).frame(width: 560, height: 600)
-        .interactiveDismissDisabled(busy)
-        .task {
-            // Yield once so the collection state can render before hardware probes.
-            await Task.yield()
-            report = controller.collectDiagnosticReport()
-            do { history = try store.receipts() } catch { self.error = CompatibilityServiceError.credentialStorage.message }
-            await loadPolicy()
+        .fanBarInteractiveDismissDisabled(busy)
+        .onAppear {
+            guard preparationTask == nil else { return }
+            preparationTask = Task { await prepare() }
         }
+        .onDisappear {
+            preparationTask?.cancel()
+            preparationTask = nil
+        }
+    }
+
+    private func prepare() async {
+        // Yield once so the collection state can render before hardware probes.
+        await Task.yield()
+        guard !Task.isCancelled else { return }
+        report = controller.collectDiagnosticReport()
+        do { history = try store.receipts() } catch { self.error = CompatibilityServiceError.credentialStorage.message }
+        guard !Task.isCancelled else { return }
+        await loadPolicy()
     }
 
     private func service(for url: URL? = nil) throws -> CompatibilityReportService {

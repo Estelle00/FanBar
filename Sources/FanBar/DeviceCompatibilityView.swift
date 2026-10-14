@@ -140,7 +140,7 @@ struct DeviceCompatibilityView: View {
                     .font(.system(size: 14, weight: .semibold))
                 Spacer()
                 if !controls {
-                    Text(snapshot.checkedAt, style: .time).font(.system(size: 11)).monospacedDigit().foregroundColor(.secondary)
+                    Text(snapshot.checkedAt, style: .time).font(.system(size: 11, design: .monospaced)).foregroundColor(.secondary)
                 }
             }
             SettingsChrome.settingsCard {
@@ -219,7 +219,7 @@ struct DeviceCompatibilityView: View {
                     Button(fanBarText("上传诊断日志…", "Upload diagnostic logs…")) { presentation = .diagnostics }
                         .disabled(controller.isBusy).fixedSize()
                     Button(fanBarText("上传报告…", "Upload report…")) { previewReport(snapshot) }
-                        .buttonStyle(.borderedProminent)
+                        .fanBarPrimaryButton()
                         .disabled(controller.isBusy).fixedSize()
                 }
                 .controlSize(.regular)

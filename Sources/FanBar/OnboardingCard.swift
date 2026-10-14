@@ -77,7 +77,7 @@ struct OnboardingCard: View {
                             .font(.system(size: 11, weight: .semibold))
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .fanBarPrimaryButton()
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
             }
