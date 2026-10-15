@@ -48,6 +48,7 @@ enum JapaneseCatalog {
         "Deselect all": "すべて選択解除",
         "Select all tested features": "動作確認項目をすべて選択",
         "Local hands-on confirmation (optional)": "この Mac での動作確認（任意）",
+        "Not available: the automatic check shows this control could not run on this Mac.": "利用不可：自動確認で、この制御は本機で実行できなかったことが示されています。",
         "Select only if you have actually used the feature and confirmed it works. Uploaded as user confirmation; automatic results stay unchanged.": "実際に機能を使用し、正常に動作した場合のみ選択してください。ユーザーの確認として送信され、自動確認の結果は変更されません。",
         "I have used %@ on this Mac and confirmed it works": "この Mac で%@を実際に使用し、動作を確認しました",
         "Upload report…": "レポートを送信…",

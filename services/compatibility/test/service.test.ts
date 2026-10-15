@@ -300,6 +300,28 @@ describe('admin insights', () => {
 });
 
 
+describe('public matrix pagination', () => {
+  it('pages through every combination instead of dropping older ones', async () => {
+    for (let index = 0; index < 21; index++) {
+      const report = fixture();
+      report.device = { ...report.device, appVersion: `1.${index}` };
+      expect((await submit(report)).status).toBe(201);
+      expect((await review(report.reportID)).status).toBe(200);
+    }
+    const first = await (await SELF.fetch(request('/api/compatibility'))).json<any>();
+    expect(first.groups).toHaveLength(20);
+    expect(first).toMatchObject({ truncated: true, nextOffset: 20 });
+    const second = await (await SELF.fetch(request('/api/compatibility?offset=20'))).json<any>();
+    expect(second.groups).toHaveLength(1);
+    expect(second).toMatchObject({ truncated: false, nextOffset: null });
+    const versions = new Set([...first.groups, ...second.groups].map((group: any) => group.appVersion));
+    expect(versions.size).toBe(21);
+    for (const offset of ['-1', '1.5', 'x', '100001']) {
+      expect((await SELF.fetch(request('/api/compatibility?offset=' + offset))).status).toBe(400);
+    }
+  });
+});
+
 describe('user hands-on confirmations', () => {
   it('retains optional control confirmations without changing automatic statuses', async () => {
     const report = fixture();
@@ -316,6 +338,20 @@ describe('user hands-on confirmations', () => {
     const distribution = await (await SELF.fetch(request('/api/compatibility'))).json<any>();
     expect(distribution.groups[0].community.find((row: any) => row.capability === 'manualControl').userConfirmedWorking).toBe(1);
     expect(distribution.groups[0].developerVerifications).toEqual([]);
+  });
+  it('rejects confirmations on results showing control could not have run', async () => {
+    const contradictions = [
+      { status: 'requestFailed', reasonCode: 'CONTROL_REQUEST_FAILED' },
+      { status: 'requiresAuthorization', reasonCode: 'HELPER_AUTHORIZATION_REQUIRED' },
+      { status: 'temporarilyUnavailable', reasonCode: 'HELPER_MISSING' },
+    ] as const;
+    for (const result of contradictions) {
+      const report = fixture();
+      report.capabilities[5] = { capability: 'manualControl', ...result, userConfirmedWorking: true };
+      expect((await submit(report)).status).toBe(400);
+      delete report.capabilities[5].userConfirmedWorking;
+      expect((await submit(report)).status).toBe(201);
+    }
   });
   it('rejects confirmations on sensors and values other than true', async () => {
     for (const [index, confirmation] of [[0, true], [5, false], [5, 'true']]) {

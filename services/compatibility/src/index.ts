@@ -41,7 +41,9 @@ async function route(request: Request, env: Env): Promise<Response> {
     await rateLimit(request, env, 'read');
     const model = url.searchParams.get('model') ?? '';
     if (model.length > 64) throw new HttpError(400, 'INVALID_MODEL');
-    return publicMatrix(env, model);
+    const offset = Number(url.searchParams.get('offset') ?? 0);
+    if (!Number.isInteger(offset) || offset < 0 || offset > 100000) throw new HttpError(400, 'INVALID_OFFSET');
+    return publicMatrix(env, model, offset);
   }
   if (path.startsWith('/api/admin/')) {
     await rateLimit(request, env, request.method === 'GET' ? 'read' : 'write');
