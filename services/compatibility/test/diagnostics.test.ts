@@ -128,3 +128,17 @@ it('limits diagnostic uploads per network address more strictly than reports', a
   }
   expect(statuses).toEqual([201, 201, 429]);
 });
+
+it('accepts the running helper build and separates scan from probe truncation', async () => {
+  const body = { ...fixture(),
+    runningHelper: { status: 'reported', build: '26' },
+    discovery: { reportedKeyCount: 1369, scannedKeyCount: 1369, truncated: false, probesTruncated: true },
+  };
+  expect((await request('/api/diagnostics', 'POST', body)).status).toBe(201);
+  const detail = await request('/api/admin/diagnostics?id=' + body.diagnosticID, 'GET', undefined, env.ADMIN_TOKEN!);
+  expect(await detail.json()).toMatchObject({ diagnostic: body });
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'noReply' } })).status).toBe(201);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'connectionFailed', code: 4097 } })).status).toBe(201);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'reported', build: '/Users/me' } })).status).toBe(400);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'running' } })).status).toBe(400);
+});

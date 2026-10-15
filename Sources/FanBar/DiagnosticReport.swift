@@ -36,6 +36,7 @@ struct DiagnosticReport: Encodable {
     var runtimeContext: DiagnosticRuntimeContext?
     var crashLogAvailable: Bool?
     var helperStateSource: String?
+    var runningHelper: DiagnosticRunningHelper?
 
     func jsonData() throws -> Data {
         let encoder = JSONEncoder()
@@ -57,8 +58,29 @@ struct DiagnosticDiscovery: Codable, Sendable {
     var reportedKeyCount: Int?
     var temperatureKeys: [String] = []
     var scannedKeyCount = 0
+    /// The SMC key scan stopped early (deadline or read error); temperatureKeys may be incomplete.
     var truncated = false
+    /// The scan finished, but some unrecognized temperature keys were left out of the probe list.
+    var probesTruncated = false
     var errorCode: Int32?
+}
+
+/// The build the running helper daemon reports, compared with the build this app bundles.
+/// A mismatch means a stale daemon survived an update.
+struct DiagnosticRunningHelper: Codable, Equatable, Sendable {
+    /// reported, noReply, connectionFailed, or notQueried (helper not enabled).
+    let status: String
+    var build: String?
+    var code: Int?
+
+    init(_ query: HelperBuildQuery?) {
+        switch query {
+        case .reported(let build): status = "reported"; self.build = build
+        case .noReply: status = "noReply"
+        case .connectionFailed(let code): status = "connectionFailed"; self.code = code
+        case nil: status = "notQueried"
+        }
+    }
 }
 
 /// Evidence that can take seconds to gather (unified log, crash files, SMC key scan).

@@ -57,4 +57,30 @@ public enum FanControlTiming {
     func restoreAutomatic(
         reply: @escaping @Sendable (Bool, String?) -> Void
     )
+
+    /// Read-only: the build this helper process was launched from, captured at startup.
+    /// A daemon still running from before an app update reports its old build, which is
+    /// exactly what diagnostics need to see. Helpers older than this method never reply.
+    func getBuildVersion(
+        reply: @escaping @Sendable (String) -> Void
+    )
+}
+
+public enum HelperLaunchBuild {
+    /// The helper ships at FanBar.app/Contents/Library/LaunchServices/<helper>, without its own
+    /// Info.plist, so it reads the enclosing app's CFBundleVersion. Call once at process start:
+    /// reading later would report a replaced bundle instead of the code actually running.
+    public static func read(executableURL: URL) -> String {
+        let contents = executableURL.resolvingSymlinksInPath()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        guard contents.lastPathComponent == "Contents",
+              let info = NSDictionary(contentsOf: contents.appendingPathComponent("Info.plist")),
+              let build = info["CFBundleVersion"] as? String else { return "unknown" }
+        return sanitized(build)
+    }
+
+    /// Only short version tokens leave the helper, never arbitrary plist text.
+    public static func sanitized(_ build: String) -> String {
+        build.range(of: #"^[A-Za-z0-9._+-]{1,40}$"#, options: .regularExpression) == nil ? "unknown" : build
+    }
 }

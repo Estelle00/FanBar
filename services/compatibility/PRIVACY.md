@@ -122,3 +122,17 @@ OS build, architecture, coarse bundle location and bundled-helper presence (no p
 The separately signed FanBarDiagnostics executable and companion .command launcher can
 export the same sanitized evidence without loading the app UI, registering a daemon,
 changing fan control, or uploading anything.
+
+### Diagnostics revision (diagnostics-2026-10-15-v4)
+
+Adds `runningHelper`: whether the running Helper daemon answered a read-only build query
+(`reported`, `noReply`, `connectionFailed`, or `notQueried` when the Helper is not enabled), its
+build token, and a numeric connection error code. It is compared with `device.helperVersion`, the
+build bundled in the app, to detect a stale daemon left running after an update. The query uses a
+separate short-lived connection and never changes fan control.
+
+Helper events now cover the last 24 hours for failures, rejections and lifecycle markers
+(startup, shutdown, recovery, authorization) and the last 10 minutes for everything else, still
+bounded to 64 events. `discovery.truncated` now means only that the SMC key scan stopped early;
+`discovery.probesTruncated` means the scan finished but some unrecognized keys were left out of
+the probe list.

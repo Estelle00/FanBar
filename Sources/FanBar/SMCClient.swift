@@ -277,7 +277,7 @@ final class SMCClient: FanReadingSource {
             let lhs = priority[$0.result] ?? 4, rhs = priority[$1.result] ?? 4
             return lhs == rhs ? ($0.key ?? "") < ($1.key ?? "") : lhs < rhs
         }.prefix(remaining)
-        if unrecognized.count > remaining { discovery.truncated = true }
+        if unrecognized.count > remaining { discovery.probesTruncated = true }
         diagnosticDiscovery = discovery
         for (source, readTemperature) in [
             ("embeddedNVMe", fanbar_embedded_nvme_temperature), ("nvmeSMART", fanbar_nvme_temperature),

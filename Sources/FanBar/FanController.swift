@@ -193,6 +193,7 @@ final class FanController: ObservableObject {
 
     private let makeReadingSource: () throws -> FanReadingSource
     private let makeDiagnosticSource: @Sendable () throws -> FanReadingSource
+    private let queryRunningHelperBuild: @Sendable () async -> HelperBuildQuery
     private var localClient: FanReadingSource?
     private let helperClient = HelperClient()
     private let helperService = FanBarServiceManager()
@@ -259,10 +260,12 @@ final class FanController: ObservableObject {
         widgetSnapshotDestination: WidgetSnapshotDestination = .sharedContainer,
         makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() },
         makeDiagnosticSource: @escaping @Sendable () throws -> FanReadingSource = { try SMCClient() },
+        queryRunningHelperBuild: @escaping @Sendable () async -> HelperBuildQuery = { await HelperClient.queryRunningBuild() },
         compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil
     ) {
         self.makeReadingSource = makeReadingSource
         self.makeDiagnosticSource = makeDiagnosticSource
+        self.queryRunningHelperBuild = queryRunningHelperBuild
         if let compatibilityHistoryStore {
             self.compatibilityHistoryStore = compatibilityHistoryStore
         } else if case .sharedContainer = widgetSnapshotDestination {
@@ -495,9 +498,11 @@ final class FanController: ObservableObject {
         report.runtimeContext = DiagnosticRuntimeContext.current()
         report.recentSamples = diagnosticSamples.filter { Date().timeIntervalSince($0.sampledAt) <= 60 }
         let makeSource = makeDiagnosticSource
-        let evidence = await Task.detached(priority: .userInitiated) {
+        async let backgroundEvidence = Task.detached(priority: .userInitiated) {
             DiagnosticBackgroundEvidence.collect(makeSource: makeSource)
         }.value
+        report.runningHelper = await Self.runningHelper(state: helperState, query: queryRunningHelperBuild)
+        let evidence = await backgroundEvidence
         report.runtimeEvents = RuntimeDiagnostics.shared.snapshot() + evidence.helperEvents
         report.helperLogAvailable = evidence.helperLogAvailable
         report.crashes = evidence.crashes
@@ -508,6 +513,13 @@ final class FanController: ObservableObject {
         report.probes = evidence.probes
         report.discovery = evidence.discovery
         return report
+    }
+
+    /// Ask only an enabled helper: a diagnostic query must never register or launch one.
+    static func runningHelper(
+        state: HelperState, query: @Sendable () async -> HelperBuildQuery
+    ) async -> DiagnosticRunningHelper {
+        DiagnosticRunningHelper(state == .enabled ? await query() : nil)
     }
 
     private func persistCompatibilityControlEvidence() {

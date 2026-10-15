@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { canonical, HttpError, json, reportToken, sameHash, sha256 } from './http.ts';
 import { DIAGNOSTIC_MAXIMUM_BYTES, DIAGNOSTIC_POLICY_VERSION, DIAGNOSTIC_RETENTION_DAYS } from './policy.ts';
-import { reportSchema } from './schema.ts';
+import { reportSchema, version } from './schema.ts';
 
 export const DIAGNOSTIC_POLICY = DIAGNOSTIC_POLICY_VERSION;
 /**
@@ -12,7 +12,7 @@ export const DIAGNOSTIC_DAILY_LIMIT = 200;
 export const DIAGNOSTIC_STORED_LIMIT = 5000;
 export function diagnosticPolicy(origin: string) {
   return { version: DIAGNOSTIC_POLICY, serviceOrigin: origin, retentionDays: DIAGNOSTIC_RETENTION_DAYS, maximumBytes: DIAGNOSTIC_MAXIMUM_BYTES,
-    fields: ['schemaVersion', 'diagnosticID', 'capturedAt', 'device', 'helperState', 'thermal', 'fanCount', 'connectionErrorCode', 'probes', 'recentSamples', 'discovery', 'runtimeEvents', 'crashes', 'runtimeContext', 'helperLogAvailable', 'crashLogAvailable', 'helperStateSource'],
+    fields: ['schemaVersion', 'diagnosticID', 'capturedAt', 'device', 'helperState', 'thermal', 'fanCount', 'connectionErrorCode', 'probes', 'recentSamples', 'discovery', 'runtimeEvents', 'crashes', 'runtimeContext', 'helperLogAvailable', 'crashLogAvailable', 'helperStateSource', 'runningHelper'],
     excluded: ['serialNumber', 'hardwareUUID', 'userName', 'hostName', 'filePaths', 'processes', 'systemLogs'],
     visibility: 'administratorsOnly', contributesToCompatibilityStatistics: false, backupMaximumDays: 30,
   };
@@ -73,7 +73,13 @@ export const diagnosticSchema = z.strictObject({
   discovery: z.strictObject({
     reportedKeyCount: z.number().int().min(0).max(4294967295).optional(),
     temperatureKeys: z.array(z.string().regex(/^T[A-Za-z0-9]{3}$/)).max(512).optional(),
-    scannedKeyCount: z.number().int().min(0).max(4096), truncated: z.boolean(), errorCode: errorCode.optional(),
+    scannedKeyCount: z.number().int().min(0).max(4096), truncated: z.boolean(), probesTruncated: z.boolean().optional(),
+    errorCode: errorCode.optional(),
+  }).optional(),
+  // Build reported by the running helper daemon; differs from device.helperVersion when a stale daemon survived an update.
+  runningHelper: z.strictObject({
+    status: z.enum(['reported', 'noReply', 'connectionFailed', 'notQueried']),
+    build: version.optional(), code: errorCode.optional(),
   }).optional(),
 });
 interface DiagnosticRow {

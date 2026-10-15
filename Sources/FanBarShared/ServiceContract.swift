@@ -9,7 +9,7 @@ public enum ServiceContract {
     }
 
     public enum Diagnostics {
-        public static let policyVersion = "diagnostics-2026-10-14-v3"
+        public static let policyVersion = "diagnostics-2026-10-15-v4"
         public static let retentionDays = 90
         public static let maximumBytes = 262_144
     }
