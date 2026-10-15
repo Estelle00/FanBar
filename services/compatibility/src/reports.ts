@@ -1,4 +1,4 @@
-import { canonical, HttpError, json, reportToken, sameHash, sha256 } from './http.ts';
+import { canonical, HttpError, json, reportToken, sameHash, sha256, withdrawalKey } from './http.ts';
 import { POLICY_VERSION, RETENTION_DAYS } from './policy.ts';
 import { reportSchema, validEvidence } from './schema.ts';
 
@@ -26,7 +26,7 @@ export async function submitReport(request: Request, env: Env, body: unknown): P
   const now = new Date();
   const expiry = new Date(now.getTime() + RETENTION_DAYS * 86400000).toISOString();
   const device = payload.device;
-  const idHash = await sha256(id);
+  const idHash = await withdrawalKey(id, tokenHash);
   const result = await env.DB.prepare(`INSERT INTO reports
     (id, payload, payload_hash, deletion_token_hash, model_identifier, os_version, app_version, helper_version,
      publish_report, policy_version, created_at, expires_at)
@@ -55,12 +55,11 @@ export async function ownerReceipt(request: Request, env: Env, id: string): Prom
 export async function deleteReport(request: Request, env: Env, id: string): Promise<Response> {
   const normalized = id.toLowerCase();
   const tokenHash = await sha256(reportToken(request));
-  const idHash = await sha256(normalized);
+  const idHash = await withdrawalKey(normalized, tokenHash);
   const row = await findReport(env, normalized);
-  const marker = await env.DB.prepare('SELECT deletion_token_hash FROM withdrawals WHERE report_id_hash = ?')
-    .bind(idHash).first<{ deletion_token_hash: string }>();
-  if ((row && !sameHash(row.deletion_token_hash, tokenHash))
-      || (marker && !sameHash(marker.deletion_token_hash, tokenHash))) throw new HttpError(404, 'REPORT_NOT_FOUND');
+  if (row && !sameHash(row.deletion_token_hash, tokenHash)) throw new HttpError(404, 'REPORT_NOT_FOUND');
+  // With no row yet, still record the marker: the owner may be withdrawing an upload
+  // whose response was lost and whose request has not arrived. It binds only this credential.
   const expiresAt = new Date(Date.now() + RETENTION_DAYS * 86400000).toISOString();
   // Insert the marker and remove payload in one transaction; even a late POST cannot resurrect it.
   await env.DB.batch([
@@ -83,8 +82,12 @@ export async function cleanup(env: Env): Promise<void> {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM diagnostics WHERE expires_at <= ?').bind(now),
     env.DB.prepare('DELETE FROM diagnostic_withdrawals WHERE expires_at <= ?').bind(now),
-    env.DB.prepare(`DELETE FROM reviews WHERE (object_type = 'report' AND object_id IN
-      (SELECT id FROM reports WHERE expires_at <= ?)) OR reviewed_at < ?`).bind(now, cutoff),
+    // Report audits follow report retention. A verification's audit is kept while the
+    // verification itself is still published, since those records persist until removed.
+    env.DB.prepare(`DELETE FROM reviews WHERE (object_type = 'report' AND (reviewed_at < ? OR object_id IN
+      (SELECT id FROM reports WHERE expires_at <= ?)))
+      OR (object_type = 'verification' AND reviewed_at < ? AND object_id NOT IN (SELECT id FROM verifications))`)
+      .bind(cutoff, now, cutoff),
     env.DB.prepare('DELETE FROM reports WHERE expires_at <= ?').bind(now),
     env.DB.prepare('DELETE FROM withdrawals WHERE expires_at <= ?').bind(now),
   ]);

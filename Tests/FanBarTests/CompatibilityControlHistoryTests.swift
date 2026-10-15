@@ -48,6 +48,26 @@ final class CompatibilityControlHistoryTests: XCTestCase {
         XCTAssertEqual(saved.recordedAt, date)
     }
 
+    func testReceiptRecoveryIsAttemptedOncePerDevice() throws {
+        let suite = "fanbar-test-control-history-\(UUID())"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = CompatibilityControlHistoryStore(defaults: defaults)
+        let device = CompatibilityDevice.current(helperVersion: "test")
+        XCTAssertTrue(store.needsRecovery(for: device))
+        store.markRecoveryAttempted(for: device)
+        XCTAssertFalse(store.needsRecovery(for: device))
+        XCTAssertTrue(store.needsRecovery(for: .current(helperVersion: "next")))
+    }
+
+    func testOneUnreadableReceiptDoesNotHideTheOthers() throws {
+        let receipt = CompatibilitySavedReceipt(reportID: UUID().uuidString.lowercased(),
+            serviceURL: try XCTUnwrap(URL(string: "https://report.getfanbar.com")), deletionToken: "test",
+            reportData: Data("{}".utf8), publishReport: false, policyVersion: "2026-10-13", createdAt: Date())
+        let decoded = CompatibilityReceiptStore.decode([Data("corrupted".utf8), try JSONEncoder().encode(receipt)])
+        XCTAssertEqual(decoded, [receipt])
+    }
+
     func testInvalidHistoryIsIgnored() throws {
         let suite = "fanbar-test-control-history-\(UUID())"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

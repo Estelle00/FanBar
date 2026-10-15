@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { canonical, HttpError, json, reportToken, sameHash, sha256 } from './http.ts';
+import { canonical, HttpError, json, reportToken, sameHash, sha256, withdrawalKey } from './http.ts';
 import { reportSchema } from './schema.ts';
 
 export const DIAGNOSTIC_POLICY = 'diagnostics-2026-10-14-v3';
@@ -93,7 +93,7 @@ export async function submitDiagnostic(request: Request, env: Env, body: unknown
   const text = canonical(payload);
   const hash = await sha256(text);
   const tokenHash = await sha256(reportToken(request));
-  const idHash = await sha256(id);
+  const idHash = await withdrawalKey(id, tokenHash);
   const now = new Date().toISOString();
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
   const expires = new Date(Date.now() + 90 * 86400000).toISOString();
@@ -121,13 +121,9 @@ export async function submitDiagnostic(request: Request, env: Env, body: unknown
 export async function deleteDiagnostic(request: Request, env: Env, id: string) {
   const normalized = id.toLowerCase();
   const tokenHash = await sha256(reportToken(request));
-  const idHash = await sha256(normalized);
+  const idHash = await withdrawalKey(normalized, tokenHash);
   const row = await find(env, normalized);
-  const marker = await env.DB.prepare('SELECT deletion_token_hash FROM diagnostic_withdrawals WHERE id_hash = ?')
-    .bind(idHash).first<{ deletion_token_hash: string }>();
-  if ((row && !sameHash(row.deletion_token_hash, tokenHash)) || (marker && !sameHash(marker.deletion_token_hash, tokenHash))) {
-    throw new HttpError(404, 'DIAGNOSTIC_NOT_FOUND');
-  }
+  if (row && !sameHash(row.deletion_token_hash, tokenHash)) throw new HttpError(404, 'DIAGNOSTIC_NOT_FOUND');
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO diagnostic_withdrawals (id_hash, deletion_token_hash, expires_at)
       VALUES (?, ?, ?) ON CONFLICT(id_hash) DO NOTHING`)

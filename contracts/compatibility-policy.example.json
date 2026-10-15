@@ -5,7 +5,7 @@
   "maximumReportBytes": 16384,
   "backupMaximumDays": 30,
   "operator": "FanBar project maintainers",
-  "sourceURL": "https://github.com/helson-lin/FanBar/tree/codex/device-compatibility/services/compatibility",
+  "sourceURL": "https://github.com/helson-lin/FanBar/tree/main/services/compatibility",
   "fields": [
     "schemaVersion",
     "reportID",

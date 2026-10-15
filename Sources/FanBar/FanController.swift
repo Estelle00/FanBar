@@ -288,11 +288,16 @@ final class FanController: ObservableObject {
             .standardizedFileURL.path
         let historyDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
         var savedHistory = self.compatibilityHistoryStore?.load(for: historyDevice)
+        // Recovering from receipts reads the Keychain, so try it once per device/version
+        // instead of on every launch for users who never ran the test.
         if savedHistory == nil, case .sharedContainer = widgetSnapshotDestination,
-           let receipts = try? CompatibilityReceiptStore().receipts(),
-           let recovered = CompatibilityControlHistoryStore.recover(from: receipts, for: historyDevice) {
-            self.compatibilityHistoryStore?.save(recovered)
-            savedHistory = recovered
+           let historyStore = self.compatibilityHistoryStore, historyStore.needsRecovery(for: historyDevice) {
+            historyStore.markRecoveryAttempted(for: historyDevice)
+            if let receipts = try? CompatibilityReceiptStore().receipts(),
+               let recovered = CompatibilityControlHistoryStore.recover(from: receipts, for: historyDevice) {
+                historyStore.save(recovered)
+                savedHistory = recovered
+            }
         }
         if let saved = savedHistory {
             manualControlEvidence = saved.manual
@@ -545,6 +550,9 @@ final class FanController: ObservableObject {
                 compatibilityControlMessage = fanBarFormat("控制测试失败：%@。已恢复系统自动控制。",
                     "Control test failed: %@. System automatic control restored.",
                     error)
+            } else if result.cancelled, result.restored {
+                compatibilityControlMessage = fanBarText("控制测试已取消，已恢复系统自动控制。",
+                    "Control test cancelled. System automatic control restored.")
             }
             isTestingCompatibilityControl = false
             if !Task.isCancelled, result.manual != .unverified || result.curve != .unverified {
