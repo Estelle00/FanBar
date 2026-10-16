@@ -40,9 +40,9 @@ enum CatalogCallSites {
 
     /// `String(format:)` pairs arguments by position, so a translated template
     /// must carry the same specifiers in the same order as the English one.
-    static func specifiers(in template: String) -> [String] {
+    static func specifiers(in template: String) throws -> [String] {
         let pattern = #"%(?:\d+\$)?[-+ #0]*\d*(?:\.\d+)?(?:ll|l|h)?[@dDiuUxXoOfFeEgGcCsSaAp%]"#
-        let regex = try! NSRegularExpression(pattern: pattern)
+        let regex = try NSRegularExpression(pattern: pattern)
         let range = NSRange(template.startIndex..., in: template)
         return regex.matches(in: template, range: range).compactMap {
             Range($0.range, in: template).map { String(template[$0]) }

@@ -24,7 +24,7 @@ final class RussianCatalogTests: XCTestCase {
         for site in try CatalogCallSites.scan() where site.isFormat {
             guard let translated = RussianCatalog.text(for: site.english) else { continue }
             XCTAssertEqual(
-                CatalogCallSites.specifiers(in: translated), CatalogCallSites.specifiers(in: site.english),
+                try CatalogCallSites.specifiers(in: translated), try CatalogCallSites.specifiers(in: site.english),
                 "Specifiers differ for \"\(site.english)\" (\(site.location))"
             )
         }
