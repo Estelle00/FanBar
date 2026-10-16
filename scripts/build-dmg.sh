@@ -21,16 +21,37 @@ volume_name="FanBar ${version}"
 temporary_root="$(mktemp -d)"
 trap 'rm -rf "${temporary_root}"' EXIT
 
-# A simple native layout remains reliable across light/dark mode and macOS versions.
-ditto "${app_path}" "${temporary_root}/FanBar.app"
-ln -s /Applications "${temporary_root}/Applications"
+background_path="${project_root}/Assets/DMG/FanBar-dmg-background.tiff"
+window_width=660
+window_height=400
 rm -f "${output_path}"
-hdiutil create \
-    -volname "${volume_name}" \
-    -srcfolder "${temporary_root}" \
-    -format UDZO \
-    -ov \
-    "${output_path}"
+ditto "${app_path}" "${temporary_root}/FanBar.app"
+if command -v create-dmg >/dev/null 2>&1; then
+    # create-dmg lays out the window (background, icon positions, Applications link).
+    # Its own drop link replaces the manual symlink used by the fallback below.
+    create-dmg \
+        --volname "${volume_name}" \
+        --background "${background_path}" \
+        --window-pos 200 120 \
+        --window-size "${window_width}" "${window_height}" \
+        --icon-size 128 \
+        --icon "FanBar.app" 180 200 \
+        --hide-extension "FanBar.app" \
+        --app-drop-link 480 200 \
+        --no-internet-enable \
+        "${output_path}" \
+        "${temporary_root}"
+else
+    print -u2 "create-dmg not found; building a plain DMG without the background."
+    # A simple native layout remains reliable across light/dark mode and macOS versions.
+    ln -s /Applications "${temporary_root}/Applications"
+    hdiutil create \
+        -volname "${volume_name}" \
+        -srcfolder "${temporary_root}" \
+        -format UDZO \
+        -ov \
+        "${output_path}"
+fi
 
 dmg_identity="${FANBAR_DMG_SIGN_IDENTITY:-${FANBAR_SIGN_IDENTITY:-Developer ID Application: JiangLin He (64S5F787T9)}}"
 if [[ "${dmg_identity}" == "-" ]]; then
