@@ -303,16 +303,32 @@ final class CustomCoolingPresetTests: XCTestCase {
         XCTAssertTrue(CustomCoolingPresetStore.load().isEmpty)
     }
 
-    /// Writes the preset section for 0–6 custom presets to PNGs when
-    /// FANBAR_DESIGN_CAPTURE_PATH is set, for reviewing the grid layout.
+    // MARK: - Rendering
+
+    /// Renders a view offscreen so its body runs; returns the bitmap.
     @MainActor
-    func testCapturePresetGridForDesignReview() throws {
-        guard let path = ProcessInfo.processInfo.environment["FANBAR_DESIGN_CAPTURE_PATH"] else {
-            throw XCTSkip("Set FANBAR_DESIGN_CAPTURE_PATH to capture the preset grid.")
-        }
+    @discardableResult
+    private func render(_ view: some View, width: CGFloat = SettingsChrome.contentWidth) throws -> NSBitmapImageRep {
+        let host = NSHostingView(rootView: view.frame(width: width).background(Color(NSColor.windowBackgroundColor)))
+        host.frame.size = host.fittingSize
+        host.layoutSubtreeIfNeeded()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+        host.cacheDisplay(in: host.bounds, to: bitmap)
+        XCTAssertGreaterThan(host.bounds.height, 0)
+        return bitmap
+    }
+
+    /// Renders the preset section for 0–6 custom presets, including the
+    /// rename field and the curve editor's custom-preset header. Set
+    /// FANBAR_DESIGN_CAPTURE_PATH to also write the renders as PNGs.
+    @MainActor
+    func testPresetGridRendersForEveryCustomCount() throws {
+        let capturePath = ProcessInfo.processInfo.environment["FANBAR_DESIGN_CAPTURE_PATH"]
         let controller = makeController()
         let names = ["Night edit", "Gaming", "Meetings", "Builds", "External display", "Summer"]
         let symbols: [CustomPresetSymbol] = [.moon, .gamecontroller, .headphones, .hammer, .desktopcomputer, .snow]
+        CoolingPresetPreferences.save([.builtIn(.balanced)])
         for count in [0, 1, 2, 3, 4, 6] {
             while controller.customPresets.count < count {
                 let index = controller.customPresets.count
@@ -320,23 +336,74 @@ final class CustomCoolingPresetTests: XCTestCase {
             }
             if let first = controller.customPresets.first {
                 controller.selectCoolingCurvePreset(.custom(first.id))
+                CoolingPresetPreferences.save([.builtIn(.balanced), .custom(first.id)])
             }
             let content = VStack(alignment: .leading, spacing: SettingsChrome.sectionSpacing) {
                 CoolingPresetTiles(controller: controller)
                 FanCurveEditorView(controller: controller)
             }
             .padding(SettingsChrome.horizontalPadding)
-            .frame(width: SettingsChrome.contentWidth)
-            .background(Color(NSColor.windowBackgroundColor))
-            let host = NSHostingView(rootView: content)
-            host.frame.size = host.fittingSize
-            host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
-            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-            host.cacheDisplay(in: host.bounds, to: bitmap)
-            let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-            try png.write(to: URL(fileURLWithPath: path).appendingPathComponent("presets-\(count).png"))
+            let bitmap = try render(content)
+            if let capturePath {
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: URL(fileURLWithPath: capturePath).appendingPathComponent("presets-\(count).png"))
+            }
         }
+
+        let renaming = try XCTUnwrap(controller.customPresets.first.map { CoolingPresetID.custom($0.id) })
+        PresetRenameCoordinator.shared.renaming = renaming
+        defer { PresetRenameCoordinator.shared.renaming = nil }
+        try render(CoolingPresetTiles(controller: controller).padding(SettingsChrome.horizontalPadding))
+    }
+
+    @MainActor
+    func testPresetFormAndActionMenusRender() throws {
+        let controller = makeController()
+        let custom = try XCTUnwrap(controller.createCustomPreset(name: "Night", symbol: .moon, copying: .fallback))
+        try render(NewCustomPresetForm(controller: controller, isPresented: .constant(true)), width: 300)
+        try render(VStack { PresetActionsMenu(controller: controller, preset: custom) })
+        try render(VStack { PresetActionsMenu(controller: controller, preset: .builtIn(.silent)) })
+        controller.selectCoolingCurvePreset(.builtIn(.silent))
+        try render(FanCurveEditorView(controller: controller).padding(SettingsChrome.horizontalPadding))
+    }
+
+    func testShortcutTogglingKeepsDisplayOrderAndLimit() {
+        let custom = CoolingPresetID.custom(UUID())
+        let order: [CoolingPresetID] = FanCoolingPreset.allCases.map { .builtIn($0) } + [custom]
+
+        XCTAssertEqual(
+            CoolingPresetPreferences.toggling(.builtIn(.silent), in: [custom], order: order),
+            [.builtIn(.silent), custom]
+        )
+        XCTAssertNil(CoolingPresetPreferences.toggling(.builtIn(.extreme), in: [.builtIn(.silent), custom], order: order))
+        XCTAssertEqual(
+            CoolingPresetPreferences.toggling(custom, in: [.builtIn(.silent), custom], order: order),
+            [.builtIn(.silent)]
+        )
+    }
+
+    @MainActor
+    func testIconChangeAndMissingPresetsAreIgnoredSafely() throws {
+        let controller = makeController()
+        let custom = try XCTUnwrap(controller.createCustomPreset(name: "Night", symbol: .moon, copying: .fallback))
+        controller.setCustomPresetSymbol(custom, symbol: .flame)
+        XCTAssertEqual(CustomCoolingPresetStore.load().first?.symbol, .flame)
+        XCTAssertEqual(controller.presetSummary(for: custom).systemImage, CustomPresetSymbol.flame.systemImage)
+
+        let missing = CoolingPresetID.custom(UUID())
+        controller.setCustomPresetSymbol(missing, symbol: .star)
+        controller.deleteCustomPreset(missing)
+        controller.setCurveProfile(FanCoolingPreset.extreme.factoryCurve, for: missing)
+        XCTAssertNil(controller.duplicatePreset(missing))
+        XCTAssertEqual(controller.presetTitle(for: missing), FanCoolingPreset.balanced.title)
+        XCTAssertEqual(controller.customPresets.count, 1)
+        for symbol in CustomPresetSymbol.allCases {
+            XCTAssertFalse(symbol.title.isEmpty)
+            XCTAssertFalse(symbol.systemImage.isEmpty)
+        }
+        XCTAssertFalse(CustomPresetRules.NameProblem.empty.message.isEmpty)
+        XCTAssertFalse(CustomPresetRules.NameProblem.tooLong.message.isEmpty)
+        XCTAssertTrue(CustomPresetRules.NameProblem.duplicate("Night").message.contains("Night"))
     }
 
     @MainActor

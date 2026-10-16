@@ -229,7 +229,7 @@ struct CoolingPresetTiles: View {
         return Toggle(
             isOn: Binding(
                 get: { isShown },
-                set: { _ in toggleMenuShortcut(preset.id, isShown: isShown) }
+                set: { _ in toggleMenuShortcut(preset.id) }
             )
         ) {
             Text(fanBarText("显示在菜单", "Show in menu"))
@@ -254,16 +254,13 @@ struct CoolingPresetTiles: View {
         ))
     }
 
-    private func toggleMenuShortcut(_ preset: CoolingPresetID, isShown: Bool) {
-        var selection = menuPresets
-        if isShown {
-            selection.removeAll { $0 == preset }
-        } else {
-            guard selection.count < CoolingPresetPreferences.menuLimit else { return }
-            selection.append(preset)
-        }
-        let ordered = presets.map(\.id).filter(selection.contains)
-        CoolingPresetPreferences.save(ordered)
+    private func toggleMenuShortcut(_ preset: CoolingPresetID) {
+        guard let next = CoolingPresetPreferences.toggling(
+            preset,
+            in: menuPresets,
+            order: presets.map(\.id)
+        ) else { return }
+        CoolingPresetPreferences.save(next)
     }
 
     // MARK: - Add tile
@@ -443,7 +440,7 @@ enum CustomPresetDeletion {
 }
 
 /// Popover for a new custom preset: name, icon and the curve to start from.
-private struct NewCustomPresetForm: View {
+struct NewCustomPresetForm: View {
     @ObservedObject var controller: FanController
     @Binding var isPresented: Bool
     @State private var name = ""

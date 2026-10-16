@@ -25,6 +25,23 @@ enum CoolingPresetPreferences {
         presets.prefix(menuLimit).map(\.token).joined(separator: ",")
     }
 
+    /// The shortcut list after checking or unchecking `id`, kept in display
+    /// order. Returns nil when a new shortcut would exceed the limit.
+    static func toggling(
+        _ id: CoolingPresetID,
+        in current: [CoolingPresetID],
+        order: [CoolingPresetID]
+    ) -> [CoolingPresetID]? {
+        var selection = Set(current)
+        if selection.contains(id) {
+            selection.remove(id)
+        } else {
+            guard selection.count < menuLimit else { return nil }
+            selection.insert(id)
+        }
+        return order.filter(selection.contains)
+    }
+
     /// Persists a shortcut list and mirrors its built-in part to the legacy key.
     static func save(_ presets: [CoolingPresetID], defaults: UserDefaults = .standard) {
         defaults.set(rawValue(for: presets), forKey: preferenceKey)
