@@ -184,22 +184,27 @@ struct FanMenu: View {
             .overlay(modeProgressIndicator, alignment: .trailing)
             .accessibilityElement(children: .combine)
 
-            HStack(spacing: 6) {
+            // Segments hug their labels and the spacers share what is left, so
+            // a short label (Fixed) lends its slack to a long one (Balanced)
+            // instead of each being held to an equal quarter.
+            HStack(spacing: 0) {
                 Button {
                     if controller.mode != .automatic {
                         controller.setAutomatic()
                     }
                 } label: {
                     modeButtonLabel(
-                        title: fanBarText("系统", "Automatic"),
+                        title: automaticModeTitle,
                         systemImage: "wand.and.stars",
                         selected: controller.mode == .automatic
                     )
                 }
                 .buttonStyle(.plain)
                 .focusable(false)
+                .accessibilityLabel(fanBarText("系统", "Automatic"))
 
                 ForEach(visibleCoolingPresets) { preset in
+                    Spacer(minLength: modeSegmentGap)
                     Button {
                         controller.setCoolingPreset(preset.id)
                     } label: {
@@ -222,6 +227,8 @@ struct FanMenu: View {
                     ))
                 }
 
+                Spacer(minLength: modeSegmentGap)
+
                 // A native NSMenu can only mark items with a checkmark; a
                 // popover lets the current RPM share the control strip's
                 // selected-state background.
@@ -240,7 +247,6 @@ struct FanMenu: View {
                     fixedRPMPicker
                 }
                 .focusable(false)
-                .frame(maxWidth: .infinity)
                 .accessibilityLabel(fanBarText("选择固定转速", "Choose a fixed RPM"))
                 .help(fanBarText(
                     "选择固定转速",
@@ -358,22 +364,30 @@ struct FanMenu: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    /// Shrinks all mode labels together, only as far as the longest one
-    /// (e.g. English "Automatic") needs to fit its quarter of the strip.
+    /// The strip button is short for "Automatic", which the header badge and
+    /// VoiceOver still spell out.
+    private var automaticModeTitle: String {
+        fanBarText("系统", "Auto")
+    }
+
+    private let modeSegmentGap: CGFloat = 6
+
+    /// Shrinks all mode labels together, only as far as their combined width
+    /// needs to fit the strip (segments size to content, not equal quarters).
     private var modeLabelFontSize: CGFloat {
         let baseSize: CGFloat = 13
         let font = NSFont.monospacedSystemFont(ofSize: baseSize, weight: .medium)
-        // Panel 384 − padding 32 − strip inset 8 − 3 gaps of 6, split four ways,
-        // minus label padding (16), icon + spacing (~21) and a chevron allowance.
-        let segmentWidth: CGFloat = (384 - 32 - 8 - 18) / 4
-        let textBudget = segmentWidth - 16 - 21 - 13
-        let titles = [fanBarText("系统", "Automatic"), fanBarText("固定", "Fixed")]
+        let titles = [automaticModeTitle, fanBarText("固定", "Fixed")]
             + visibleCoolingPresets.map(\.title)
-        let widest = titles
+        // Panel 384 − padding 32 − strip inset 8, minus the gaps, each
+        // segment's padding (16) and icon + spacing (~21), and the chevron.
+        let count = CGFloat(titles.count)
+        let textBudget = 384 - 32 - 8 - (count - 1) * modeSegmentGap - count * (16 + 21) - 13
+        let textWidth = titles
             .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
-            .max() ?? 0
-        guard widest > textBudget else { return baseSize }
-        return max((baseSize * textBudget / widest).rounded(.down), 10)
+            .reduce(0, +)
+        guard textWidth > textBudget else { return baseSize }
+        return max((baseSize * textBudget / textWidth).rounded(.down), 10)
     }
 
     private var inProgressFeedback: FanController.ModeActionFeedback? {
@@ -657,7 +671,6 @@ struct FanMenu: View {
         }
         .font(.subheadline.weight(.medium))
         .foregroundColor(selected ? Color.primary : Color.secondary)
-        .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
         .background(
