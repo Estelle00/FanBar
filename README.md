@@ -169,6 +169,12 @@ Open **Settings → General → Interface language** and choose:
 
 The setting is shared by the menu-bar popover, settings window, onboarding flow, status messages, helper errors, and the desktop widget.
 
+## 🤝 Community
+
+[Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Support](SUPPORT.md) · [Security policy](SECURITY.md)
+
+Please report suspected vulnerabilities through the private channel in the security policy. Bug reports, feature requests, and usage questions use the public issue forms below.
+
 ## 🐛 Report an issue
 
 Before submitting, search [existing issues](https://github.com/helson-lin/FanBar/issues). Then [choose an issue form](https://github.com/helson-lin/FanBar/issues/new/choose) for a bug, feature request, or usage question. Bug reports should include the FanBar version, macOS version, Mac model, and steps to reproduce. Please remove personal information from screenshots and logs.
@@ -179,28 +185,28 @@ Clone the repository, then build a local app bundle:
 
 ```sh
 zsh scripts/generate-icons.sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
 open dist/FanBar.app
 ```
 
-`FANBAR_SIGN_IDENTITY=-` uses an ad-hoc signature for local testing. For distribution, replace it with a valid Developer ID Application identity.
+`FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=-` creates a verification-only ad-hoc package. Its privileged helper cannot authenticate, so use a real signing identity for fan-control testing or distribution. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and validation.
 
 ### Create a local DMG
 
 ```sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
 ```
 
 The default output is `dist/FanBar-<version>.dmg`. To build a specific architecture:
 
 ```sh
 FANBAR_ARCHS=arm64 FANBAR_APP_OUTPUT=dist/FanBar-arm64.app \
-  FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
-FANBAR_DMG_OUTPUT=dist/FanBar-arm64.dmg zsh scripts/build-dmg.sh dist/FanBar-arm64.app
+  FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_SIGN_IDENTITY=- FANBAR_DMG_OUTPUT=dist/FanBar-arm64.dmg zsh scripts/build-dmg.sh dist/FanBar-arm64.app
 
 FANBAR_ARCHS=x86_64 FANBAR_APP_OUTPUT=dist/FanBar-x86_64.app \
-  FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
-FANBAR_DMG_OUTPUT=dist/FanBar-x86_64.dmg zsh scripts/build-dmg.sh dist/FanBar-x86_64.app
+  FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_SIGN_IDENTITY=- FANBAR_DMG_OUTPUT=dist/FanBar-x86_64.dmg zsh scripts/build-dmg.sh dist/FanBar-x86_64.app
 ```
 
 Verify a DMG's signature, architecture, and installation structure with:

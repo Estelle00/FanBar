@@ -149,6 +149,12 @@ macOS 14 以降では、通知センターのウィジェット編集画面を�
 
 この設定は、メニューバーのポップオーバー、設定ウインドウ、初回の案内、ステータスメッセージ、ヘルパーのエラー、デスクトップウィジェットに共通して適用されます。
 
+## 🤝 コミュニティ
+
+[貢献ガイド](CONTRIBUTING.md) · [行動規範](CODE_OF_CONDUCT.md) · [サポート](SUPPORT.md) · [セキュリティポリシー](SECURITY.md)
+
+脆弱性が疑われる場合は、セキュリティポリシーの非公開窓口へ報告してください。通常の不具合、機能要望、使い方の質問は、以下の公開 Issue フォームを利用できます。
+
 ## 🐛 問題の報告
 
 報告する前に、[既存の Issue](https://github.com/helson-lin/FanBar/issues) を検索してください。そのうえで、不具合、機能の要望、使い方の質問に応じて [Issue フォーム](https://github.com/helson-lin/FanBar/issues/new/choose) を選んでください。不具合の報告には、FanBar のバージョン、macOS のバージョン、Mac のモデル、再現手順を含めてください。スクリーンショットやログからは個人情報を削除してください。
@@ -159,28 +165,28 @@ macOS 14 以降では、通知センターのウィジェット編集画面を�
 
 ```sh
 zsh scripts/generate-icons.sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
 open dist/FanBar.app
 ```
 
-`FANBAR_SIGN_IDENTITY=-` はローカルでのテスト用にアドホック署名を使います。配布する場合は、有効な Developer ID Application の署名 ID に置き換えてください。
+`FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=-` はビルド検証専用のアドホック署名パッケージを作成します。特権ヘルパーを認証できないため、ファン制御のテストや配布には実際の署名 ID を使用してください。準備と検証の手順は[貢献ガイド](CONTRIBUTING.md)を参照してください。
 
 ### ローカルで DMG を作成
 
 ```sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
 ```
 
 デフォルトの出力先は `dist/FanBar-<version>.dmg` です。特定のアーキテクチャ向けにビルドするには:
 
 ```sh
 FANBAR_ARCHS=arm64 FANBAR_APP_OUTPUT=dist/FanBar-arm64.app \
-  FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
-FANBAR_DMG_OUTPUT=dist/FanBar-arm64.dmg zsh scripts/build-dmg.sh dist/FanBar-arm64.app
+  FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_SIGN_IDENTITY=- FANBAR_DMG_OUTPUT=dist/FanBar-arm64.dmg zsh scripts/build-dmg.sh dist/FanBar-arm64.app
 
 FANBAR_ARCHS=x86_64 FANBAR_APP_OUTPUT=dist/FanBar-x86_64.app \
-  FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
-FANBAR_DMG_OUTPUT=dist/FanBar-x86_64.dmg zsh scripts/build-dmg.sh dist/FanBar-x86_64.app
+  FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_SIGN_IDENTITY=- FANBAR_DMG_OUTPUT=dist/FanBar-x86_64.dmg zsh scripts/build-dmg.sh dist/FanBar-x86_64.app
 ```
 
 DMG の署名、アーキテクチャ、インストール構成は次のコマンドで検証できます。
