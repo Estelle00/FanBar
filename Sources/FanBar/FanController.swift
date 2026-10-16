@@ -94,6 +94,8 @@ final class FanController: ObservableObject {
     }
 
     @Published private(set) var compatibilityObservation: CompatibilityObservation?
+    // Recorded only by user-started control and the compatibility test, so a routine
+    // background curve write can never overwrite a deliberate result.
     @Published private(set) var manualControlEvidence: CompatibilityControlEvidence = .unverified {
         didSet { persistCompatibilityControlEvidence() }
     }
@@ -1091,12 +1093,11 @@ final class FanController: ObservableObject {
             }
             do {
                 try await self.helperClient.setCoolingFraction(fraction)
-                self.curveControlEvidence = .requestSucceeded
                 guard self.mode == .temperatureCurve else { return }
                 self.curveOutputFraction = fraction
                 self.updateCurveMessage()
             } catch {
-                self.curveControlEvidence = .requestFailed
+                // A transient failure (sleep, helper restart) is not compatibility evidence.
                 guard self.mode == .temperatureCurve else { return }
                 self.message = fanBarFormat(
                     "智能温控更新失败：%@",

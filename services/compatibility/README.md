@@ -71,7 +71,7 @@ Custom Domain 固定为 `report.getfanbar.com`；workers.dev 和预览 URL 关�
 | GET /api/reports/:id/receipt | 凭所属报告 credential 查询回执 |
 | DELETE /api/reports/:id | 凭所属 credential 撤回 |
 | GET /api/reports/:id | 只返回用户选择公开且审核通过的报告 |
-| GET /api/compatibility?model=Mac14,13 | 经过审核的有效社区状态分布＋独立实测 |
+| GET /api/compatibility?model=Mac14,13&offset=0 | 经过审核的有效社区状态分布＋独立实测；每页 20 个版本组合，按 `nextOffset` 翻页直到为 null |
 | GET /api/admin/overview | 待审核数量、近两周趋势、冲突／重复／新机型提示、实测候选和近期操作 |
 | GET /api/admin/audit | 审核与实测操作记录；type=all/report/verification、offset 分页 |
 | GET /api/admin/verifications | 独立实测列表及达到阈值的实测候选 |
