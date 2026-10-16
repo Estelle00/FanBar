@@ -129,10 +129,12 @@ final class FanController: ObservableObject {
     @Published private(set) var curveOutputFraction: Float?
     /// Active smart-cooling curve (user-editable; persisted via FanCurvePreferences).
     @Published private(set) var curveProfile: FanCurveProfile
-    /// Panel cooling preset whose curve is active for editing / smart mode.
-    @Published private(set) var curveCoolingPreset: FanCoolingPreset
-    /// Per–panel-preset stored curves.
+    /// Preset (built-in or custom) whose curve is active for editing / smart mode.
+    @Published private(set) var curveCoolingPreset: CoolingPresetID
+    /// Stored curves of the built-in presets.
     private var curvePresetSlots: [FanCoolingPreset: FanCurveProfile]
+    /// User-created presets in creation order; each carries its own curve.
+    @Published private(set) var customPresets: [CustomCoolingPreset]
     @Published private(set) var highTemperatureNotificationsEnabled: Bool
     /// Last RPM the user entered by hand; offered again in the Fixed menu.
     @Published private(set) var customFixedRPM: Int? = {
@@ -270,10 +272,12 @@ final class FanController: ObservableObject {
         self.automaticRestoreTestInterval = automaticRestoreTestInterval
         self.notificationCenter = notificationCenter
         self.widgetSnapshotDestination = widgetSnapshotDestination
+        CoolingPresetPreferences.migrateIfNeeded()
         let curveSnapshot = FanCurvePreferences.load()
         curveProfile = curveSnapshot.profile
-        curveCoolingPreset = curveSnapshot.coolingPreset
+        curveCoolingPreset = curveSnapshot.selection
         curvePresetSlots = curveSnapshot.slots
+        customPresets = curveSnapshot.customPresets
         highTemperatureNotificationsEnabled = UserDefaults.standard.bool(
             forKey: ThermalAlertSettings.notificationsEnabledKey
         )
@@ -700,8 +704,8 @@ final class FanController: ObservableObject {
         }
     }
 
-    /// Activates a panel cooling preset by running its temperature curve (menu entry).
-    func setCoolingPreset(_ preset: FanCoolingPreset) {
+    /// Activates a cooling preset by running its temperature curve (menu entry).
+    func setCoolingPreset(_ preset: CoolingPresetID) {
         selectCoolingCurvePreset(preset, enableControl: true, resetsAutomaticRestore: true)
     }
 
@@ -728,18 +732,41 @@ final class FanController: ObservableObject {
     }
 
     /// Returns a preset's latest curve without changing which preset is shown.
-    func curveProfile(for preset: FanCoolingPreset) -> FanCurveProfile {
+    func curveProfile(for preset: CoolingPresetID) -> FanCurveProfile {
         if preset == curveCoolingPreset {
             return curveProfile
         }
-        return (curvePresetSlots[preset] ?? preset.factoryCurve).sanitized()
+        return storedCurveProfile(for: preset)
+    }
+
+    private func storedCurveProfile(for preset: CoolingPresetID) -> FanCurveProfile {
+        switch preset {
+        case .builtIn(let builtIn):
+            return (curvePresetSlots[builtIn] ?? builtIn.factoryCurve).sanitized()
+        case .custom(let id):
+            return customPresets.first { $0.id == id }?.curve
+                ?? FanCoolingPreset.balanced.factoryCurve.sanitized()
+        }
+    }
+
+    /// Writes a curve into its slot without touching the active selection.
+    private func storeCurveProfile(_ profile: FanCurveProfile, for preset: CoolingPresetID) {
+        switch preset {
+        case .builtIn(let builtIn):
+            curvePresetSlots[builtIn] = profile
+        case .custom(let id):
+            guard let index = customPresets.firstIndex(where: { $0.id == id }) else { return }
+            customPresets[index].curve = profile
+            CustomCoolingPresetStore.save(customPresets)
+        }
     }
 
     /// Replaces one stored preset without unexpectedly switching the editor.
     /// This is used by Undo when the user has moved to another preset meanwhile.
-    func setCurveProfile(_ profile: FanCurveProfile, for preset: FanCoolingPreset) {
+    func setCurveProfile(_ profile: FanCurveProfile, for preset: CoolingPresetID) {
+        guard presetExists(preset) else { return }
         let sanitized = profile.sanitized()
-        curvePresetSlots[preset] = sanitized
+        storeCurveProfile(sanitized, for: preset)
         if preset == curveCoolingPreset {
             curveProfile = sanitized
         }
@@ -753,10 +780,11 @@ final class FanController: ObservableObject {
     /// macOS Undo/Redo commands remain available after an automatic save.
     func replaceCurveProfile(
         _ profile: FanCurveProfile,
-        for preset: FanCoolingPreset,
+        for preset: CoolingPresetID,
         registeringUndoWith undoManager: UndoManager?,
         actionName: String
     ) {
+        guard presetExists(preset) else { return }
         let previous = curveProfile(for: preset)
         let replacement = profile.sanitized()
         guard previous != replacement else { return }
@@ -780,10 +808,11 @@ final class FanController: ObservableObject {
 
     /// Switch which panel preset’s curve is being edited (settings). Optionally start control.
     func selectCoolingCurvePreset(
-        _ preset: FanCoolingPreset,
+        _ preset: CoolingPresetID,
         enableControl: Bool = false,
         resetsAutomaticRestore: Bool = false
     ) {
+        guard presetExists(preset) else { return }
         let targetProfile = curveProfile(for: preset)
         if enableControl || mode == .temperatureCurve {
             enableTemperatureCurve(
@@ -803,31 +832,162 @@ final class FanController: ObservableObject {
     /// Commits a prepared curve selection only after its hardware activation
     /// succeeds. Kept internal so the transaction boundary remains testable.
     func completeCurveActivation(
-        preset: FanCoolingPreset,
+        preset: CoolingPresetID,
         profile: FanCurveProfile,
         succeeded: Bool
     ) {
-        guard succeeded, preset != curveCoolingPreset else { return }
-        curvePresetSlots[curveCoolingPreset] = curveProfile.sanitized()
+        guard succeeded, preset != curveCoolingPreset, presetExists(preset) else { return }
+        storeCurveProfile(curveProfile.sanitized(), for: curveCoolingPreset)
         let sanitized = profile.sanitized()
         curveCoolingPreset = preset
         curveProfile = sanitized
-        curvePresetSlots[preset] = sanitized
+        storeCurveProfile(sanitized, for: preset)
         FanCurvePreferences.save(slots: curvePresetSlots, selection: preset)
     }
 
-    /// Restores the factory curve for the active panel preset only.
+    /// Restores the factory curve for the active panel preset only. Custom
+    /// presets have no factory curve, so this does nothing for them.
     func resetActiveCurvePresetToFactory(
         undoManager: UndoManager? = nil,
         actionName: String = ""
     ) {
-        let preset = curveCoolingPreset
+        guard let builtIn = curveCoolingPreset.builtInPreset else { return }
         replaceCurveProfile(
-            curveProfile.resettingCurveToFactory(for: preset),
-            for: preset,
+            curveProfile.resettingCurveToFactory(for: builtIn),
+            for: curveCoolingPreset,
             registeringUndoWith: undoManager,
             actionName: actionName
         )
+    }
+
+    // MARK: - Preset catalog
+
+    /// Built-ins first, then custom presets in creation order.
+    var allPresets: [CoolingPresetSummary] {
+        FanCoolingPreset.allCases.map {
+            CoolingPresetSummary(id: .builtIn($0), title: $0.title, systemImage: $0.systemImage)
+        } + customPresets.map {
+            CoolingPresetSummary(id: .custom($0.id), title: $0.name, systemImage: $0.symbol.systemImage)
+        }
+    }
+
+    func presetSummary(for preset: CoolingPresetID) -> CoolingPresetSummary {
+        allPresets.first { $0.id == preset } ?? CoolingPresetSummary(
+            id: .fallback,
+            title: FanCoolingPreset.balanced.title,
+            systemImage: FanCoolingPreset.balanced.systemImage
+        )
+    }
+
+    func presetTitle(for preset: CoolingPresetID) -> String {
+        presetSummary(for: preset).title
+    }
+
+    var canAddCustomPreset: Bool {
+        customPresets.count < CustomPresetRules.maximumCount
+    }
+
+    private func presetExists(_ preset: CoolingPresetID) -> Bool {
+        switch preset {
+        case .builtIn: true
+        case .custom(let id): customPresets.contains { $0.id == id }
+        }
+    }
+
+    /// Names every other preset shows, for duplicate checks.
+    func takenPresetNames(excluding preset: CoolingPresetID? = nil) -> [String] {
+        allPresets.filter { $0.id != preset }.map(\.title)
+    }
+
+    func presetNameProblem(_ name: String, excluding preset: CoolingPresetID? = nil) -> CustomPresetRules.NameProblem? {
+        CustomPresetRules.problem(with: name, takenNames: takenPresetNames(excluding: preset))
+    }
+
+    /// Creates a custom preset from another preset's curve and selects it for
+    /// editing. Selecting never starts control on its own (same as a tile
+    /// click), unless curve control is already running.
+    @discardableResult
+    func createCustomPreset(
+        name: String,
+        symbol: CustomPresetSymbol,
+        copying source: CoolingPresetID
+    ) -> CoolingPresetID? {
+        guard canAddCustomPreset, presetNameProblem(name) == nil else { return nil }
+        let preset = CustomCoolingPreset(
+            name: CustomPresetRules.normalized(name),
+            symbol: symbol,
+            curve: curveProfile(for: source)
+        )
+        customPresets.append(preset)
+        CustomCoolingPresetStore.save(customPresets)
+        let id = CoolingPresetID.custom(preset.id)
+        selectCoolingCurvePreset(id)
+        return id
+    }
+
+    /// "Duplicate" / "Duplicate as Custom Preset": no dialog, a free copy name.
+    @discardableResult
+    func duplicatePreset(_ source: CoolingPresetID) -> CoolingPresetID? {
+        guard presetExists(source) else { return nil }
+        let summary = presetSummary(for: source)
+        let symbol: CustomPresetSymbol
+        if case .custom(let id) = source, let custom = customPresets.first(where: { $0.id == id }) {
+            symbol = custom.symbol
+        } else {
+            symbol = .defaultSymbol
+        }
+        return createCustomPreset(
+            name: CustomPresetRules.copyName(of: summary.title, takenNames: takenPresetNames()),
+            symbol: symbol,
+            copying: source
+        )
+    }
+
+    /// Returns the problem when the name is rejected; the old name is kept.
+    @discardableResult
+    func renameCustomPreset(_ preset: CoolingPresetID, to name: String) -> CustomPresetRules.NameProblem? {
+        guard case .custom(let id) = preset,
+              let index = customPresets.firstIndex(where: { $0.id == id }) else { return nil }
+        if let problem = presetNameProblem(name, excluding: preset) { return problem }
+        customPresets[index].name = CustomPresetRules.normalized(name)
+        CustomCoolingPresetStore.save(customPresets)
+        if preset == curveCoolingPreset, mode == .temperatureCurve { updateCurveMessage() }
+        return nil
+    }
+
+    func setCustomPresetSymbol(_ preset: CoolingPresetID, symbol: CustomPresetSymbol) {
+        guard case .custom(let id) = preset,
+              let index = customPresets.firstIndex(where: { $0.id == id }) else { return }
+        customPresets[index].symbol = symbol
+        CustomCoolingPresetStore.save(customPresets)
+    }
+
+    /// Deletes a custom preset. While it is running, control moves to Balanced
+    /// and stays on curve control so the fans do not jump; while it is only
+    /// selected, the preset before it is selected instead.
+    func deleteCustomPreset(_ preset: CoolingPresetID) {
+        guard case .custom(let id) = preset,
+              let index = customPresets.firstIndex(where: { $0.id == id }) else { return }
+        CoolingPresetPreferences.removing(preset)
+        if preset == curveCoolingPreset {
+            let replacement: CoolingPresetID
+            if mode == .temperatureCurve {
+                replacement = .fallback
+            } else {
+                let ids = allPresets.map(\.id)
+                let position = ids.firstIndex(of: preset) ?? 0
+                replacement = ids[max(position - 1, 0)]
+            }
+            curveCoolingPreset = replacement
+            curveProfile = storedCurveProfile(for: replacement)
+        }
+        customPresets.remove(at: index)
+        CustomCoolingPresetStore.save(customPresets)
+        FanCurvePreferences.save(slots: curvePresetSlots, selection: curveCoolingPreset)
+        if mode == .temperatureCurve {
+            updateCurveMessage()
+            scheduleCurveHardwareApply()
+        }
     }
 
     func setCurveHysteresisCelsius(_ value: Double) {
@@ -970,7 +1130,7 @@ final class FanController: ObservableObject {
 
     // swiftlint:disable:next function_body_length
     private func enableTemperatureCurve(
-        preset: FanCoolingPreset,
+        preset: CoolingPresetID,
         profile: FanCurveProfile,
         resetsAutomaticRestore: Bool = true
     ) {
@@ -1002,7 +1162,7 @@ final class FanController: ObservableObject {
         let progress = fanBarFormat(
             "正在切换到%@温控…",
             "Switching to %@ curve…",
-            preset.title
+            presetTitle(for: preset)
         )
         message = progress
         beginModeAction(progress)
@@ -1034,7 +1194,7 @@ final class FanController: ObservableObject {
                 let failure = fanBarFormat(
                     "%@温控开启失败：%@",
                     "Unable to enable %@ curve: %@",
-                    preset.title,
+                    presetTitle(for: preset),
                     error.localizedDescription
                 )
                 message = failure
@@ -1179,7 +1339,7 @@ final class FanController: ObservableObject {
         message = fanBarFormat(
             "%@：%.0f°C · %.0f%%",
             "%@: %.0f°C · %.0f%%",
-            curveCoolingPreset.title,
+            presetTitle(for: curveCoolingPreset),
             temperature,
             fraction * 100
         )
