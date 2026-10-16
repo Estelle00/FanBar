@@ -165,6 +165,12 @@ brew uninstall --cask helson-lin/fanbar/fanbar
 
 语言设置会同步应用到菜单栏面板、设置窗口、首次使用引导、状态消息、控制服务错误提示和桌面组件。
 
+## 🤝 社区
+
+[贡献指南](CONTRIBUTING.md) · [行为准则](CODE_OF_CONDUCT.md) · [使用支持](SUPPORT.md) · [安全政策](SECURITY.md)
+
+疑似安全漏洞请按安全政策私下报告；普通问题、功能建议和使用咨询请使用下面的公开 Issue 表单。
+
 ## 🐛 反馈问题
 
 提交前请先搜索[已有 Issue](https://github.com/helson-lin/FanBar/issues)，再通过 [Issue 表单](https://github.com/helson-lin/FanBar/issues/new/choose)选择问题反馈、功能建议或使用问题。反馈 bug 时请提供 FanBar 版本、macOS 版本、Mac 型号及复现步骤；上传截图或日志前请移除个人信息。
@@ -175,16 +181,16 @@ brew uninstall --cask helson-lin/fanbar/fanbar
 
 ```sh
 zsh scripts/generate-icons.sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/package-app.sh
 open dist/FanBar.app
 ```
 
-`FANBAR_SIGN_IDENTITY=-` 会使用 ad-hoc 签名，适合本地构建验证。发布时请替换为有效的 Developer ID Application 签名身份。
+`FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=-` 生成的 ad-hoc 包仅用于构建验证，特权 Helper 无法通过认证。测试风扇控制或发布时请使用真实签名身份；开发准备与验证方式见[贡献指南](CONTRIBUTING.md)。
 
 ### 创建本地 DMG
 
 ```sh
-FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
+FANBAR_ALLOW_ADHOC=1 FANBAR_SIGN_IDENTITY=- zsh scripts/build-dmg.sh
 ```
 
 默认产物为 `dist/FanBar-<version>.dmg`。架构构建、签名和 DMG 验证方式请参考 [English README](README.md) 中的 Build and run 小节。
