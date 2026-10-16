@@ -293,7 +293,11 @@ final class FanController: ObservableObject {
             .standardizedFileURL.path
         let historyDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
         let recoversFromReceipts: Bool
-        if case .sharedContainer = widgetSnapshotDestination { recoversFromReceipts = true } else { recoversFromReceipts = false }
+        if case .sharedContainer = widgetSnapshotDestination {
+            recoversFromReceipts = true
+        } else {
+            recoversFromReceipts = false
+        }
         let savedHistory = self.compatibilityHistoryStore.flatMap { store in
             Self.loadControlHistory(for: historyDevice, store: store, recoversFromReceipts: recoversFromReceipts) {
                 try CompatibilityReceiptStore().receipts()

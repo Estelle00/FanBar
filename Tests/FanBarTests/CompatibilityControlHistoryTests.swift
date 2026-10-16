@@ -78,7 +78,8 @@ final class CompatibilityControlHistoryTests: XCTestCase {
             reportData: try report.jsonData(), publishReport: false,
             policyVersion: CompatibilityServicePolicy.supportedVersion, createdAt: Date(timeIntervalSince1970: 1_700_000_000))
         var keychainReads = 0
-        func launch(recovers: Bool = true, receipts: [CompatibilitySavedReceipt] = [receipt]) -> CompatibilityControlHistory? {
+        func launch(recovers: Bool = true,
+                    receipts: [CompatibilitySavedReceipt] = [receipt]) -> CompatibilityControlHistory? {
             FanController.loadControlHistory(for: device, store: store, recoversFromReceipts: recovers) {
                 keychainReads += 1
                 return receipts
