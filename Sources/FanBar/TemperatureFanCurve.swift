@@ -413,18 +413,24 @@ enum FanCurveControlTarget {
 
 // MARK: - Preferences (one curve slot per panel cooling preset)
 
-/// Stores a temperature curve for each `FanCoolingPreset` shown in the menu panel.
+/// Stores a temperature curve for each built-in `FanCoolingPreset`, plus which
+/// preset (built-in or custom) is selected. Custom curves live with their
+/// presets in `CustomCoolingPresetStore`.
 enum FanCurvePreferences {
     static let legacyProfileKey = "fanbar.fanCurveProfile"
     static let legacyBuiltInSelectionKey = "fanbar.fanCurveBuiltInSelection"
     static let legacySlotsKey = "fanbar.fanCurvePresetSlots"
+    /// Built-in selection as an Int; still written for older builds.
     static let selectionKey = "fanbar.coolingCurveSelection"
+    /// Any selection as a `CoolingPresetID` token.
+    static let selectionTokenKey = "fanbar.coolingCurveSelection.v2"
     static let slotsKey = "fanbar.coolingCurveSlots"
 
     struct Snapshot {
         var profile: FanCurveProfile
-        var coolingPreset: FanCoolingPreset
+        var selection: CoolingPresetID
         var slots: [FanCoolingPreset: FanCurveProfile]
+        var customPresets: [CustomCoolingPreset]
     }
 
     static func load() -> Snapshot {
@@ -438,12 +444,25 @@ enum FanCurvePreferences {
             slots[preset] = preset.factoryCurve.sanitized()
         }
 
-        let selection = resolvedSelection(defaults: defaults)
-        let profile = slots[selection] ?? selection.factoryCurve.sanitized()
-        return Snapshot(profile: profile, coolingPreset: selection, slots: slots)
+        let customPresets = CustomCoolingPresetStore.load(defaults: defaults)
+        var selection = resolvedSelection(defaults: defaults)
+        let profile: FanCurveProfile
+        switch selection {
+        case .builtIn(let preset):
+            profile = slots[preset] ?? preset.factoryCurve.sanitized()
+        case .custom(let id):
+            if let custom = customPresets.first(where: { $0.id == id }) {
+                profile = custom.curve
+            } else {
+                // The selected custom preset is gone (damaged data): fall back.
+                selection = .fallback
+                profile = slots[.balanced] ?? FanCoolingPreset.balanced.factoryCurve.sanitized()
+            }
+        }
+        return Snapshot(profile: profile, selection: selection, slots: slots, customPresets: customPresets)
     }
 
-    static func save(slots: [FanCoolingPreset: FanCurveProfile], selection: FanCoolingPreset) {
+    static func save(slots: [FanCoolingPreset: FanCurveProfile], selection: CoolingPresetID) {
         var normalized: [FanCoolingPreset: FanCurveProfile] = [:]
         for preset in FanCoolingPreset.allCases {
             normalized[preset] = (slots[preset] ?? preset.factoryCurve).sanitized()
@@ -453,7 +472,22 @@ enum FanCurvePreferences {
 
     // MARK: Private
 
-    private static func resolvedSelection(defaults: UserDefaults) -> FanCoolingPreset {
+    private static func resolvedSelection(defaults: UserDefaults) -> CoolingPresetID {
+        let builtIn = resolvedBuiltInSelection(defaults: defaults)
+        guard let token = defaults.string(forKey: selectionTokenKey),
+              let selection = CoolingPresetID(token: token) else {
+            return .builtIn(builtIn)
+        }
+        // An older build changed the built-in selection after this token was
+        // written; the newer choice wins.
+        if defaults.object(forKey: selectionKey) != nil,
+           builtIn != (selection.builtInPreset ?? .balanced) {
+            return .builtIn(builtIn)
+        }
+        return selection
+    }
+
+    private static func resolvedBuiltInSelection(defaults: UserDefaults) -> FanCoolingPreset {
         if let raw = defaults.object(forKey: selectionKey) as? Int,
            let preset = FanCoolingPreset(rawValue: raw) {
             return preset
@@ -504,7 +538,7 @@ enum FanCurvePreferences {
         } else if let data = defaults.data(forKey: legacyProfileKey),
                   let profile = try? JSONDecoder().decode(FanCurveProfile.self, from: data) {
             let sanitized = profile.sanitized()
-            let target = resolvedSelection(defaults: defaults)
+            let target = resolvedBuiltInSelection(defaults: defaults)
             slots[target] = sanitized
         }
         return slots
@@ -512,7 +546,7 @@ enum FanCurvePreferences {
 
     private static func persist(
         slots: [FanCoolingPreset: FanCurveProfile],
-        selection: FanCoolingPreset?,
+        selection: CoolingPresetID?,
         defaults: UserDefaults
     ) {
         var payload: [String: FanCurveProfile] = [:]
@@ -523,9 +557,13 @@ enum FanCurvePreferences {
             let data = try JSONEncoder().encode(payload)
             defaults.set(data, forKey: slotsKey)
             if let selection {
-                defaults.set(selection.rawValue, forKey: selectionKey)
+                defaults.set(selection.token, forKey: selectionTokenKey)
+                // Older builds only know built-ins; they see Balanced while a
+                // custom preset is selected.
+                let builtIn = selection.builtInPreset ?? .balanced
+                defaults.set(builtIn.rawValue, forKey: selectionKey)
                 if let active = try? JSONEncoder().encode(
-                    payload[String(selection.rawValue)] ?? selection.factoryCurve
+                    payload[String(builtIn.rawValue)] ?? builtIn.factoryCurve
                 ) {
                     defaults.set(active, forKey: legacyProfileKey)
                 }

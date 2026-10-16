@@ -8,7 +8,7 @@ import SwiftUI
 struct FanMenu: View {
     @ObservedObject var controller: FanController
     @AppStorage(CoolingPresetPreferences.preferenceKey)
-    private var visibleCoolingPresetsRawValue = CoolingPresetPreferences.defaultRawValue
+    private var menuCoolingPresetsRawValue = CoolingPresetPreferences.defaultRawValue
     @State private var isEditingCustomRPM = false
     @State private var isShowingFixedRPMPicker = false
     @Namespace private var modeSelectionNamespace
@@ -48,13 +48,17 @@ struct FanMenu: View {
     private var modeLabel: String {
         switch controller.mode {
         case .automatic: fanBarText("系统", "Automatic")
-        case .temperatureCurve: controller.curveCoolingPreset.title
+        case .temperatureCurve: controller.presetTitle(for: controller.curveCoolingPreset)
         case .fixed(let rpm): "\(rpm) RPM"
         }
     }
 
-    private var visibleCoolingPresets: [FanCoolingPreset] {
-        CoolingPresetPreferences.presets(from: visibleCoolingPresetsRawValue)
+    private var visibleCoolingPresets: [CoolingPresetSummary] {
+        let all = controller.allPresets
+        return CoolingPresetPreferences.presets(
+            from: menuCoolingPresetsRawValue,
+            available: all.map(\.id)
+        ).compactMap { id in all.first { $0.id == id } }
     }
 
     var body: some View {
@@ -197,13 +201,13 @@ struct FanMenu: View {
 
                 ForEach(visibleCoolingPresets) { preset in
                     Button {
-                        controller.setCoolingPreset(preset)
+                        controller.setCoolingPreset(preset.id)
                     } label: {
                         modeButtonLabel(
                             title: preset.title,
                             systemImage: preset.systemImage,
                             selected: controller.mode == .temperatureCurve
-                                && controller.curveCoolingPreset == preset
+                                && controller.curveCoolingPreset == preset.id
                         )
                     }
                     .buttonStyle(.plain)
@@ -405,7 +409,7 @@ struct FanMenu: View {
     private var modeSelectionKey: String {
         switch controller.mode {
         case .automatic: "automatic"
-        case .temperatureCurve: "curve.\(controller.curveCoolingPreset.id)"
+        case .temperatureCurve: "curve.\(controller.curveCoolingPreset.token)"
         case .fixed: "fixed"
         }
     }
@@ -575,7 +579,7 @@ struct FanMenu: View {
             return fanBarFormat(
                 "%@ · %.0f°C → %@",
                 "%@ · %.0f°C → %@",
-                controller.curveCoolingPreset.title,
+                controller.presetTitle(for: controller.curveCoolingPreset),
                 temperature,
                 summary
             )

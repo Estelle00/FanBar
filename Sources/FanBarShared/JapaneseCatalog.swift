@@ -1,5 +1,5 @@
 // Localization keys and user-facing paragraphs remain intact for catalog extraction.
-// swiftlint:disable line_length
+// swiftlint:disable line_length type_body_length
 import Foundation
 
 /// Japanese copy for every `fanBarText` / `fanBarFormat` call, keyed by the
@@ -331,7 +331,6 @@ enum JapaneseCatalog {
         "RPM must be a finite, non-negative number": "回転数は 0 以上の有限の数値で指定してください",
         "Running": "動作中",
         "Safe range %d–%d RPM": "安全範囲 %d–%d RPM",
-        "Select a preset to edit its curve. Check “Show in menu” to add it as a shortcut button in the menu panel, up to two.": "プリセットを選ぶとカーブを編集できます。「メニューに表示」をオンにすると、メニューパネルにショートカットボタンとして表示されます（最大 2 つ）。",
         "Selected, %d of %d": "選択中、%d 番目 / 全 %d 件",
         "Settings": "設定",
         "Settings…": "設定…",
@@ -395,7 +394,50 @@ enum JapaneseCatalog {
         "Welcome to FanBar": "FanBar へようこそ",
         "Your curves are saved and apply once the service is available. %@.": "カーブは保存済みです。サービスが利用可能になると適用されます。%@。",
         "≈ %@ RPM": "≈ %@ RPM",
+        // Custom presets
+        "Select a preset to edit its curve; Control-click it for more actions. “Show in menu” adds up to two to the panel.": "プリセットを選ぶとカーブを編集できます。Control キーを押しながらクリックするとその他の操作を表示します。「メニューに表示」で最大 2 つまでパネルに追加できます。",
+        "You can have up to six custom presets. Delete one to create another.": "カスタムプリセットは最大 6 つです。新しく作成するには 1 つ削除してください。",
+        "Preset name": "プリセット名",
+        "%@. The previous name was kept.": "%@。元の名前のままにしました。",
+        "New…": "新規…",
+        "New Preset": "新規プリセット",
+        "Up to six custom presets": "カスタムプリセットは最大 6 つ",
+        "Limit reached": "上限に達しました",
+        "Create your own preset": "自分のプリセットを作成",
+        "Delete one to create another": "1 つ削除すると新しく作成できます",
+        "Give editing, gaming or meetings their own temperature curve, and add it to the menu panel.": "動画編集・ゲーム・会議などの用途ごとに温度カーブを設定し、メニューパネルに追加できます。",
+        "Start from any preset's curve, then adjust it": "既存のプリセットのカーブをもとに調整",
+        "Copy any preset's curve": "既存のカーブをコピー",
+        "Duplicate as Custom Preset": "カスタムプリセットとして複製",
+        "Rename…": "名前を変更…",
+        "Change Icon": "アイコンを変更",
+        "Duplicate": "複製",
+        "Delete…": "削除…",
+        "Delete “%@”?": "“%@”を削除しますか？",
+        "Its curve is deleted too. This can't be undone.": "カーブも一緒に削除されます。この操作は取り消せません。",
+        "This preset is in use. FanBar will switch to Balanced.": "このプリセットは使用中です。削除すると「バランス」に切り替わります。",
+        "Delete": "削除",
+        "Name": "名前",
+        "Start from": "コピー元",
+        "Create": "作成",
+        "Favorite": "お気に入り",
+        "Night": "夜間",
+        "Eco": "省エネ",
+        "Meetings": "会議",
+        "Gaming": "ゲーム",
+        "Video editing": "動画編集",
+        "Building": "ビルド",
+        "Computing": "計算",
+        "Hot": "高温",
+        "External display": "外部ディスプレイ",
+        "Work": "仕事",
+        "Enter a name": "名前を入力してください",
+        "Names can be up to %d characters": "名前は最大 %d 文字です",
+        "A preset named “%@” already exists": "“%@”という名前のプリセットはすでにあります",
+        "Custom %d": "カスタム %d",
+        " Copy": " のコピー",
+        "More actions": "その他の操作",
     ]
 }
 
-// swiftlint:enable line_length
+// swiftlint:enable line_length type_body_length

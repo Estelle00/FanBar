@@ -31,7 +31,7 @@ struct FanCurveEditorView: View {
         let points = profile.points
             .map { "\($0.celsius)-\($0.fraction)" }
             .joined(separator: "|")
-        return "\(controller.curveCoolingPreset.rawValue);\(points)"
+        return "\(controller.curveCoolingPreset.token);\(points)"
     }
 
     private var fractionPercentRange: ClosedRange<Int> {
@@ -98,8 +98,10 @@ struct FanCurveEditorView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text(fanBarFormat("%@曲线", "%@ curve", controller.curveCoolingPreset.title))
+            Text(fanBarFormat("%@曲线", "%@ curve", controller.presetTitle(for: controller.curveCoolingPreset)))
                 .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.tail)
 
             Spacer(minLength: 8)
 
@@ -120,6 +122,20 @@ struct FanCurveEditorView: View {
             }
             .labelsHidden()
             .fixedSize()
+
+            // Custom presets have no factory curve; their management actions
+            // (rename, icon, duplicate, delete) live here instead.
+            if !controller.curveCoolingPreset.isBuiltIn {
+                Menu {
+                    PresetActionsMenu(controller: controller, preset: controller.curveCoolingPreset)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(BorderlessButtonMenuStyle())
+                .fixedSize()
+                .help(fanBarText("更多操作", "More actions"))
+                .accessibilityLabel(fanBarText("更多操作", "More actions"))
+            }
         }
         .padding(.horizontal, SettingsChrome.rowHorizontalPadding + 2)
         .padding(.top, 11)
@@ -255,18 +271,20 @@ struct FanCurveEditorView: View {
 
             Spacer(minLength: 8)
 
-            Button(fanBarText("恢复默认", "Reset to Default")) {
-                controller.resetActiveCurvePresetToFactory(
-                    undoManager: undoManager,
-                    actionName: fanBarText("恢复默认曲线", "Reset Default Curve")
-                )
+            if let builtIn = controller.curveCoolingPreset.builtInPreset {
+                Button(fanBarText("恢复默认", "Reset to Default")) {
+                    controller.resetActiveCurvePresetToFactory(
+                        undoManager: undoManager,
+                        actionName: fanBarText("恢复默认曲线", "Reset Default Curve")
+                    )
+                }
+                .controlSize(.small)
+                .disabled(profile.hasFactoryCurve(for: builtIn))
+                .help(fanBarText(
+                    "恢复当前预设的默认曲线；可使用撤销恢复修改",
+                    "Restore this preset's default curve; use Undo to recover edits"
+                ))
             }
-            .controlSize(.small)
-            .disabled(profile.hasFactoryCurve(for: controller.curveCoolingPreset))
-            .help(fanBarText(
-                "恢复当前预设的默认曲线；可使用撤销恢复修改",
-                "Restore this preset's default curve; use Undo to recover edits"
-            ))
         }
         .padding(.horizontal, SettingsChrome.rowHorizontalPadding + 2)
         .padding(.vertical, 8)

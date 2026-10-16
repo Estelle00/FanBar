@@ -277,15 +277,15 @@ final class FanCurveInteractionTests: XCTestCase {
     /// A failed hardware activation must leave the visible preset and its
     /// active curve untouched so the UI never claims a mode the Mac did not enter.
     @MainActor
-    func testFailedCurveActivationDoesNotCommitPresetSelection() {
+    func testFailedCurveActivationDoesNotCommitPresetSelection() throws {
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled)
         let originalPreset = controller.curveCoolingPreset
         let originalProfile = controller.curveProfile
-        let targetPreset = FanCoolingPreset.allCases.first { $0 != originalPreset }!
+        let target = try XCTUnwrap(FanCoolingPreset.allCases.first { CoolingPresetID.builtIn($0) != originalPreset })
 
         controller.completeCurveActivation(
-            preset: targetPreset,
-            profile: targetPreset.factoryCurve,
+            preset: .builtIn(target),
+            profile: target.factoryCurve,
             succeeded: false
         )
 
