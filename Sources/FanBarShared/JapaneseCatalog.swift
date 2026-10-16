@@ -196,6 +196,7 @@ enum JapaneseCatalog {
         "Approve the control service in Login Items & Extensions": "「ログイン項目と機能拡張」で制御サービスを承認",
         "Approve the updated control service in System Settings": "システム設定で更新された制御サービスを承認してください",
         "Automatic": "自動",
+        "Auto": "自動",
         "automatic": "自動",
         "Automatic restore": "自動復帰",
         "Automatically check for updates": "アップデートを自動的に確認",

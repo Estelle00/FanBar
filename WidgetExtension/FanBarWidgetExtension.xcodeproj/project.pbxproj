@@ -15,6 +15,7 @@
 		6178E666074980B688B8C0D9 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 81E7F023B70DA3EEFB2CED83 /* Localizable.strings */; };
 		7182D44FA873ECBA9685884E /* FanBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97784821F2D14033EF845CB1 /* FanBarWidget.swift */; };
 		801D45AECE9E81012FF21E0D /* JapaneseCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733DE0BF88EF99048156AE82 /* JapaneseCatalog.swift */; };
+		A1B2C3D4E5F60718293A4B5C /* RussianCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C4B3A291807F6E5D4C3B2A1 /* RussianCatalog.swift */; };
 		B714236B779246B84C35650D /* FanCoolingPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FF642B6B04CBC5F67042A9D /* FanCoolingPreset.swift */; };
 		EEC171E860A9772FA3437EB5 /* libFanBarUI.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 26B6E3A8D802E609B6A7FB57 /* libFanBarUI.a */; };
 		F153551F202B24CA7E1285BE /* FanBarWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6276DCECF184DF8F8B970D0A /* FanBarWidgetSnapshot.swift */; };
@@ -52,6 +53,8 @@
 		5FF642B6B04CBC5F67042A9D /* FanCoolingPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanCoolingPreset.swift; sourceTree = "<group>"; };
 		6276DCECF184DF8F8B970D0A /* FanBarWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanBarWidgetSnapshot.swift; sourceTree = "<group>"; };
 		733DE0BF88EF99048156AE82 /* JapaneseCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JapaneseCatalog.swift; sourceTree = "<group>"; };
+		5C4B3A291807F6E5D4C3B2A1 /* RussianCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RussianCatalog.swift; sourceTree = "<group>"; };
+		7E1D2C3B4A5968778695A4B3 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8C3C791EFC602F759607EBE0 /* FanBarLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanBarLocalization.swift; sourceTree = "<group>"; };
 		97784821F2D14033EF845CB1 /* FanBarWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanBarWidget.swift; sourceTree = "<group>"; };
 		9B032E80DAEC693E5D8B5C8E /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -109,6 +112,7 @@
 				5FF642B6B04CBC5F67042A9D /* FanCoolingPreset.swift */,
 				2781FCFA937F348B3339C592 /* FanCoolingTarget.swift */,
 				733DE0BF88EF99048156AE82 /* JapaneseCatalog.swift */,
+				5C4B3A291807F6E5D4C3B2A1 /* RussianCatalog.swift */,
 			);
 			path = FanBarShared;
 			sourceTree = "<group>";
@@ -229,6 +233,7 @@
 				Base,
 				en,
 				ja,
+				ru,
 				"zh-Hans",
 				"zh-Hant",
 			);
@@ -311,6 +316,7 @@
 				B714236B779246B84C35650D /* FanCoolingPreset.swift in Sources */,
 				41CC93F8B9493F08A33C5259 /* FanCoolingTarget.swift in Sources */,
 				801D45AECE9E81012FF21E0D /* JapaneseCatalog.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5C /* RussianCatalog.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -348,6 +354,7 @@
 			children = (
 				9B032E80DAEC693E5D8B5C8E /* en */,
 				3C2010439C657D738FFB0C6E /* ja */,
+				7E1D2C3B4A5968778695A4B3 /* ru */,
 				E6FFB63D7A95840BA6E0A9F1 /* zh-Hans */,
 				FE8F9538FCCC5671D92A746B /* zh-Hant */,
 			);
