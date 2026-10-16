@@ -1,16 +1,22 @@
 <div align="center">
 
-<img src="Assets/FanBarIcon-modern-1024.png" alt="FanBar logo" width="120" height="120">
+<img src="Assets/FanBar-readme-banner-light.png" alt="FanBar — free, open-source native macOS fan control" width="100%">
 
-# FanBar
+# FanBar — Free, Open-Source Mac Fan Control
 
-> A native macOS menu-bar utility for reading temperatures and managing fan cooling when you need it.
+> A free, open-source Mac fan control app for the menu bar. Monitor temperatures and fan speeds, set a fixed RPM, or create temperature-based fan curves.
 
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.zh-CN.md">简体中文</a> ·
   <a href="README.zh-TW.md">繁體中文</a> ·
   <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
+  <a href="https://getfanbar.com/?utm_source=github&utm_medium=referral&utm_campaign=readme"><strong>getfanbar.com</strong></a> ·
+  <a href="https://getfanbar.com/is-fanbar-safe?utm_source=github&utm_medium=referral&utm_campaign=readme">Is FanBar safe?</a> ·
+  <a href="https://getfanbar.com/compare/macs-fan-control?utm_source=github&utm_medium=referral&utm_campaign=readme">FanBar vs Macs Fan Control</a>
 </p>
 
 <p align="center">
@@ -44,25 +50,39 @@
 
 </div>
 
-FanBar supports macOS 11 Big Sur and later on Apple Silicon Macs and Intel Macs that expose readable AppleSMC fan data. It keeps everyday use safe and quiet with macOS automatic management, while making manual control available only after the signed control service is approved.
+FanBar supports macOS 11 Big Sur and later on compatible Apple Silicon and Intel Macs that expose readable AppleSMC fan data. It keeps everyday use safe and quiet with macOS automatic management, while making manual control available only after the signed control service is approved.
+
+## FanBar at a glance
+
+FanBar is a free, open-source native macOS menu-bar app for monitoring CPU/GPU/SSD/battery temperatures and fan RPM. It keeps normal cooling under macOS automatic management, then offers bounded manual control only after you explicitly approve the signed helper.
+
+- **Supported Macs:** macOS 11 Big Sur or later on Apple Silicon and Intel Macs that expose readable AppleSMC fan data.
+- **Cooling modes:** Automatic, fixed target RPM, Silent, Balanced, Performance, and Extreme; each preset has an editable temperature-to-RPM curve.
+- **Safety boundary:** targets stay within each fan's reported hardware range, and FanBar attempts to restore Automatic when a preset expires, the app quits, the connection is lost, or the helper fails. See [exactly what the root helper can and cannot do](https://getfanbar.com/is-fanbar-safe?utm_source=github&utm_medium=referral&utm_campaign=readme).
+- **Compared with Macs Fan Control:** read the [source-backed comparison](https://getfanbar.com/compare/macs-fan-control?utm_source=github&utm_medium=referral&utm_campaign=readme).
+- **Download:** use the [latest notarized GitHub Release](https://github.com/helson-lin/FanBar/releases/latest); no account, subscription, or advertising is required.
+- **Compatibility evidence:** check the [source-linked device matrix](https://getfanbar.com/compatibility?utm_source=github&utm_medium=referral&utm_campaign=readme) for what has actually been observed on specific Macs.
+
+The official site publishes a concise [llms.txt](https://getfanbar.com/llms.txt?utm_source=github&utm_medium=referral&utm_campaign=readme) for answer engines and agents that need authoritative product facts.
+
 
 ## 📸 Screenshots
 
-English interface. Switch to Simplified Chinese, Traditional Chinese, or Japanese from **Settings → General → Interface language** without restarting.
+English interface in light appearance. Switch to Simplified Chinese, Traditional Chinese, or Japanese from **Settings → General → Interface language** without restarting.
 
-![FanBar English menu-bar popover](docs/screenshots/fanbar-menu-light-en.jpg)
+<img src="docs/screenshots/fanbar-menu-light-en.png" alt="FanBar English menu-bar popover" width="456">
 
-Settings opens on the Cooling tab. Each panel preset has its own editable temperature→RPM curve.
+Cooling gives each panel preset its own editable temperature→RPM curve.
 
-![FanBar English cooling settings](docs/screenshots/fanbar-settings-cooling-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-cooling-light-en.png" alt="FanBar English cooling settings" width="640">
 
 Appearance chooses the menu bar icon and what the status item shows, previewed live in a simulated menu bar.
 
-![FanBar English menu bar display settings](docs/screenshots/fanbar-settings-menubar-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-appearance-light-en.png" alt="FanBar English appearance settings" width="640">
 
-General covers login item, control-service status, high-temperature notifications, language, and Sparkle updates.
+General includes local device compatibility checks, control-service status, automatic restore, notifications, language, login, and updates. Longer settings panes scroll.
 
-![FanBar English general settings](docs/screenshots/fanbar-settings-general-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-general-light-en.png" alt="FanBar English general settings" width="640">
 
 ## ✨ Highlights
 

@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Assets/FanBarIcon-modern-1024.png" alt="FanBar logo" width="120" height="120">
+<img src="Assets/FanBar-readme-banner-light.png" alt="FanBar — 無料・オープンソースのネイティブ macOS ファン制御ツール" width="100%">
 
 # FanBar
 
@@ -48,21 +48,21 @@ FanBar は macOS 11 Big Sur 以降に対応し、Apple Silicon Mac と、AppleSM
 
 ## 📸 スクリーンショット
 
-英語のインターフェイスです。**設定 → 一般 → 表示言語** から、再起動せずに日本語、簡体字中国語、繁体字中国語に切り替えられます。
+ライトモードの日本語インターフェイスです。**設定 → 一般 → 表示言語** から、再起動せずに英語、簡体字中国語、繁体字中国語に切り替えられます。
 
-![FanBar のメニューバーポップオーバー（英語）](docs/screenshots/fanbar-menu-light-en.jpg)
+<img src="docs/screenshots/fanbar-menu-light-ja.png" alt="FanBar のメニューバーポップオーバー（日本語）" width="456">
 
-設定は「冷却」タブから開きます。パネルの各プリセットには、編集できる温度→回転数のカーブがあります。
+「冷却」タブでは、パネルの各プリセットに専用の温度→回転数カーブを編集できます。
 
-![FanBar の冷却設定（英語）](docs/screenshots/fanbar-settings-cooling-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-cooling-light-ja.png" alt="FanBar の冷却設定（日本語）" width="640">
 
 「外観」では、メニューバーのアイコンと表示内容を選び、メニューバーを模したプレビューでその場で確認できます。
 
-![FanBar のメニューバー表示設定（英語）](docs/screenshots/fanbar-settings-menubar-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-appearance-light-ja.png" alt="FanBar の外観設定（日本語）" width="640">
 
-「一般」では、ログイン項目、制御サービスの状態、高温通知、表示言語、Sparkle によるアップデートを設定できます。
+「一般」では、この Mac の互換性、制御サービスの状態、自動復帰、高温通知、表示言語、ログイン項目、アップデートを確認・設定できます。長い設定ページはスクロールできます。
 
-![FanBar の一般設定（英語）](docs/screenshots/fanbar-settings-general-light-en.jpg)
+<img src="docs/screenshots/fanbar-settings-general-light-ja.png" alt="FanBar の一般設定（日本語）" width="640">
 
 ## ✨ 主な機能
 
