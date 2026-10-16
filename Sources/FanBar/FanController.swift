@@ -554,7 +554,8 @@ final class FanController: ObservableObject {
             "Control test finished; system automatic control restored. Review the results below.")
     }
 
-    /// Ask only an enabled helper: a diagnostic query must never register or launch one.
+    /// Ask only a registered, approved helper: diagnostics must never register or approve one.
+    /// The query can make launchd start an enabled helper on demand, which changes no fan state.
     static func runningHelper(
         state: HelperState, query: @Sendable () async -> HelperBuildQuery
     ) async -> DiagnosticRunningHelper {

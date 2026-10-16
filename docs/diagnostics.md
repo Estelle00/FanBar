@@ -33,6 +33,6 @@
 客户端请求编号可关联发起/结果/超时；Helper 使用独立请求编号，按操作与时间对照，不能假设两者编号相同。
 当前二进制无符号文件时，模块偏移只能缩小范围，精确崩溃定位还需对应构建的 dSYM。
 `runningHelper` 是正在运行的 Helper 自报的 build：与 `device.helperVersion`（应用内置 build）不一致，说明更新后旧守护进程仍在运行，需要重新授权 Helper 或重启。
-`noReply` 表示 Helper 早于版本查询或已无响应；`notQueried` 表示 Helper 未启用，采集时不会为此启动或注册 Helper。
+`noReply` 表示 Helper 早于版本查询或已无响应；`notQueried` 表示 Helper 未启用，采集时不会为此注册或授权 Helper。Helper 已启用时，查询可能让 launchd 按需启动 Helper 进程，这不会改变风扇状态。
 Helper 的失败、拒绝和启动/关闭/恢复/授权事件取自最近 24 小时，其余 Helper 事件只取最近 10 分钟。
 `discovery.truncated` 只表示 SMC 键扫描提前结束；`discovery.probesTruncated` 表示扫描完整、但部分未识别键没有附带读数探测。

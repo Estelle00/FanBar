@@ -114,7 +114,7 @@ final class DiagnosticReportTests: XCTestCase {
             let result = await FanController.runningHelper(state: state, query: query)
             XCTAssertEqual(result.status, "notQueried")
         }
-        XCTAssertEqual(counter.calls, 0, "Diagnostics must never launch or register a helper")
+        XCTAssertEqual(counter.calls, 0, "A helper that is not enabled is never queried")
         let enabled = await FanController.runningHelper(state: .enabled, query: query)
         XCTAssertEqual(enabled, DiagnosticRunningHelper(.reported("26")))
         XCTAssertEqual(counter.calls, 1)
