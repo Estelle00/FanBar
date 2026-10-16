@@ -159,6 +159,36 @@ describe('publication and withdrawal', () => {
     expect(JSON.stringify(marker)).not.toContain(report.reportID);
     expect(JSON.stringify(marker)).not.toContain(token);
   });
+  it('does not let a withdrawal made with another credential block the owner', async () => {
+    const report = fixture();
+    const other = { Authorization: 'Bearer ' + 'B'.repeat(43) };
+    expect((await SELF.fetch(request('/api/reports/' + report.reportID, 'DELETE', undefined, other))).status).toBe(204);
+    expect((await submit(report)).status).toBe(201);
+    expect((await SELF.fetch(request('/api/reports/' + report.reportID, 'DELETE', undefined, other))).status).toBe(404);
+    expect((await SELF.fetch(request('/api/reports/' + report.reportID, 'DELETE', undefined, {
+      Authorization: 'Bearer ' + token,
+    }))).status).toBe(204);
+    expect((await submit(report)).status).toBe(409);
+  });
+  it('keeps the audit of a published verification while expiring report audits', async () => {
+    const headers = { Authorization: 'Bearer ' + env.ADMIN_TOKEN, 'X-FanBar-Admin': '1', Origin: 'http://localhost' };
+    const created = await SELF.fetch(request('/api/admin/verifications', 'POST', {
+      modelIdentifier: 'Mac14,13', macOSVersion: '15.0.0', appVersion: '1.0', helperVersion: '10',
+      capability: 'manualControl', status: 'verifiedAvailable', notes: 'Independent controlled test',
+      sourceURL: 'https://github.com/helson-lin/FanBar', verifiedOn: new Date().toISOString().slice(0, 10),
+    }, headers));
+    const { verificationID } = await created.json<{ verificationID: string }>();
+    const report = fixture(); await submit(report); await review(report.reportID);
+    const old = '2000-01-01T00:00:00.000Z';
+    await env.DB.prepare('UPDATE reviews SET reviewed_at = ?').bind(old).run();
+    await cleanup(env);
+    const kept = await env.DB.prepare('SELECT object_type FROM reviews').all<{ object_type: string }>();
+    expect(kept.results.map(row => row.object_type)).toEqual(['verification']);
+    expect((await SELF.fetch(request('/api/admin/verifications/' + verificationID, 'DELETE', undefined, headers))).status).toBe(204);
+    await env.DB.prepare('UPDATE reviews SET reviewed_at = ?').bind(old).run();
+    await cleanup(env);
+    expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM reviews').first('count')).toBe(0);
+  });
   it('excludes expired reports before cleanup', async () => {
     const report = fixture(); await submit(report); await review(report.reportID);
     await env.DB.prepare('UPDATE reports SET expires_at = ?').bind('2000-01-01T00:00:00.000Z').run();
@@ -300,6 +330,28 @@ describe('admin insights', () => {
 });
 
 
+describe('public matrix pagination', () => {
+  it('pages through every combination instead of dropping older ones', async () => {
+    for (let index = 0; index < 21; index++) {
+      const report = fixture();
+      report.device = { ...report.device, appVersion: `1.${index}` };
+      expect((await submit(report)).status).toBe(201);
+      expect((await review(report.reportID)).status).toBe(200);
+    }
+    const first = await (await SELF.fetch(request('/api/compatibility'))).json<any>();
+    expect(first.groups).toHaveLength(20);
+    expect(first).toMatchObject({ truncated: true, nextOffset: 20 });
+    const second = await (await SELF.fetch(request('/api/compatibility?offset=20'))).json<any>();
+    expect(second.groups).toHaveLength(1);
+    expect(second).toMatchObject({ truncated: false, nextOffset: null });
+    const versions = new Set([...first.groups, ...second.groups].map((group: any) => group.appVersion));
+    expect(versions.size).toBe(21);
+    for (const offset of ['-1', '1.5', 'x', '100001']) {
+      expect((await SELF.fetch(request('/api/compatibility?offset=' + offset))).status).toBe(400);
+    }
+  });
+});
+
 describe('user hands-on confirmations', () => {
   it('retains optional control confirmations without changing automatic statuses', async () => {
     const report = fixture();
@@ -316,6 +368,20 @@ describe('user hands-on confirmations', () => {
     const distribution = await (await SELF.fetch(request('/api/compatibility'))).json<any>();
     expect(distribution.groups[0].community.find((row: any) => row.capability === 'manualControl').userConfirmedWorking).toBe(1);
     expect(distribution.groups[0].developerVerifications).toEqual([]);
+  });
+  it('rejects confirmations on results showing control could not have run', async () => {
+    const contradictions = [
+      { status: 'requestFailed', reasonCode: 'CONTROL_REQUEST_FAILED' },
+      { status: 'requiresAuthorization', reasonCode: 'HELPER_AUTHORIZATION_REQUIRED' },
+      { status: 'temporarilyUnavailable', reasonCode: 'HELPER_MISSING' },
+    ] as const;
+    for (const result of contradictions) {
+      const report = fixture();
+      report.capabilities[5] = { capability: 'manualControl', ...result, userConfirmedWorking: true };
+      expect((await submit(report)).status).toBe(400);
+      delete report.capabilities[5].userConfirmedWorking;
+      expect((await submit(report)).status).toBe(201);
+    }
   });
   it('rejects confirmations on sensors and values other than true', async () => {
     for (const [index, confirmation] of [[0, true], [5, false], [5, 'true']]) {

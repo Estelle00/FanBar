@@ -101,5 +101,9 @@ struct CompatibilityControlTestTests {
         #expect(!client.manual)
         #expect(client.calls == ["fixed:2350", "restore"])
         #expect(result.curve == .unverified)
+        // Stopping the test is not a failed control request.
+        #expect(result.cancelled)
+        #expect(result.manual == .unverified)
+        #expect(result.controlError == nil)
     }
 }

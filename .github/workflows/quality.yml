@@ -25,8 +25,33 @@ env:
   FANBAR_MIN_DIFF_COVERAGE: "60"
 
 jobs:
+  # macOS minutes are the expensive part of CI. Pull requests that touch only files the
+  # Swift build and tests cannot see skip both jobs below. The jobs are skipped rather than
+  # the workflow filtered by paths, so they still report success if made required checks.
+  changes:
+    name: Detect Swift-relevant changes
+    runs-on: ubuntu-latest
+    outputs:
+      swift: ${{ steps.filter.outputs.swift }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-swift-relevant.sh "$EVENT_NAME" "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
   lint:
     name: SwiftLint + SwiftFormat
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
     runs-on: macos-15
     steps:
       - name: Check out source
@@ -45,6 +70,8 @@ jobs:
 
   test:
     name: Build (0 warnings) + tests + coverage
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
     runs-on: macos-15
     steps:
       - name: Check out source

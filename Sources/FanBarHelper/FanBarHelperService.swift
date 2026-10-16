@@ -11,9 +11,16 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
     private let makeDriver: () throws -> SMCFanDriver
     private var driver: SMCFanDriver?
     private var activeConnections = 0
+    private let launchBuild: String
 
-    init(makeDriver: @escaping () throws -> SMCFanDriver = { try SMCFanDriver() }) {
+    init(
+        makeDriver: @escaping () throws -> SMCFanDriver = { try SMCFanDriver() },
+        launchBuild: String = HelperLaunchBuild.read(
+            executableURL: Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])
+        )
+    ) {
         self.makeDriver = makeDriver
+        self.launchBuild = HelperLaunchBuild.sanitized(launchBuild)
         super.init()
         listener.delegate = self
     }
@@ -164,6 +171,12 @@ final class FanBarHelperService: NSObject, NSXPCListenerDelegate, FanBarHelperPr
             try driver.setAllFansToEightyPercent()
         }
     }
+
+    func getBuildVersion(reply: @escaping @Sendable (String) -> Void) {
+        reply(launchBuild)
+    }
+
+    var launchBuildForTesting: String { launchBuild }
 
     func restoreAutomatic(
         reply: @escaping @Sendable (Bool, String?) -> Void

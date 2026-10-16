@@ -1,11 +1,16 @@
 export const POLICY_VERSION = '2026-10-13';
 export const RETENTION_DAYS = 90;
+export const MAXIMUM_REPORT_BYTES = 16384;
+// Diagnostics live here too so scripts/schema.ts can load every client-validated value without the Worker runtime.
+export const DIAGNOSTIC_POLICY_VERSION = 'diagnostics-2026-10-15-v4';
+export const DIAGNOSTIC_RETENTION_DAYS = 90;
+export const DIAGNOSTIC_MAXIMUM_BYTES = 262144;
 export function policy(origin: string) {
   return {
     version: POLICY_VERSION, serviceOrigin: origin, retentionDays: RETENTION_DAYS,
-    maximumReportBytes: 16384, backupMaximumDays: 30,
+    maximumReportBytes: MAXIMUM_REPORT_BYTES, backupMaximumDays: 30,
     operator: 'FanBar project maintainers',
-    sourceURL: 'https://github.com/helson-lin/FanBar/tree/codex/device-compatibility/services/compatibility',
+    sourceURL: 'https://github.com/helson-lin/FanBar/tree/main/services/compatibility',
     fields: ['schemaVersion', 'reportID', 'device.modelIdentifier', 'device.processor',
       'device.macOSVersion', 'device.appVersion', 'device.helperVersion', 'fanCount',
       'capabilities[].capability', 'capabilities[].status', 'capabilities[].reasonCode', 'capabilities[].userConfirmedWorking', 'selectedTemperatureSource'],

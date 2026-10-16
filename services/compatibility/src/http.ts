@@ -1,3 +1,5 @@
+import { MAXIMUM_REPORT_BYTES } from './policy.ts';
+
 export class HttpError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code); }
 }
@@ -5,7 +7,7 @@ export const encoder = new TextEncoder();
 export function json(value: unknown, status = 200): Response {
   return Response.json(value, { status, headers: { 'Cache-Control': 'no-store' } });
 }
-export async function boundedJSON(request: Request, maximum = 16384): Promise<unknown> {
+export async function boundedJSON(request: Request, maximum = MAXIMUM_REPORT_BYTES): Promise<unknown> {
   if (request.headers.get('Content-Type')?.split(';')[0].trim() !== 'application/json') {
     throw new HttpError(415, 'JSON_REQUIRED');
   }
@@ -35,6 +37,14 @@ export async function boundedJSON(request: Request, maximum = 16384): Promise<un
 export async function sha256(value: string): Promise<string> {
   const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value)));
   return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+/**
+ * Withdrawal markers are keyed by ID *and* credential, so only the owner's own
+ * withdrawal blocks a late upload. A marker created with any other credential
+ * cannot stop the owner from submitting or withdrawing.
+ */
+export function withdrawalKey(id: string, tokenHash: string): Promise<string> {
+  return sha256(`${id.toLowerCase()}\n${tokenHash}`);
 }
 export function sameHash(left: string, right: string): boolean {
   if (left.length !== right.length) return false;

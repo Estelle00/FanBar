@@ -79,6 +79,14 @@ struct HelperConnectionGenerations {
     }
 }
 
+/// What the running helper daemon says about its own build.
+enum HelperBuildQuery: Equatable, Sendable {
+    case reported(String)
+    /// No reply in time: a helper older than the build query, or a hung one.
+    case noReply
+    case connectionFailed(Int)
+}
+
 /// Typed, reconnecting client for the root launch daemon.
 final class HelperClient: @unchecked Sendable {
     private let lock = NSLock()
@@ -353,6 +361,30 @@ final class HelperClient: @unchecked Sendable {
             connection = nil
         }
         lock.unlock()
+    }
+
+    /// Diagnostics only. Uses its own short-lived connection: an old helper may silently drop
+    /// the unknown message, and timing out here must never tear down the control connection
+    /// (the helper restores automatic control when its last client leaves).
+    static func queryRunningBuild(timeout: TimeInterval = 2) async -> HelperBuildQuery {
+        let connection = NSXPCConnection(machServiceName: FanBarService.helperBundleID, options: .privileged)
+        connection.remoteObjectInterface = NSXPCInterface(with: FanBarHelperProtocol.self)
+        connection.resume()
+        defer { connection.invalidate() }
+        return await withCheckedContinuation { (continuation: CheckedContinuation<HelperBuildQuery, Never>) in
+            let gate = ReplyGate()
+            gate.scheduleTimeout(after: timeout) { continuation.resume(returning: .noReply) }
+            let proxy = connection.remoteObjectProxyWithErrorHandler { error in
+                gate.once { continuation.resume(returning: .connectionFailed((error as NSError).code)) }
+            } as? FanBarHelperProtocol
+            guard let proxy else {
+                gate.once { continuation.resume(returning: .connectionFailed(-1)) }
+                return
+            }
+            proxy.getBuildVersion { build in
+                gate.once { continuation.resume(returning: .reported(HelperLaunchBuild.sanitized(build))) }
+            }
+        }
     }
 
     /// A timed-out connection is not safe to reuse for the next mode switch.

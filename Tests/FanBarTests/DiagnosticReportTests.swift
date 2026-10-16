@@ -4,12 +4,12 @@ import XCTest
 
 @MainActor
 final class DiagnosticReportTests: XCTestCase {
-    func testCollectionIncludesMissingSensorsWithoutChangingControl() throws {
+    func testCollectionIncludesMissingSensorsWithoutChangingControl() async throws {
         let source = FakeFanReadingSource()
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
-                                       makeReadingSource: { source })
+                                       makeReadingSource: { source }, makeDiagnosticSource: { FakeFanReadingSource() })
         let before = controller.mode
-        let report = controller.collectDiagnosticReport()
+        let report = await controller.collectDiagnosticReport()
         XCTAssertEqual(controller.mode, before)
         XCTAssertNotNil(report.thermal)
         XCTAssertNotNil(report.fanCount)
@@ -18,20 +18,38 @@ final class DiagnosticReportTests: XCTestCase {
             "diagnosticID", "capturedAt", "device", "helperState", "thermal",
             "fanCount", "probes", "recentSamples", "runtimeEvents", "crashes",
             "runtimeContext", "helperLogAvailable", "crashLogAvailable",
-            "helperStateSource"])
+            "helperStateSource", "runningHelper"])
         let thermal = try XCTUnwrap(object["thermal"] as? [String: Any])
         XCTAssertNotNil(thermal["sampledAt"] as? String)
-        let another = controller.collectDiagnosticReport()
+        let another = await controller.collectDiagnosticReport()
         XCTAssertNotEqual(report.diagnosticID, another.diagnosticID)
     }
 
-    func testConnectionFailuresRemainDiagnosableWithoutExceptionText() {
+    func testConnectionFailuresRemainDiagnosableWithoutExceptionText() async {
         let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
-                                       makeReadingSource: { throw SMCError.unavailable(-536870203) })
-        let report = controller.collectDiagnosticReport()
+                                       makeReadingSource: { throw SMCError.unavailable(-536870203) },
+                                       makeDiagnosticSource: { throw SMCError.unavailable(-536870203) })
+        let report = await controller.collectDiagnosticReport()
         XCTAssertEqual(report.connectionErrorCode, -536870203)
         XCTAssertNil(report.thermal)
         XCTAssertTrue(report.probes.isEmpty)
+    }
+
+    func testCollectionDoesNotBlockTheMainActor() async {
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
+                                       makeReadingSource: { FakeFanReadingSource() },
+                                       makeDiagnosticSource: {
+                                           XCTAssertFalse(Thread.isMainThread)
+                                           Thread.sleep(forTimeInterval: 0.3)
+                                           return FakeFanReadingSource()
+                                       })
+        let collection = Task { await controller.collectDiagnosticReport() }
+        // A main-actor job queued behind the collection must run while the slow source is read,
+        // not after it; the old synchronous collection held the main actor for the whole read.
+        let mainActorTurn = await Task { @MainActor in Date() }.value
+        let report = await collection.value
+        XCTAssertGreaterThan(Date().timeIntervalSince(mainActorTurn), 0.2)
+        XCTAssertNotNil(report.fanCount)
     }
 
     func testReadOnlySensorProbeOnLocalMac() throws {
@@ -41,6 +59,9 @@ final class DiagnosticReportTests: XCTestCase {
         let source = try SMCClient()
         let probes = source.diagnosticProbes()
         let discovery = try XCTUnwrap(source.diagnosticDiscovery)
+        if discovery.errorCode == nil, discovery.scannedKeyCount == discovery.reportedKeyCount {
+            XCTAssertFalse(discovery.truncated, "A complete scan is not truncated, even when probes are capped")
+        }
         XCTAssertFalse(probes.isEmpty)
         XCTAssertLessThanOrEqual(probes.count, 256)
         XCTAssertTrue(probes.contains { $0.source == "embeddedNVMe" })
@@ -52,7 +73,8 @@ final class DiagnosticReportTests: XCTestCase {
             device: CompatibilityDevice.current(helperVersion: "26"), helperState: "enabled",
             probes: probes, discovery: discovery)
         XCTAssertLessThan(try report.jsonData().count, 131072)
-        print("Diagnostic probe: entries=\(probes.count), scanned=\(discovery.scannedKeyCount), truncated=\(discovery.truncated)")
+        print("Diagnostic probe: entries=\(probes.count), scanned=\(discovery.scannedKeyCount)/\(discovery.reportedKeyCount ?? -1), "
+            + "truncated=\(discovery.truncated), probesTruncated=\(discovery.probesTruncated)")
     }
 
     func testDiagnosticClientRoundTripAgainstLocalWorker() async throws {
@@ -79,5 +101,44 @@ final class DiagnosticReportTests: XCTestCase {
         XCTAssertEqual(result, retry)
         try await client.withdrawDiagnostic(receipt)
         try await client.withdrawDiagnostic(receipt)
+    }
+
+    func testRunningHelperIsQueriedOnlyWhenTheHelperIsEnabled() async {
+        final class Counter: @unchecked Sendable { var calls = 0 }
+        let counter = Counter()
+        let query: @Sendable () async -> HelperBuildQuery = {
+            counter.calls += 1
+            return .reported("26")
+        }
+        for state in [FanController.HelperState.requiresApproval, .notRegistered, .unavailable] {
+            let result = await FanController.runningHelper(state: state, query: query)
+            XCTAssertEqual(result.status, "notQueried")
+        }
+        XCTAssertEqual(counter.calls, 0, "A helper that is not enabled is never queried")
+        let enabled = await FanController.runningHelper(state: .enabled, query: query)
+        XCTAssertEqual(enabled, DiagnosticRunningHelper(.reported("26")))
+        XCTAssertEqual(counter.calls, 1)
+    }
+
+    func testRunningHelperStatusesEncodeWithoutFreeFormText() throws {
+        let encode = { (value: DiagnosticRunningHelper) throws -> [String: Any] in
+            try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(value)) as? [String: Any])
+        }
+        XCTAssertEqual(try encode(DiagnosticRunningHelper(.reported("26"))) as NSDictionary, ["status": "reported", "build": "26"])
+        XCTAssertEqual(try encode(DiagnosticRunningHelper(.noReply)) as NSDictionary, ["status": "noReply"])
+        XCTAssertEqual(try encode(DiagnosticRunningHelper(.connectionFailed(4097))) as NSDictionary,
+                       ["status": "connectionFailed", "code": 4097])
+        XCTAssertEqual(try encode(DiagnosticRunningHelper(nil)) as NSDictionary, ["status": "notQueried"])
+    }
+
+    func testCollectedReportCarriesTheRunningHelperField() async throws {
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
+                                       makeReadingSource: { FakeFanReadingSource() },
+                                       makeDiagnosticSource: { FakeFanReadingSource() },
+                                       queryRunningHelperBuild: { .reported("1") })
+        let report = await controller.collectDiagnosticReport()
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: report.jsonData()) as? [String: Any])
+        // Tests have no registered helper, so the query is skipped and recorded as such.
+        XCTAssertEqual((object["runningHelper"] as? [String: Any])?["status"] as? String, "notQueried")
     }
 }

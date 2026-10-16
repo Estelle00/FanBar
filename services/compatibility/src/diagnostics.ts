@@ -1,11 +1,18 @@
 import { z } from 'zod';
-import { canonical, HttpError, json, reportToken, sameHash, sha256 } from './http.ts';
-import { reportSchema } from './schema.ts';
+import { canonical, HttpError, json, reportToken, sameHash, sha256, withdrawalKey } from './http.ts';
+import { DIAGNOSTIC_MAXIMUM_BYTES, DIAGNOSTIC_POLICY_VERSION, DIAGNOSTIC_RETENTION_DAYS } from './policy.ts';
+import { reportSchema, version } from './schema.ts';
 
-export const DIAGNOSTIC_POLICY = 'diagnostics-2026-10-14-v3';
+export const DIAGNOSTIC_POLICY = DIAGNOSTIC_POLICY_VERSION;
+/**
+ * Global ceilings keep anonymous uploads from exhausting D1, which reports share.
+ * Worst case stored: DIAGNOSTIC_STORED_LIMIT x 256 KiB (about 1.25 GiB).
+ */
+export const DIAGNOSTIC_DAILY_LIMIT = 200;
+export const DIAGNOSTIC_STORED_LIMIT = 5000;
 export function diagnosticPolicy(origin: string) {
-  return { version: DIAGNOSTIC_POLICY, serviceOrigin: origin, retentionDays: 90, maximumBytes: 262144,
-    fields: ['schemaVersion', 'diagnosticID', 'capturedAt', 'device', 'helperState', 'thermal', 'fanCount', 'connectionErrorCode', 'probes', 'recentSamples', 'discovery', 'runtimeEvents', 'crashes', 'runtimeContext', 'helperLogAvailable', 'crashLogAvailable', 'helperStateSource'],
+  return { version: DIAGNOSTIC_POLICY, serviceOrigin: origin, retentionDays: DIAGNOSTIC_RETENTION_DAYS, maximumBytes: DIAGNOSTIC_MAXIMUM_BYTES,
+    fields: ['schemaVersion', 'diagnosticID', 'capturedAt', 'device', 'helperState', 'thermal', 'fanCount', 'connectionErrorCode', 'probes', 'recentSamples', 'discovery', 'runtimeEvents', 'crashes', 'runtimeContext', 'helperLogAvailable', 'crashLogAvailable', 'helperStateSource', 'runningHelper'],
     excluded: ['serialNumber', 'hardwareUUID', 'userName', 'hostName', 'filePaths', 'processes', 'systemLogs'],
     visibility: 'administratorsOnly', contributesToCompatibilityStatistics: false, backupMaximumDays: 30,
   };
@@ -66,7 +73,13 @@ export const diagnosticSchema = z.strictObject({
   discovery: z.strictObject({
     reportedKeyCount: z.number().int().min(0).max(4294967295).optional(),
     temperatureKeys: z.array(z.string().regex(/^T[A-Za-z0-9]{3}$/)).max(512).optional(),
-    scannedKeyCount: z.number().int().min(0).max(4096), truncated: z.boolean(), errorCode: errorCode.optional(),
+    scannedKeyCount: z.number().int().min(0).max(4096), truncated: z.boolean(), probesTruncated: z.boolean().optional(),
+    errorCode: errorCode.optional(),
+  }).optional(),
+  // Build reported by the running helper daemon; differs from device.helperVersion when a stale daemon survived an update.
+  runningHelper: z.strictObject({
+    status: z.enum(['reported', 'noReply', 'connectionFailed', 'notQueried']),
+    build: version.optional(), code: errorCode.optional(),
   }).optional(),
 });
 interface DiagnosticRow {
@@ -87,17 +100,27 @@ export async function submitDiagnostic(request: Request, env: Env, body: unknown
   const text = canonical(payload);
   const hash = await sha256(text);
   const tokenHash = await sha256(reportToken(request));
-  const idHash = await sha256(id);
+  const idHash = await withdrawalKey(id, tokenHash);
   const now = new Date().toISOString();
-  const expires = new Date(Date.now() + 90 * 86400000).toISOString();
+  const dayAgo = new Date(Date.now() - 86400000).toISOString();
+  const expires = new Date(Date.now() + DIAGNOSTIC_RETENTION_DAYS * 86400000).toISOString();
+  // Capacity is checked inside the INSERT so concurrent uploads cannot overshoot it.
+  // Retries of an already stored ID still succeed below once the ceiling is reached.
   const result = await env.DB.prepare(`INSERT INTO diagnostics
     (id, payload, payload_hash, deletion_token_hash, model_identifier, created_at, expires_at)
     SELECT ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS
     (SELECT 1 FROM diagnostic_withdrawals WHERE id_hash = ? AND expires_at > ?)
+      AND (SELECT COUNT(*) FROM diagnostics WHERE created_at > ?) < ?
+      AND (SELECT COUNT(*) FROM diagnostics WHERE expires_at > ?) < ?
     ON CONFLICT(id) DO NOTHING`)
-    .bind(id, text, hash, tokenHash, payload.device.modelIdentifier, now, expires, idHash, now).run();
+    .bind(id, text, hash, tokenHash, payload.device.modelIdentifier, now, expires, idHash, now,
+      dayAgo, DIAGNOSTIC_DAILY_LIMIT, now, DIAGNOSTIC_STORED_LIMIT).run();
   const row = await find(env, id);
-  if (!row) throw new HttpError(409, 'DIAGNOSTIC_WITHDRAWN');
+  if (!row) {
+    const withdrawn = await env.DB.prepare('SELECT 1 FROM diagnostic_withdrawals WHERE id_hash = ? AND expires_at > ?')
+      .bind(idHash, now).first();
+    throw withdrawn ? new HttpError(409, 'DIAGNOSTIC_WITHDRAWN') : new HttpError(503, 'DIAGNOSTIC_CAPACITY_REACHED');
+  }
   if (!sameHash(row.deletion_token_hash, tokenHash) || !sameHash(row.payload_hash, hash)) throw new HttpError(409, 'DIAGNOSTIC_ID_CONFLICT');
   return json({ reportID: id, status: 'received', receivedAt: row.created_at, expiresAt: row.expires_at,
     publishReport: false, policyVersion: DIAGNOSTIC_POLICY }, result.meta.changes === 1 ? 201 : 200);
@@ -105,17 +128,13 @@ export async function submitDiagnostic(request: Request, env: Env, body: unknown
 export async function deleteDiagnostic(request: Request, env: Env, id: string) {
   const normalized = id.toLowerCase();
   const tokenHash = await sha256(reportToken(request));
-  const idHash = await sha256(normalized);
+  const idHash = await withdrawalKey(normalized, tokenHash);
   const row = await find(env, normalized);
-  const marker = await env.DB.prepare('SELECT deletion_token_hash FROM diagnostic_withdrawals WHERE id_hash = ?')
-    .bind(idHash).first<{ deletion_token_hash: string }>();
-  if ((row && !sameHash(row.deletion_token_hash, tokenHash)) || (marker && !sameHash(marker.deletion_token_hash, tokenHash))) {
-    throw new HttpError(404, 'DIAGNOSTIC_NOT_FOUND');
-  }
+  if (row && !sameHash(row.deletion_token_hash, tokenHash)) throw new HttpError(404, 'DIAGNOSTIC_NOT_FOUND');
   await env.DB.batch([
     env.DB.prepare(`INSERT INTO diagnostic_withdrawals (id_hash, deletion_token_hash, expires_at)
       VALUES (?, ?, ?) ON CONFLICT(id_hash) DO NOTHING`)
-      .bind(idHash, tokenHash, new Date(Date.now() + 90 * 86400000).toISOString()),
+      .bind(idHash, tokenHash, new Date(Date.now() + DIAGNOSTIC_RETENTION_DAYS * 86400000).toISOString()),
     env.DB.prepare('DELETE FROM diagnostics WHERE id = ? AND deletion_token_hash = ?').bind(normalized, tokenHash),
   ]);
   return new Response(null, { status: 204 });

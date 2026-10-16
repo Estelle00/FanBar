@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { SELF } from 'cloudflare:test';
 import { beforeEach, expect, it } from 'vitest';
-import { DIAGNOSTIC_POLICY } from '../src/diagnostics.ts';
+import { DIAGNOSTIC_DAILY_LIMIT, DIAGNOSTIC_POLICY, DIAGNOSTIC_STORED_LIMIT } from '../src/diagnostics.ts';
 import { cleanup } from '../src/reports.ts';
 const credential = 'D'.repeat(43);
 function fixture() {
@@ -55,6 +55,12 @@ it('withdraws idempotently and blocks late arrivals', async () => {
   await request('/api/diagnostics/' + late.diagnosticID, 'DELETE');
   expect((await request('/api/diagnostics', 'POST', late)).status).toBe(409);
 });
+it('does not let a withdrawal made with another credential block the owner', async () => {
+  const body = fixture();
+  expect((await request('/api/diagnostics/' + body.diagnosticID, 'DELETE', undefined, 'X'.repeat(43))).status).toBe(204);
+  expect((await request('/api/diagnostics', 'POST', body)).status).toBe(201);
+  expect((await request('/api/diagnostics/' + body.diagnosticID, 'DELETE')).status).toBe(204);
+});
 it('rejects conflicting payloads or credentials and cleans up expired data', async () => {
   const body = fixture();
   await request('/api/diagnostics', 'POST', body);
@@ -94,4 +100,51 @@ it('accepts bounded runtime evidence but rejects raw errors, paths and crash ide
   expect(await detail.json()).toMatchObject({ diagnostic: body });
   expect((await request('/api/diagnostics', 'POST', { ...fixture(), runtimeEvents: [{ ...body.runtimeEvents[0], message: '/Users/private' }] })).status).toBe(400);
   expect((await request('/api/diagnostics', 'POST', { ...fixture(), crashes: [{ ...body.crashes[0], incidentID: 'private' }] })).status).toBe(400);
+});
+
+async function seedDiagnostics(count: number, createdAt: string) {
+  const expires = new Date(Date.now() + 86400000).toISOString();
+  const rows = Array.from({ length: count }, () => env.DB.prepare(`INSERT INTO diagnostics
+    (id, payload, payload_hash, deletion_token_hash, model_identifier, created_at, expires_at)
+    VALUES (?, '{}', 'h', 't', 'Mac16,10', ?, ?)`).bind(crypto.randomUUID(), createdAt, expires));
+  for (let index = 0; index < rows.length; index += 500) await env.DB.batch(rows.slice(index, index + 500));
+}
+it('stops anonymous uploads at the daily ceiling but keeps retries idempotent', async () => {
+  const stored = fixture();
+  expect((await request('/api/diagnostics', 'POST', stored)).status).toBe(201);
+  await seedDiagnostics(DIAGNOSTIC_DAILY_LIMIT, new Date().toISOString());
+  const rejected = await request('/api/diagnostics', 'POST', fixture());
+  expect(rejected.status).toBe(503);
+  expect(rejected.headers.get('Retry-After')).toBe('3600');
+  expect(await rejected.json()).toEqual({ error: { code: 'DIAGNOSTIC_CAPACITY_REACHED' } });
+  expect((await request('/api/diagnostics', 'POST', stored)).status).toBe(200);
+});
+it('stops anonymous uploads at the stored ceiling', async () => {
+  await seedDiagnostics(DIAGNOSTIC_STORED_LIMIT, '2000-01-01T00:00:00.000Z');
+  expect((await request('/api/diagnostics', 'POST', fixture())).status).toBe(503);
+});
+it('limits diagnostic uploads per network address more strictly than reports', async () => {
+  const address = crypto.randomUUID();
+  const statuses: number[] = [];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    statuses.push((await SELF.fetch(new Request('http://localhost/api/diagnostics', { method: 'POST', headers: {
+      'Content-Type': 'application/json', 'CF-Connecting-IP': address,
+      Authorization: 'Bearer ' + credential, 'X-FanBar-Policy-Version': DIAGNOSTIC_POLICY,
+    }, body: JSON.stringify(fixture()) }))).status);
+  }
+  expect(statuses).toEqual([201, 201, 429]);
+});
+
+it('accepts the running helper build and separates scan from probe truncation', async () => {
+  const body = { ...fixture(),
+    runningHelper: { status: 'reported', build: '26' },
+    discovery: { reportedKeyCount: 1369, scannedKeyCount: 1369, truncated: false, probesTruncated: true },
+  };
+  expect((await request('/api/diagnostics', 'POST', body)).status).toBe(201);
+  const detail = await request('/api/admin/diagnostics?id=' + body.diagnosticID, 'GET', undefined, env.ADMIN_TOKEN!);
+  expect(await detail.json()).toMatchObject({ diagnostic: body });
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'noReply' } })).status).toBe(201);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'connectionFailed', code: 4097 } })).status).toBe(201);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'reported', build: '/Users/me' } })).status).toBe(400);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'running' } })).status).toBe(400);
 });

@@ -83,39 +83,78 @@ public final class RuntimeDiagnostics: @unchecked Sendable {
         } catch { /* A diagnostics write must never prevent launch or fan restoration. */ }
     }
 
+    /// Helper events kept from the whole last day: lifecycle markers and anything that failed.
+    public static let importantHelperActions: Set<RuntimeDiagnosticEvent.Action> = [.startup, .shutdown, .recovery, .authorize]
+    public static let importantHelperOutcomes: Set<RuntimeDiagnosticEvent.Outcome> = [.failed, .rejected]
+
     /// Read only this product's structured events; never return unified-log metadata or messages from other subsystems.
+    /// A user often opens diagnostics long after the problem, so failures and lifecycle events are read from the
+    /// last 24 hours. Routine curve writes could fill a day of logs, so the full stream covers only 10 minutes.
     public static func helperEvents() -> (events: [RuntimeDiagnosticEvent], available: Bool) {
-        let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        FileManager.default.createFile(atPath: output.path, contents: nil, attributes: [.posixPermissions: 0o600])
-        defer { try? FileManager.default.removeItem(at: output) }
-        guard let handle = try? FileHandle(forWritingTo: output) else { return ([], false) }
-        defer { try? handle.close() }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/log")
-        let predicate = "subsystem == \"local.fanbar.diagnostics\" AND category == \"events\" "
+        let base = "subsystem == \"local.fanbar.diagnostics\" AND category == \"events\" "
             + "AND eventMessage CONTAINS '\"component\":\"helper\"'"
-        process.arguments = ["show", "--last", "10m", "--style",
-            "ndjson", "--predicate", predicate]
-        process.standardOutput = handle
-        process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return ([], false) }
-        let deadline = Date().addingTimeInterval(3)
-        while process.isRunning, Date() < deadline {
-            if ((try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 1048576 { break }
-            Thread.sleep(forTimeInterval: 0.02)
+        let important = (importantHelperOutcomes.map { "eventMessage CONTAINS '\"outcome\":\"\($0.rawValue)\"'" }
+            + importantHelperActions.map { "eventMessage CONTAINS '\"action\":\"\($0.rawValue)\"'" })
+            .sorted().joined(separator: " OR ")
+        let recent = logEvents(last: "10m", predicate: base)
+        let day = logEvents(last: "24h", predicate: "\(base) AND (\(important))")
+        return (selectHelperEvents(recent: recent ?? [], important: day ?? []), recent != nil && day != nil)
+    }
+
+    /// Keeps up to `importantLimit` of the newest lifecycle/failure events, then fills the rest with the newest others,
+    /// so a burst of routine writes cannot push out the event that explains a problem.
+    public static func selectHelperEvents(recent: [RuntimeDiagnosticEvent], important: [RuntimeDiagnosticEvent],
+                                          limit: Int = 64, importantLimit: Int = 32) -> [RuntimeDiagnosticEvent] {
+        func key(_ event: RuntimeDiagnosticEvent) -> String {
+            "\(event.timestamp.timeIntervalSinceReferenceDate)|\(event.sessionID)|\(event.requestID ?? "")|"
+                + "\(event.action.rawValue)|\(event.outcome.rawValue)"
         }
-        if process.isRunning { kill(process.processIdentifier, SIGKILL); return ([], false) }
-        guard process.terminationStatus == 0,
-              ((try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? Int.max) <= 1048576,
-              let data = try? Data(contentsOf: output), let text = String(data: data, encoding: .utf8) else { return ([], false) }
-        let events = text.split(separator: "\n").compactMap { line -> RuntimeDiagnosticEvent? in
+        var seen = Set<String>()
+        let unique = (important + recent).filter { $0.component == .helper && seen.insert(key($0)).inserted }
+            .sorted { $0.timestamp < $1.timestamp }
+        let kept = Array(unique.filter {
+            importantHelperActions.contains($0.action) || importantHelperOutcomes.contains($0.outcome)
+        }.suffix(importantLimit))
+        let keptKeys = Set(kept.map(key))
+        let rest = unique.filter { !keptKeys.contains(key($0)) }.suffix(max(0, limit - kept.count))
+        return (kept + rest).sorted { $0.timestamp < $1.timestamp }
+    }
+
+    /// Parses `log show --style ndjson` output, keeping only messages that decode as helper events.
+    public static func parseHelperLog(_ text: String) -> [RuntimeDiagnosticEvent] {
+        text.split(separator: "\n").compactMap { line -> RuntimeDiagnosticEvent? in
             guard let object = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
                   let message = object["eventMessage"] as? String,
                   let event = try? JSONDecoder().decode(RuntimeDiagnosticEvent.self, from: Data(message.utf8)),
                   event.component == .helper else { return nil }
             return event
         }
-        return (Array(events.suffix(64)), true)
+    }
+
+    /// nil when the log could not be read in time or exceeded the output bound.
+    private static func logEvents(last window: String, predicate: String) -> [RuntimeDiagnosticEvent]? {
+        let output = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        FileManager.default.createFile(atPath: output.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        defer { try? FileManager.default.removeItem(at: output) }
+        guard let handle = try? FileHandle(forWritingTo: output) else { return nil }
+        defer { try? handle.close() }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/log")
+        process.arguments = ["show", "--last", window, "--style", "ndjson", "--predicate", predicate]
+        process.standardOutput = handle
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        // Collection runs off the main actor; a day of unified log can take several seconds to scan.
+        let deadline = Date().addingTimeInterval(15)
+        while process.isRunning, Date() < deadline {
+            if ((try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) > 1048576 { break }
+            Thread.sleep(forTimeInterval: 0.02)
+        }
+        if process.isRunning { kill(process.processIdentifier, SIGKILL); return nil }
+        guard process.terminationStatus == 0,
+              ((try? output.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? Int.max) <= 1048576,
+              let data = try? Data(contentsOf: output), let text = String(data: data, encoding: .utf8) else { return nil }
+        return parseHelperLog(text)
     }
 
     public func snapshot() -> [RuntimeDiagnosticEvent] {

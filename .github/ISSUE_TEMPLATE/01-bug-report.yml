@@ -8,6 +8,8 @@ body:
         Thanks for helping improve FanBar! Please search existing issues before submitting. Include enough detail to reproduce the problem, and remove personal information from screenshots and logs.
 
         感谢帮助改进 FanBar！提交前请搜索已有 Issue，并提供足够信息以便复现。上传截图或日志前请移除个人信息。
+
+        Suspected vulnerability? Use [private reporting](https://github.com/helson-lin/FanBar/security/advisories/new), not this public form. / 怀疑存在安全漏洞？请使用[私密报告](https://github.com/helson-lin/FanBar/security/advisories/new)，不要在此公开。
   - type: checkboxes
     id: existing-issues
     attributes:
@@ -19,8 +21,8 @@ body:
     id: version
     attributes:
       label: "FanBar version / FanBar 版本"
-      description: "Find this in the app's About window. / 可在应用的「关于」窗口查看。"
-      placeholder: "e.g. 0.4.14"
+      description: "Find the version and build in Settings → General. / 可在「设置 → 通用」查看版本与构建号。"
+      placeholder: "e.g. 0.6.0"
     validations:
       required: true
   - type: input

@@ -17,7 +17,7 @@
 | device.macOSVersion / appVersion / helperVersion | 分别定位版本组合 |
 | fanCount | 如可获取，硬件接口报告的 0–8 个风扇 |
 | capabilities | 七项能力各一条：能力枚举、状态枚举、标准原因码 |
-| capabilities[].userConfirmedWorking | 可选；仅用于手动调速与智能温控，用户主动勾选确认本机实际使用可用时为 true，不修改自动检测结果，不等同于开发者验证 |
+| capabilities[].userConfirmedWorking | 可选；仅用于手动调速与智能温控，用户主动勾选确认本机实际使用可用时为 true，不修改自动检测结果，不等同于开发者验证；仅可附在 requestSucceeded 或 unverified 结果上，控制请求失败或 Helper 未授权／缺失时拒绝 |
 | selectedTemperatureSource | 当前所选温控来源：maxChip / cpu / gpu / ssd |
 
 额外请求头：`X-FanBar-Policy-Version` 确认规则版本；`X-FanBar-Publish-Report` 明确选择是否公开单份报告（0 / 1）；`Authorization: Bearer …` 是每份报告独立的撤回凭证。请求头不并入公开报告。
@@ -59,9 +59,9 @@ Cloudflare 会处理传输与安全所需的网络地址等元数据，不宣称
 
 ## 保留、撤回、备份
 
-报告保留 90 天，到期立即停止 API 查询和统计，每日定时物理清理（在线库最多额外约一天）。原始报告审核记录同样不长期保留。独立开发者验证记录长期保留，直到更正或撤下。
+报告保留 90 天，到期立即停止 API 查询和统计，每日定时物理清理（在线库最多额外约一天）。原始报告审核记录同样不长期保留。独立开发者验证记录长期保留，直到更正或撤下；仍在发布的验证记录，其审核记录随之保留。
 
-拥有凭证可 DELETE 对应报告：在线报告和相关审核记录删除，汇总实时排除。删除操作保留报告编号和凭证哈希的私有删除标记 90 天，防止迟到请求重新写入；标记不含原始编号、明文凭证或报告内容。已经不存在或过期的报告返回 204；不存在的私有报告与错误凭证不通过公开查询暴露详情。
+拥有凭证可 DELETE 对应报告：在线报告和相关审核记录删除，汇总实时排除。删除操作保留由报告编号和凭证共同派生的私有删除标记 90 天，防止同一凭证的迟到请求重新写入；其他凭证产生的标记不会阻止报告所有者提交或撤回。标记不含原始编号、明文凭证或报告内容。已经不存在或过期的报告返回 204；不存在的私有报告与错误凭证不通过公开查询暴露详情。
 
 撤回凭证只能删除自己的随机报告，不是管理员密钥。用户可以显式保存撤回凭证文件；该文件含密钥，不能作为普通报告公开分享。
 
@@ -108,6 +108,10 @@ durations, fan index/mode are included. No arbitrary exception descriptions are 
 App journals use a private local directory and mode 0600 files; no upload occurs until consent.
 Helper log access failures are explicitly flagged, not interpreted as helper absence.
 
+Diagnostic uploads use a stricter keyed per-address limiter (2 per minute) than reports, and
+the service stops accepting new diagnostics after 200 in 24 hours or 5,000 stored, answering
+503 `DIAGNOSTIC_CAPACITY_REACHED`. Retries of an already stored diagnostic still succeed.
+
 Up to 3 recent (7-day) FanBar/Helper .ips crash files are read locally (2 MiB input limit
 each). Only file modification time, fixed process/exception/signal/termination categories,
 termination code, and up to 20 fixed image names and relative offsets survive extraction.
@@ -118,3 +122,17 @@ OS build, architecture, coarse bundle location and bundled-helper presence (no p
 The separately signed FanBarDiagnostics executable and companion .command launcher can
 export the same sanitized evidence without loading the app UI, registering a daemon,
 changing fan control, or uploading anything.
+
+### Diagnostics revision (diagnostics-2026-10-15-v4)
+
+Adds `runningHelper`: whether the running Helper daemon answered a read-only build query
+(`reported`, `noReply`, `connectionFailed`, or `notQueried` when the Helper is not enabled), its
+build token, and a numeric connection error code. It is compared with `device.helperVersion`, the
+build bundled in the app, to detect a stale daemon left running after an update. The query uses a
+separate short-lived connection and never changes fan control.
+
+Helper events now cover the last 24 hours for failures, rejections and lifecycle markers
+(startup, shutdown, recovery, authorization) and the last 10 minutes for everything else, still
+bounded to 64 events. `discovery.truncated` now means only that the SMC key scan stopped early;
+`discovery.probesTruncated` means the scan finished but some unrecognized keys were left out of
+the probe list.
