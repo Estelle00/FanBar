@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Assets/FanBarIcon-modern-1024.png" alt="FanBar logo" width="120" height="120">
+<img src="Assets/FanBar-readme-banner-light.png" alt="FanBar — 免费开源的原生 macOS 风扇控制工具" width="100%">
 
 # FanBar
 
@@ -11,6 +11,12 @@
   <a href="README.zh-CN.md"><strong>简体中文</strong></a> ·
   <a href="README.zh-TW.md">繁體中文</a> ·
   <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
+  <a href="https://getfanbar.com/zh?utm_source=github&utm_medium=referral&utm_campaign=readme"><strong>官网 getfanbar.com</strong></a> ·
+  <a href="https://getfanbar.com/zh/is-fanbar-safe?utm_source=github&utm_medium=referral&utm_campaign=readme">FanBar 安全吗？</a> ·
+  <a href="https://getfanbar.com/zh/compare/macs-fan-control?utm_source=github&utm_medium=referral&utm_campaign=readme">与 Macs Fan Control 对比</a>
 </p>
 
 <p align="center">
@@ -46,15 +52,35 @@
 
 FanBar 支持 macOS 11 Big Sur 及更高版本，适用于 Apple Silicon 与仍提供可读 AppleSMC 风扇数据的 Intel Mac。日常使用保持 macOS 自动管理，只有在用户批准签名控制服务后才开放手动调速。
 
+## FanBar 是什么
+
+FanBar 是一款免费开源的原生 macOS 菜单栏应用，用于查看 CPU/GPU/SSD/电池温度和风扇转速。日常散热仍由 macOS 自动管理；只有在你明确批准签名 Helper 后，才会开放有限范围内的手动控制。
+
+- **支持设备：** macOS 11 Big Sur 及以上，且 Mac 能通过 AppleSMC 提供可读的风扇数据；Apple Silicon 与 Intel 均支持。
+- **散热模式：** 自动、固定目标转速，以及静音、均衡、性能、极速；每个预设都有可编辑的温度 → 转速曲线。
+- **安全边界：** 目标转速始终限制在风扇报告的硬件范围内；预设到期、应用退出、连接中断或 Helper 失败时，FanBar 会尝试恢复「自动」。
+- **下载：** 请使用[最新的已公证 GitHub Release](https://github.com/helson-lin/FanBar/releases/latest)，无需账号、订阅或广告。
+
+官网提供了一份面向回答引擎和智能代理的 [llms.txt](https://getfanbar.com/llms.txt?utm_source=github&utm_medium=referral&utm_campaign=readme)，集中列出权威产品事实和文档入口。
+
+
 ## 📸 截图
 
-以下为深色外观下的简体中文界面。可在 **设置 → 通用 → 界面语言** 中切换到英文、繁体中文或日语，无需重启。
+以下为浅色外观下的简体中文界面。可在 **设置 → 通用 → 界面语言** 中切换到英文、繁体中文或日语，无需重启。
 
-![FanBar 深色菜单栏面板](docs/screenshots/fanbar-menu-dark.jpg)
+<img src="docs/screenshots/fanbar-menu-light-zh-CN.png" alt="FanBar 简体中文菜单栏面板" width="456">
 
-设置默认打开「散热」页。每个面板预设都有独立的温度→转速曲线，可直接拖锚点编辑。
+「散热」页为每个面板预设提供独立的温度→转速曲线，可直接拖动控制点编辑。
 
-![FanBar 智能温控曲线设置](docs/screenshots/fanbar-settings-dark.jpg)
+<img src="docs/screenshots/fanbar-settings-cooling-light-zh-CN.png" alt="FanBar 简体中文散热设置" width="640">
+
+「外观」页可选择菜单栏图标与显示内容，并通过模拟菜单栏实时预览。
+
+<img src="docs/screenshots/fanbar-settings-appearance-light-zh-CN.png" alt="FanBar 简体中文外观设置" width="640">
+
+「通用」页包含本机兼容性检查、控制服务状态、自动恢复、通知、语言、登录启动与更新。较长的设置页面可向下滚动。
+
+<img src="docs/screenshots/fanbar-settings-general-light-zh-CN.png" alt="FanBar 简体中文通用设置" width="640">
 
 ## ✨ 亮点
 

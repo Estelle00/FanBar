@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Assets/FanBarIcon-modern-1024.png" alt="FanBar logo" width="120" height="120">
+<img src="Assets/FanBar-readme-banner-light.png" alt="FanBar — 免費開源的原生 macOS 風扇控制工具" width="100%">
 
 # FanBar
 
@@ -48,13 +48,21 @@ FanBar 支援 macOS 11 Big Sur 及更新版本，適用於 Apple Silicon 與仍�
 
 ## 📸 截圖
 
-以下為深色外觀下的簡體中文介面。可在 **設定 → 一般 → 介面語言** 中切換為繁體中文、英文或日文，無需重新啟動。
+以下為淺色外觀下的繁體中文介面。可在 **設定 → 一般 → 介面語言** 中切換為英文、簡體中文或日文，無需重新啟動。
 
-![FanBar 深色選單列面板](docs/screenshots/fanbar-menu-dark.jpg)
+<img src="docs/screenshots/fanbar-menu-light-zh-TW.png" alt="FanBar 繁體中文選單列面板" width="456">
 
-設定預設開啟「散熱」頁面。每個面板預設都有獨立的溫度→轉速曲線，可直接拖移控制點編輯。
+「散熱」頁面為每個面板預設提供獨立的溫度→轉速曲線，可直接拖移控制點編輯。
 
-![FanBar 智慧溫控曲線設定](docs/screenshots/fanbar-settings-dark.jpg)
+<img src="docs/screenshots/fanbar-settings-cooling-light-zh-TW.png" alt="FanBar 繁體中文散熱設定" width="640">
+
+「外觀」頁面可選擇選單列圖像與顯示內容，並透過模擬選單列即時預覽。
+
+<img src="docs/screenshots/fanbar-settings-appearance-light-zh-TW.png" alt="FanBar 繁體中文外觀設定" width="640">
+
+「一般」頁面包含本機相容性檢查、控制服務狀態、自動恢復、通知、語言、登入啟動與更新。較長的設定頁面可向下捲動。
+
+<img src="docs/screenshots/fanbar-settings-general-light-zh-TW.png" alt="FanBar 繁體中文一般設定" width="640">
 
 ## ✨ 亮點
 
