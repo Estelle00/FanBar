@@ -18,4 +18,3 @@ Background: opaque very dark graphite/slate, subtly lighter around the turbine, 
 Typography: exact text, perfectly spelled. Large title "FanBar" in a beautifully spaced, clean contemporary sans serif, white, about 165px high and dominant on left. Under it, "Native macOS fan control" in softer gray-white, around 40px, readable. A short overline above the title "FREE & OPEN SOURCE" in small crisp tracked sans serif, light blue. At bottom-left "getfanbar.com" in muted cool gray, around 26px. Typeset all copy as a coherent left-aligned group, with at least 150px left padding and 100px vertical safe space. No other text.
 Constraints: finished banner only, edge-to-edge rectangular artwork, no surrounding device mockup, no browser frame, no rounded outer corners. Beautiful at 830px displayed width in a GitHub README. Sharp text, generous negative space, deliberate hierarchy. No buttons, no badges, no invented charts, no extra symbols, no watermark.
 ```
-
