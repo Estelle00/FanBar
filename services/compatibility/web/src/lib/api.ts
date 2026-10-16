@@ -26,7 +26,7 @@ export interface MatrixGroup {
   community: { capability: Capability; status: CommunityStatus; count: number; userConfirmedWorking?: number }[];
   developerVerifications: Verification[];
 }
-export interface Matrix { schemaVersion: 1; generatedAt: string; truncated: boolean; groups: MatrixGroup[] }
+export interface Matrix { schemaVersion: 1; generatedAt: string; truncated: boolean; nextOffset: number | null; groups: MatrixGroup[] }
 
 export interface Report {
   schemaVersion: 1; reportID: string;

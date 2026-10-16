@@ -79,6 +79,47 @@ final class CompatibilitySubmissionTests: XCTestCase {
         return try CompatibilityReport(snapshot: XCTUnwrap(controller.compatibilitySnapshot)).jsonData()
     }
 
+    /// Helper enabled, fixed RPM accepted, curve untested: both controls may be confirmed.
+    private func confirmableReportData() throws -> Data {
+        let device = CompatibilityDevice(
+            modelIdentifier: "Mac14,13", processor: "Test Chip", macOSVersion: "15.0.0", appVersion: "1.0", helperVersion: "10"
+        )
+        let observation = CompatibilityObservation(
+            sampledAt: Date(), thermal: ThermalReading(sampledAt: Date(), cpuCelsius: 52, gpuCelsius: 48, hasBuiltInBattery: false),
+            fanCount: 2, connectionFailed: false
+        )
+        let snapshot = CompatibilitySnapshot.make(
+            device: device, observation: observation, helperState: .enabled,
+            manualEvidence: .requestSucceeded, curveEvidence: .unverified
+        )
+        return try CompatibilityReport(snapshot: snapshot).jsonData()
+    }
+
+    func testConfirmationIsRefusedWhenControlCouldNotRun() throws {
+        let device = CompatibilityDevice(
+            modelIdentifier: "Mac14,13", processor: "Test Chip", macOSVersion: "15.0.0", appVersion: "1.0", helperVersion: "10"
+        )
+        let observation = CompatibilityObservation(
+            sampledAt: Date(), thermal: ThermalReading(sampledAt: Date(), cpuCelsius: 52, gpuCelsius: 48, hasBuiltInBattery: false),
+            fanCount: 2, connectionFailed: false
+        )
+        let cases: [(FanController.HelperState, CompatibilityControlEvidence)] = [
+            (.enabled, .requestFailed), (.requiresApproval, .requestSucceeded), (.unavailable, .requestSucceeded),
+        ]
+        for (helperState, evidence) in cases {
+            let snapshot = CompatibilitySnapshot.make(
+                device: device, observation: observation, helperState: helperState,
+                manualEvidence: evidence, curveEvidence: evidence
+            )
+            let upload = CompatibilityUploadCoordinator(data: try CompatibilityReport(snapshot: snapshot).jsonData())
+            for capability in [CompatibilityCapability.manualControl, .smartCooling] {
+                XCTAssertFalse(upload.canConfirmWorking(capability))
+                upload.setUserConfirmedWorking(capability, confirmed: true)
+                XCTAssertFalse(upload.isUserConfirmedWorking(capability))
+            }
+        }
+    }
+
     func testPreviewDoesNotFetchPolicyOrSubmitAutomatically() throws {
         let store = MemoryCompatibilityReceipts()
         let service = StubCompatibilityService(policy: try policy(), store: store)
@@ -252,7 +293,9 @@ final class CompatibilitySubmissionTests: XCTestCase {
     func testHandsOnConfirmationChangesPreviewAndUploadWithoutReplacingDetection() async throws {
         let store = MemoryCompatibilityReceipts()
         let service = StubCompatibilityService(policy: try policy(), store: store)
-        let upload = CompatibilityUploadCoordinator(data: try reportData(), configuration: try configuration(), api: service, store: store)
+        let upload = CompatibilityUploadCoordinator(
+            data: try confirmableReportData(), configuration: try configuration(), api: service, store: store
+        )
         let initial = try JSONDecoder().decode(CompatibilityReport.self, from: upload.data)
         XCTAssertFalse(upload.isUserConfirmedWorking(.manualControl))
         upload.setUserConfirmedWorking(.manualControl, confirmed: true)
@@ -276,7 +319,7 @@ final class CompatibilitySubmissionTests: XCTestCase {
     }
 
     func testUncheckingConfirmationOmitsOptionalField() throws {
-        let upload = CompatibilityUploadCoordinator(data: try reportData())
+        let upload = CompatibilityUploadCoordinator(data: try confirmableReportData())
         upload.setUserConfirmedWorking(.manualControl, confirmed: true)
         upload.setUserConfirmedWorking(.manualControl, confirmed: false)
         XCTAssertFalse(upload.isUserConfirmedWorking(.manualControl))

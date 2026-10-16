@@ -28,9 +28,13 @@ final class CompatibilityServiceIntegrationTests: XCTestCase {
             manualEvidence: .requestSucceeded, curveEvidence: .requestFailed
         )
         var report = CompatibilityReport(snapshot: snapshot)
-        for index in report.capabilities.indices where [.manualControl, .smartCooling].contains(report.capabilities[index].capability) {
+        // The service rejects a confirmation on a failed request, as the client does.
+        for index in report.capabilities.indices
+        where [.manualControl, .smartCooling].contains(report.capabilities[index].capability)
+            && report.capabilities[index].status.acceptsHandsOnConfirmation {
             report.capabilities[index].userConfirmedWorking = true
         }
+        XCTAssertNil(report.capabilities.first { $0.capability == .smartCooling }?.userConfirmedWorking)
         XCTAssertEqual(report.capabilities.first { $0.capability == .manualControl }?.status, .requestSucceeded)
         XCTAssertEqual(report.capabilities.first { $0.capability == .smartCooling }?.reasonCode, "CONTROL_REQUEST_FAILED")
         let receipt = CompatibilitySavedReceipt(

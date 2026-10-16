@@ -71,4 +71,49 @@ final class RuntimeDiagnosticsTests: XCTestCase {
         XCTAssertFalse(text.contains("private-uuid"))
         XCTAssertFalse(text.contains("/Users/"))
     }
+
+    private func helperEvent(_ action: String, _ outcome: String, secondsAgo: Double,
+                             component: String = "helper") throws -> RuntimeDiagnosticEvent {
+        let object: [String: Any] = [
+            "timestamp": Date().addingTimeInterval(-secondsAgo).timeIntervalSinceReferenceDate,
+            "sessionID": "00000000-0000-0000-0000-000000000001",
+            "component": component, "action": action, "outcome": outcome,
+        ]
+        return try JSONDecoder().decode(RuntimeDiagnosticEvent.self, from: JSONSerialization.data(withJSONObject: object))
+    }
+
+    func testHelperSelectionKeepsOldFailuresDespiteABurstOfRoutineWrites() throws {
+        let failure = try helperEvent("restoreAutomatic", "failed", secondsAgo: 6 * 3600)
+        let startup = try helperEvent("startup", "succeeded", secondsAgo: 20 * 3600)
+        let routine = try (0..<200).map { try helperEvent("curve", "succeeded", secondsAgo: Double(200 - $0)) }
+        let selected = RuntimeDiagnostics.selectHelperEvents(recent: routine, important: [failure, startup])
+        XCTAssertEqual(selected.count, 64)
+        XCTAssertTrue(selected.contains { $0.action == .restoreAutomatic && $0.outcome == .failed })
+        XCTAssertTrue(selected.contains { $0.action == .startup })
+        XCTAssertEqual(selected.map(\.timestamp), selected.map(\.timestamp).sorted())
+        XCTAssertEqual(selected.last?.timestamp, routine.last?.timestamp, "The newest routine events fill the rest")
+    }
+
+    func testHelperSelectionDeduplicatesOverlappingWindowsAndBoundsImportantEvents() throws {
+        let failure = try helperEvent("fanRead", "failed", secondsAgo: 30)
+        let selected = RuntimeDiagnostics.selectHelperEvents(recent: [failure], important: [failure])
+        XCTAssertEqual(selected.count, 1)
+        let failures = try (0..<100).map { try helperEvent("fanRead", "failed", secondsAgo: Double(100 - $0)) }
+        // 32 slots are reserved for failures and lifecycle events; the rest take the newest of anything.
+        let bounded = RuntimeDiagnostics.selectHelperEvents(recent: [], important: failures)
+        XCTAssertEqual(bounded.map(\.timestamp), failures.suffix(64).map(\.timestamp))
+        let appEvent = try helperEvent("curve", "failed", secondsAgo: 1, component: "app")
+        XCTAssertTrue(RuntimeDiagnostics.selectHelperEvents(recent: [appEvent], important: []).isEmpty)
+    }
+
+    func testHelperLogParsingKeepsOnlyStructuredHelperEvents() throws {
+        let event = try helperEvent("authorize", "rejected", secondsAgo: 5)
+        let message = try XCTUnwrap(String(data: JSONEncoder().encode(event), encoding: .utf8))
+        let line = try XCTUnwrap(String(data: JSONSerialization.data(withJSONObject: ["eventMessage": message]), encoding: .utf8))
+        let other = #"{"eventMessage":"Rejected XPC client pid 42"}"#
+        let parsed = RuntimeDiagnostics.parseHelperLog([line, other, "not json", ""].joined(separator: "\n"))
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed.first?.action, .authorize)
+        XCTAssertEqual(parsed.first?.outcome, .rejected)
+    }
 }

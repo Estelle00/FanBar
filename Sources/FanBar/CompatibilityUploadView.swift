@@ -106,8 +106,12 @@ struct CompatibilityReportPreview: View {
         }
     }
 
+    private var confirmableCapabilities: [CompatibilityCapability] {
+        [.manualControl, .smartCooling].filter(upload.canConfirmWorking)
+    }
+
     private var allHandsOnConfirmed: Bool {
-        upload.isUserConfirmedWorking(.manualControl) && upload.isUserConfirmedWorking(.smartCooling)
+        !confirmableCapabilities.isEmpty && confirmableCapabilities.allSatisfy(upload.isUserConfirmedWorking)
     }
 
     private var userConfirmations: some View {
@@ -120,11 +124,11 @@ struct CompatibilityReportPreview: View {
                     ? fanBarText("取消全选", "Deselect all")
                     : fanBarText("全选实测项", "Select all tested features")) {
                     let selected = !allHandsOnConfirmed
-                    for capability in [CompatibilityCapability.manualControl, .smartCooling] {
+                    for capability in confirmableCapabilities {
                         upload.setUserConfirmedWorking(capability, confirmed: selected)
                     }
                 }
-                .font(.caption).disabled(upload.isSending || upload.receipt != nil)
+                .font(.caption).disabled(upload.isSending || upload.receipt != nil || confirmableCapabilities.isEmpty)
             }
             // swiftlint:disable line_length
             Text(fanBarText("仅在你实际使用并确认功能正常时勾选。会作为用户确认上传，自动检测结果保持原样。",
@@ -136,9 +140,16 @@ struct CompatibilityReportPreview: View {
                     get: { upload.isUserConfirmedWorking(capability) },
                     set: { upload.setUserConfirmedWorking(capability, confirmed: $0) }
                 )) {
-                    Text(fanBarFormat("我已在本机实际使用%@并确认可用", "I have used %@ on this Mac and confirmed it works", capability.title))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(fanBarFormat("我已在本机实际使用%@并确认可用", "I have used %@ on this Mac and confirmed it works", capability.title))
+                        if !upload.canConfirmWorking(capability) {
+                            Text(fanBarText("自动检测显示该功能无法在本机运行，不能确认。",
+                                "Not available: the automatic check shows this control could not run on this Mac."))
+                                .foregroundColor(.secondary)
+                        }
+                    }
                 }
-                .font(.caption).disabled(upload.isSending || upload.receipt != nil)
+                .font(.caption).disabled(upload.isSending || upload.receipt != nil || !upload.canConfirmWorking(capability))
             }
         }
     }

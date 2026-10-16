@@ -46,11 +46,17 @@ const reasonStatuses: Record<typeof reasons[number], Status> = {
   CONTROL_NOT_ATTEMPTED: 'unverified', CONTROL_REQUEST_SUCCEEDED: 'requestSucceeded',
   CONTROL_REQUEST_FAILED: 'requestFailed',
 };
+/**
+ * A hands-on confirmation may accompany an untested control (used on an earlier
+ * version, for example), but never a result showing control could not have run here.
+ */
+export const confirmableStatuses: readonly Status[] = ['requestSucceeded', 'unverified'];
 export function validEvidence(report: Report): boolean {
   if (new Set(report.capabilities.map(row => row.capability)).size !== 7) return false;
   return report.capabilities.every(row => {
     if (row.reasonCode === 'NO_BUILT_IN_BATTERY') return row.capability === 'batteryTemperature' && row.status === 'notApplicable' && !row.userConfirmedWorking;
-    if (row.userConfirmedWorking && !['manualControl', 'smartCooling'].includes(row.capability)) return false;
+    if (row.userConfirmedWorking && (!['manualControl', 'smartCooling'].includes(row.capability)
+      || !confirmableStatuses.includes(row.status))) return false;
     if (reasonStatuses[row.reasonCode] !== row.status) return false;
     const isSensor = row.capability.endsWith('Temperature');
     if (isSensor) return ['SENSOR_READ_SUCCEEDED', 'SENSOR_NOT_DETECTED', 'SMC_CONNECTION_FAILED'].includes(row.reasonCode);

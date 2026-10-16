@@ -61,6 +61,13 @@ enum CompatibilityStatus: String, Codable {
     case unverified
     case requestSucceeded
     case requestFailed
+
+    /// A hands-on confirmation may accompany an untested control (used on an earlier
+    /// version, for example), but never a result showing control could not run here.
+    /// The compatibility service rejects any other combination.
+    var acceptsHandsOnConfirmation: Bool {
+        self == .requestSucceeded || self == .unverified
+    }
 }
 
 enum CompatibilityCapability: String, CaseIterable, Codable, Identifiable {

@@ -32,8 +32,14 @@ final class CompatibilityUploadCoordinator: ObservableObject {
             .capabilities.first { $0.capability == capability }?.userConfirmedWorking == true
     }
 
+    func canConfirmWorking(_ capability: CompatibilityCapability) -> Bool {
+        guard [.manualControl, .smartCooling].contains(capability) else { return false }
+        return (try? JSONDecoder().decode(CompatibilityReport.self, from: data))?
+            .capabilities.first { $0.capability == capability }?.status.acceptsHandsOnConfirmation == true
+    }
+
     func setUserConfirmedWorking(_ capability: CompatibilityCapability, confirmed: Bool) {
-        guard receipt == nil, !isSending, [.manualControl, .smartCooling].contains(capability) else { return }
+        guard receipt == nil, !isSending, !confirmed || canConfirmWorking(capability) else { return }
         do {
             var report = try JSONDecoder().decode(CompatibilityReport.self, from: data)
             guard let index = report.capabilities.firstIndex(where: { $0.capability == capability }) else { return }

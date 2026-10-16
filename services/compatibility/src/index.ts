@@ -4,7 +4,7 @@ import { createVerification, deleteVerification, reportDetail, reportList, revie
 import { boundedJSON, HttpError, json, secureResponse } from './http.ts';
 import { auditLog, overview, verificationList } from './insights.ts';
 import { publicMatrix } from './matrix.ts';
-import { policy } from './policy.ts';
+import { DIAGNOSTIC_MAXIMUM_BYTES, policy } from './policy.ts';
 import { cleanup, deleteReport, ownerReceipt, publicReport, submitReport } from './reports.ts';
 
 const reportPath = /^\/api\/reports\/([0-9a-f-]{36})(\/receipt)?$/i;
@@ -17,7 +17,7 @@ async function route(request: Request, env: Env): Promise<Response> {
   if (path === '/api/diagnostics' && request.method === 'POST') {
     // Large anonymous payloads get a stricter per-address limiter than reports.
     await rateLimit(request, env, 'diagnostic');
-    return submitDiagnostic(request, env, await boundedJSON(request, 262144));
+    return submitDiagnostic(request, env, await boundedJSON(request, DIAGNOSTIC_MAXIMUM_BYTES));
   }
   const diagnosticMatch = path.match(/^\/api\/diagnostics\/([0-9a-f-]{36})$/i);
   if (diagnosticMatch && request.method === 'DELETE') {
@@ -41,7 +41,9 @@ async function route(request: Request, env: Env): Promise<Response> {
     await rateLimit(request, env, 'read');
     const model = url.searchParams.get('model') ?? '';
     if (model.length > 64) throw new HttpError(400, 'INVALID_MODEL');
-    return publicMatrix(env, model);
+    const offset = Number(url.searchParams.get('offset') ?? 0);
+    if (!Number.isInteger(offset) || offset < 0 || offset > 100000) throw new HttpError(400, 'INVALID_OFFSET');
+    return publicMatrix(env, model, offset);
   }
   if (path.startsWith('/api/admin/')) {
     await rateLimit(request, env, request.method === 'GET' ? 'read' : 'write');

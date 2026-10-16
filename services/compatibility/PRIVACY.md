@@ -17,7 +17,7 @@
 | device.macOSVersion / appVersion / helperVersion | 分别定位版本组合 |
 | fanCount | 如可获取，硬件接口报告的 0–8 个风扇 |
 | capabilities | 七项能力各一条：能力枚举、状态枚举、标准原因码 |
-| capabilities[].userConfirmedWorking | 可选；仅用于手动调速与智能温控，用户主动勾选确认本机实际使用可用时为 true，不修改自动检测结果，不等同于开发者验证 |
+| capabilities[].userConfirmedWorking | 可选；仅用于手动调速与智能温控，用户主动勾选确认本机实际使用可用时为 true，不修改自动检测结果，不等同于开发者验证；仅可附在 requestSucceeded 或 unverified 结果上，控制请求失败或 Helper 未授权／缺失时拒绝 |
 | selectedTemperatureSource | 当前所选温控来源：maxChip / cpu / gpu / ssd |
 
 额外请求头：`X-FanBar-Policy-Version` 确认规则版本；`X-FanBar-Publish-Report` 明确选择是否公开单份报告（0 / 1）；`Authorization: Bearer …` 是每份报告独立的撤回凭证。请求头不并入公开报告。
@@ -122,3 +122,17 @@ OS build, architecture, coarse bundle location and bundled-helper presence (no p
 The separately signed FanBarDiagnostics executable and companion .command launcher can
 export the same sanitized evidence without loading the app UI, registering a daemon,
 changing fan control, or uploading anything.
+
+### Diagnostics revision (diagnostics-2026-10-15-v4)
+
+Adds `runningHelper`: whether the running Helper daemon answered a read-only build query
+(`reported`, `noReply`, `connectionFailed`, or `notQueried` when the Helper is not enabled), its
+build token, and a numeric connection error code. It is compared with `device.helperVersion`, the
+build bundled in the app, to detect a stale daemon left running after an update. The query uses a
+separate short-lived connection and never changes fan control.
+
+Helper events now cover the last 24 hours for failures, rejections and lifecycle markers
+(startup, shutdown, recovery, authorization) and the last 10 minutes for everything else, still
+bounded to 64 events. `discovery.truncated` now means only that the SMC key scan stopped early;
+`discovery.probesTruncated` means the scan finished but some unrecognized keys were left out of
+the probe list.
