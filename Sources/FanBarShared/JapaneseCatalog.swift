@@ -55,6 +55,7 @@ enum JapaneseCatalog {
         "No control result yet. Click Check Again to test.": "制御操作の結果がありません。「再確認」でテストできます。",
         "Restore request accepted, but automatic mode was not confirmed by readback.": "復帰要求は受け付けられましたが、自動モードへの復帰を読み戻しで確認できません。",
         "Restoring system control failed: %@. Retry Restore System Control.": "システム制御への復帰に失敗しました：%@。「システム制御に戻す」で再試行してください。",
+        "Control test cancelled. System automatic control restored.": "制御テストをキャンセルしました。システムの自動制御に戻しました。",
         "Control test failed: %@. System automatic control restored.": "制御テストに失敗しました：%@。システムの自動制御には復帰しました。",
         "Testing control and restoring system control…": "制御能力をテストし、システム制御に戻しています…",
         "Control test finished; system automatic control restored. Review the results below.": "制御テストが終了し、システムの自動制御に戻りました。各項目の結果をご確認ください。",

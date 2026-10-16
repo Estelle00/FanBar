@@ -11,6 +11,7 @@ struct CompatibilityControlHistory: Codable {
 struct CompatibilityControlHistoryStore {
     let defaults: UserDefaults
     private let key = "fanbar.compatibility.controlHistory.v1"
+    private let recoveryKey = "fanbar.compatibility.controlHistory.recoveryAttempted.v1"
 
     func load(for device: CompatibilityDevice) -> CompatibilityControlHistory? {
         guard let data = defaults.data(forKey: key),
@@ -44,6 +45,17 @@ struct CompatibilityControlHistoryStore {
         }
         guard let recordedAt else { return nil }
         return CompatibilityControlHistory(device: device, manual: manual, curve: curve, recordedAt: recordedAt)
+    }
+
+    func needsRecovery(for device: CompatibilityDevice) -> Bool {
+        guard let data = defaults.data(forKey: recoveryKey),
+              let attempted = try? JSONDecoder().decode(CompatibilityDevice.self, from: data) else { return true }
+        return attempted != device
+    }
+
+    func markRecoveryAttempted(for device: CompatibilityDevice) {
+        guard let data = try? JSONEncoder().encode(device) else { return }
+        defaults.set(data, forKey: recoveryKey)
     }
 
     func save(_ record: CompatibilityControlHistory) {

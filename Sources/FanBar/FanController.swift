@@ -292,12 +292,16 @@ final class FanController: ObservableObject {
             .resolvingSymlinksInPath()
             .standardizedFileURL.path
         let historyDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
-        var savedHistory = self.compatibilityHistoryStore?.load(for: historyDevice)
-        if savedHistory == nil, case .sharedContainer = widgetSnapshotDestination,
-           let receipts = try? CompatibilityReceiptStore().receipts(),
-           let recovered = CompatibilityControlHistoryStore.recover(from: receipts, for: historyDevice) {
-            self.compatibilityHistoryStore?.save(recovered)
-            savedHistory = recovered
+        let recoversFromReceipts: Bool
+        if case .sharedContainer = widgetSnapshotDestination {
+            recoversFromReceipts = true
+        } else {
+            recoversFromReceipts = false
+        }
+        let savedHistory = self.compatibilityHistoryStore.flatMap { store in
+            Self.loadControlHistory(for: historyDevice, store: store, recoversFromReceipts: recoversFromReceipts) {
+                try CompatibilityReceiptStore().receipts()
+            }
         }
         if let saved = savedHistory {
             manualControlEvidence = saved.manual
@@ -517,6 +521,39 @@ final class FanController: ObservableObject {
         return report
     }
 
+    /// Saved control evidence for this device/version. Recovering it from report receipts reads
+    /// the Keychain, so that is tried once per device/version, not on every launch.
+    static func loadControlHistory(
+        for device: CompatibilityDevice, store: CompatibilityControlHistoryStore, recoversFromReceipts: Bool,
+        loadReceipts: () throws -> [CompatibilitySavedReceipt]
+    ) -> CompatibilityControlHistory? {
+        if let saved = store.load(for: device) { return saved }
+        guard recoversFromReceipts, store.needsRecovery(for: device) else { return nil }
+        store.markRecoveryAttempted(for: device)
+        guard let receipts = try? loadReceipts(),
+              let recovered = CompatibilityControlHistoryStore.recover(from: receipts, for: device) else { return nil }
+        store.save(recovered)
+        return recovered
+    }
+
+    /// Restoration failure outranks a control error, which outranks cancellation.
+    static func compatibilityControlMessage(for result: CompatibilityControlTestResult) -> String {
+        guard result.restored else {
+            return fanBarFormat("恢复系统控制失败：%@。请点击“恢复系统控制”重试。",
+                "Restoring system control failed: %@. Retry Restore System Control.",
+                result.restoreError ?? result.controlError ?? "unknown")
+        }
+        if let error = result.controlError {
+            return fanBarFormat("控制测试失败：%@。已恢复系统自动控制。",
+                "Control test failed: %@. System automatic control restored.", error)
+        }
+        if result.cancelled {
+            return fanBarText("控制测试已取消，已恢复系统自动控制。", "Control test cancelled. System automatic control restored.")
+        }
+        return fanBarText("控制测试结束，已恢复系统自动控制。请查看各项结果。",
+            "Control test finished; system automatic control restored. Review the results below.")
+    }
+
     /// Ask only an enabled helper: a diagnostic query must never register or launch one.
     static func runningHelper(
         state: HelperState, query: @Sendable () async -> HelperBuildQuery
@@ -549,17 +586,7 @@ final class FanController: ObservableObject {
                 if result.manual != .unverified { manualControlEvidence = result.manual }
                 if result.curve != .unverified { curveControlEvidence = result.curve }
             }
-            compatibilityControlMessage = result.restored
-                ? fanBarText("控制测试结束，已恢复系统自动控制。请查看各项结果。",
-                    "Control test finished; system automatic control restored. Review the results below.")
-                : fanBarFormat("恢复系统控制失败：%@。请点击“恢复系统控制”重试。",
-                    "Restoring system control failed: %@. Retry Restore System Control.",
-                    result.restoreError ?? result.controlError ?? "unknown")
-            if let error = result.controlError, result.restored {
-                compatibilityControlMessage = fanBarFormat("控制测试失败：%@。已恢复系统自动控制。",
-                    "Control test failed: %@. System automatic control restored.",
-                    error)
-            }
+            compatibilityControlMessage = Self.compatibilityControlMessage(for: result)
             isTestingCompatibilityControl = false
             if !Task.isCancelled, result.manual != .unverified || result.curve != .unverified {
                 persistCompatibilityControlEvidence()

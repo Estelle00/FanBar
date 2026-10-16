@@ -10,7 +10,7 @@ export function policy(origin: string) {
     version: POLICY_VERSION, serviceOrigin: origin, retentionDays: RETENTION_DAYS,
     maximumReportBytes: MAXIMUM_REPORT_BYTES, backupMaximumDays: 30,
     operator: 'FanBar project maintainers',
-    sourceURL: 'https://github.com/helson-lin/FanBar/tree/codex/device-compatibility/services/compatibility',
+    sourceURL: 'https://github.com/helson-lin/FanBar/tree/main/services/compatibility',
     fields: ['schemaVersion', 'reportID', 'device.modelIdentifier', 'device.processor',
       'device.macOSVersion', 'device.appVersion', 'device.helperVersion', 'fanCount',
       'capabilities[].capability', 'capabilities[].status', 'capabilities[].reasonCode', 'capabilities[].userConfirmedWorking', 'selectedTemperatureSource'],

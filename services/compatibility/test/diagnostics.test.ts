@@ -55,6 +55,12 @@ it('withdraws idempotently and blocks late arrivals', async () => {
   await request('/api/diagnostics/' + late.diagnosticID, 'DELETE');
   expect((await request('/api/diagnostics', 'POST', late)).status).toBe(409);
 });
+it('does not let a withdrawal made with another credential block the owner', async () => {
+  const body = fixture();
+  expect((await request('/api/diagnostics/' + body.diagnosticID, 'DELETE', undefined, 'X'.repeat(43))).status).toBe(204);
+  expect((await request('/api/diagnostics', 'POST', body)).status).toBe(201);
+  expect((await request('/api/diagnostics/' + body.diagnosticID, 'DELETE')).status).toBe(204);
+});
 it('rejects conflicting payloads or credentials and cleans up expired data', async () => {
   const body = fixture();
   await request('/api/diagnostics', 'POST', body);

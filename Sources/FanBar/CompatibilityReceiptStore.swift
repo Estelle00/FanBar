@@ -39,7 +39,13 @@ struct CompatibilityReceiptStore: CompatibilityReceiptStoring {
         let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecItemNotFound { return [] }
         guard status == errSecSuccess, let items = result as? [Data] else { throw CompatibilityServiceError.credentialStorage }
-        return try items.map { try JSONDecoder().decode(CompatibilitySavedReceipt.self, from: $0) }
+        return Self.decode(items)
+    }
+
+    /// One unreadable item (corrupted, or from an incompatible version) must not hide
+    /// every other report's withdrawal credential, so it is skipped rather than fatal.
+    static func decode(_ items: [Data]) -> [CompatibilitySavedReceipt] {
+        items.compactMap { try? JSONDecoder().decode(CompatibilitySavedReceipt.self, from: $0) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 

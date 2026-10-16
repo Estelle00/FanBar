@@ -19,6 +19,8 @@ struct CompatibilityControlTestResult {
     var restored = true
     var restoreError: String?
     var controlError: String?
+    /// The user stopped the test. An interrupted step is left unverified, not failed.
+    var cancelled = false
 }
 
 @MainActor
@@ -53,6 +55,8 @@ enum CompatibilityControlTest {
                 } else {
                     result.manual = accepted ? .requestSucceeded : .requestFailed
                 }
+            } catch is CancellationError {
+                result.cancelled = true
             } catch {
                 result.controlError = error.localizedDescription
                 if isCurve { result.curve = .requestFailed } else { result.manual = .requestFailed }
