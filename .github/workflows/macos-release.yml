@@ -28,8 +28,31 @@ env:
   DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
 
 jobs:
+  # Same gate as quality.yml: skip the macOS build for PRs that cannot affect the app.
+  changes:
+    name: Detect Swift-relevant changes
+    runs-on: ubuntu-latest
+    outputs:
+      swift: ${{ steps.filter.outputs.swift }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-swift-relevant.sh "$EVENT_NAME" "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build universal DMG
+    needs: changes
+    if: needs.changes.outputs.swift == 'true'
     runs-on: macos-15
     steps:
       - name: Check out source

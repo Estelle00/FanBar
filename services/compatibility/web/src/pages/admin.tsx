@@ -107,6 +107,8 @@ function NoticeLine({ notice }: { notice: NonNullable<Notice> }) {
 
 type DiagnosticDetail = {
   diagnostic: {
+    device?: { helperVersion: string };
+    runningHelper?: { status: 'reported' | 'noReply' | 'connectionFailed' | 'notQueried'; build?: string; code?: number };
     connectionErrorCode?: number;
     helperState?: string; helperStateSource?: string;
     runtimeEvents?: { timestamp: string; sessionID: string; requestID?: string; component: string; action: string;
@@ -115,7 +117,7 @@ type DiagnosticDetail = {
     crashes?: { recordedAt: string; process: string; exception: string; signal: string; terminationNamespace: string; terminationCode?: number }[];
     runtimeContext?: { appBuild: string; osBuild: string; architecture: string; bundleLocation: string; helperPresent: boolean };
     recentSamples?: unknown[];
-    discovery?: { reportedKeyCount?: number; scannedKeyCount: number; truncated: boolean; errorCode?: number };
+    discovery?: { reportedKeyCount?: number; scannedKeyCount: number; truncated: boolean; probesTruncated?: boolean; errorCode?: number };
     probes: { sensor: string; key?: string; source?: string; stage?: string; result: string; value?: number;
       code?: number; dataType?: string; dataSize?: number; rawBytes?: string; recognized?: boolean }[];
   };
@@ -134,9 +136,17 @@ function DiagnosticEvidence({ detail }: { detail: DiagnosticDetail }) {
   if (data.probes.some(row => row.result === 'unsupportedFormat')) { hints.push(t('存在无法解码的数据格式，请结合类型、长度和原始字节检查解码器。')); }
   if (data.probes.some(row => row.result === 'outOfRange')) { hints.push(t('部分读数被有效范围过滤，请检查原始值与单位。')); }
   if (data.discovery?.truncated) { hints.push(t('传感器枚举未完成，当前结果不能代表全部硬件键。')); }
+  if (data.discovery?.probesTruncated) { hints.push(t('键名清单完整，但部分未识别键没有附带读数探测。')); }
+  const helper = data.runningHelper;
+  if (helper?.status === 'reported' && data.device && helper.build !== data.device.helperVersion) {
+    hints.push(t('运行中的 Helper（build {running}）与应用内置版本（build {bundled}）不一致：旧守护进程仍在运行，需要重新注册或重启。',
+      { running: helper.build ?? '?', bundled: data.device.helperVersion }));
+  }
+  if (helper?.status === 'noReply') { hints.push(t('运行中的 Helper 未响应版本查询：可能是早于版本查询的旧 Helper，或已无响应。')); }
+  if (helper?.status === 'connectionFailed') { hints.push(t('Helper 已启用但无法建立连接，请对照 XPC 事件与错误码。')); }
   return <div className="flex flex-col gap-4">
     <h2 className="text-base font-semibold">{t('诊断线索')}</h2>
-    {data.helperState && <p className="text-xs text-kumo-subtle">Helper: {data.helperState} · {data.helperStateSource ?? 'runtime'}</p>}
+    {data.helperState && <p className="text-xs text-kumo-subtle">Helper: {data.helperState} · {data.helperStateSource ?? 'runtime'}{helper && ` · running ${helper.status}${helper.build ? ' build ' + helper.build : ''}`}</p>}
     {data.runtimeContext && <p className="text-xs text-kumo-subtle">Build {data.runtimeContext.appBuild} · macOS {data.runtimeContext.osBuild} · {data.runtimeContext.architecture} · {data.runtimeContext.bundleLocation} · Helper {String(data.runtimeContext.helperPresent)}</p>}
     {hints.map(hint => <p key={hint} className="text-sm text-kumo-subtle">{hint}</p>)}
     <p className="text-xs text-kumo-subtle">{t('最近采样数')}：{data.recentSamples?.length ?? 0} · {t('探测条目')}：{data.probes.length}</p>

@@ -215,4 +215,34 @@ final class FanBarHelperServiceTests: XCTestCase {
         XCTAssertTrue(requirement.contains("identifier \"\(FanBarService.appBundleID)\""))
         XCTAssertTrue(requirement.contains("certificate leaf[subject.OU] = \"ABCDE12345\""))
     }
+
+    func testBuildQueryReportsTheBuildCapturedAtLaunch() {
+        let service = FanBarHelperService(makeDriver: DriverFactory().make, launchBuild: "26")
+        let replied = expectation(description: "build")
+        let box = Box<String>()
+        service.getBuildVersion { build in
+            box.value = build
+            replied.fulfill()
+        }
+        wait(for: [replied], timeout: 5)
+        XCTAssertEqual(box.value, "26")
+        XCTAssertEqual(FanBarHelperService(makeDriver: DriverFactory().make, launchBuild: "27\n/Users/me").launchBuildForTesting, "unknown")
+    }
+
+    func testLaunchBuildIsReadFromTheEnclosingAppAndSanitized() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let contents = root.appendingPathComponent("FanBar.app/Contents")
+        let services = contents.appendingPathComponent("Library/LaunchServices")
+        try FileManager.default.createDirectory(at: services, withIntermediateDirectories: true)
+        let helper = services.appendingPathComponent("local.fanbar.helper")
+        FileManager.default.createFile(atPath: helper.path, contents: Data())
+
+        XCTAssertEqual(HelperLaunchBuild.read(executableURL: helper), "unknown", "No Info.plist")
+        (["CFBundleVersion": "27"] as NSDictionary).write(to: contents.appendingPathComponent("Info.plist"), atomically: true)
+        XCTAssertEqual(HelperLaunchBuild.read(executableURL: helper), "27")
+        (["CFBundleVersion": "27 <script>"] as NSDictionary).write(to: contents.appendingPathComponent("Info.plist"), atomically: true)
+        XCTAssertEqual(HelperLaunchBuild.read(executableURL: helper), "unknown")
+        XCTAssertEqual(HelperLaunchBuild.read(executableURL: root.appendingPathComponent("loose-binary")), "unknown")
+    }
 }

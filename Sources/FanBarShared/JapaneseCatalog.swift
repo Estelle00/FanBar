@@ -154,6 +154,7 @@ enum JapaneseCatalog {
         "Unable to connect to the hardware interface. Retry.": "ハードウェアの読み取りインターフェイスに接続できません。再試行してください。",
         "Unable to create the report. Please retry.": "レポートを作成できません。再試行してください。",
         "Unable to save. Choose another location and retry.": "保存できません。別の場所を選択して再試行してください。",
+        "The running Helper is an older build (%@). Reauthorize the Helper in Settings or restart your Mac, then collect again.": "実行中の Helper は古いビルド（%@）です。設定で Helper を再承認するか Mac を再起動してから、もう一度収集してください。",
         "Verified Model Records": "機種の確認済み記録",
         "Without current fan readings, control capability cannot be determined.": "現在のファン測定値がないため、制御機能を判断できません。",
         "%.0f°C · %.0f%%": "%.0f°C · %.0f%%",
