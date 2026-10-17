@@ -42,6 +42,12 @@ if command -v create-dmg >/dev/null 2>&1; then
         "${output_path}" \
         "${temporary_root}"
 else
+    # CI must never ship the plain layout silently; 0.6.2 did because the
+    # runners lacked create-dmg. Local builds may still fall back.
+    if [[ "${CI:-}" == "true" ]]; then
+        print -u2 "create-dmg is required in CI to build the DMG background layout."
+        exit 1
+    fi
     print -u2 "create-dmg not found; building a plain DMG without the background."
     # A simple native layout remains reliable across light/dark mode and macOS versions.
     ln -s /Applications "${temporary_root}/Applications"
