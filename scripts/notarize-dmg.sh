@@ -32,7 +32,22 @@ else
         --team-id "${APPLE_TEAM_ID}" \
         --wait
 fi
-xcrun stapler staple "${dmg_path}"
+# Stapling fetches the accepted ticket from Apple's CloudKit service. GitHub's
+# macOS runners intermittently lose that connection (NSURLErrorDomain -1005,
+# stapler error 68), so retry with a growing delay instead of failing a
+# release whose notarization already succeeded.
+staple_attempts=5
+for attempt in {1..${staple_attempts}}; do
+    if xcrun stapler staple "${dmg_path}"; then
+        break
+    fi
+    if (( attempt == staple_attempts )); then
+        print -u2 "Stapling ${dmg_path} failed after ${staple_attempts} attempts."
+        exit 1
+    fi
+    print -u2 "Stapling failed (attempt ${attempt}/${staple_attempts}); retrying in $(( attempt * 30 ))s."
+    sleep $(( attempt * 30 ))
+done
 xcrun stapler validate "${dmg_path}"
 spctl --assess --type open --context context:primary-signature --verbose=2 "${dmg_path}"
 print "Notarized ${dmg_path}"
