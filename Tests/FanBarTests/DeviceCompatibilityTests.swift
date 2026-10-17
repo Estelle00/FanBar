@@ -129,7 +129,9 @@ final class DeviceCompatibilityTests: XCTestCase {
     }
 
     func testRPMDecodingRejectsInvalidFloatsInsteadOfTrapping() throws {
-        func floatBytes(_ value: Float) -> [UInt8] { withUnsafeBytes(of: value) { Array($0) } }
+        func floatBytes(_ value: Float) -> [UInt8] {
+            withUnsafeBytes(of: value) { Array($0) }
+        }
         XCTAssertEqual(try SMCClient.rpm(dataSize: 4, bytes: floatBytes(1_234.6)), 1_235)
         XCTAssertEqual(try SMCClient.rpm(dataSize: 2, bytes: [0x13, 0x88]), 1_250)
         for invalid in [Float.nan, .infinity, -1, 1e12] {
