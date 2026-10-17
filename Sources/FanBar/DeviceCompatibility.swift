@@ -28,7 +28,7 @@ struct CompatibilityDevice: Codable, Equatable {
     }
 
     private static let modelNames: [String: String] = {
-        guard let url = Bundle.module.url(forResource: "mac-model-names", withExtension: "json"),
+        guard let url = FanBarResources.url(forResource: "mac-model-names", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let names = try? JSONDecoder().decode([String: String].self, from: data) else { return [:] }
         return names
@@ -236,7 +236,7 @@ struct CompatibilityCatalog: Codable {
     let records: [CompatibilityRecord]
 
     static func load() -> Self {
-        guard let url = Bundle.module.url(forResource: "compatibility", withExtension: "json"),
+        guard let url = FanBarResources.url(forResource: "compatibility", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let catalog = try? JSONDecoder().decode(Self.self, from: data),
               catalog.schemaVersion == 1 else {
@@ -253,6 +253,33 @@ struct CompatibilityCatalog: Codable {
                 && $0.device.appVersion == device.appVersion
                 && $0.device.helperVersion == device.helperVersion
         }
+    }
+}
+
+/// Locates the SwiftPM resource bundle without `Bundle.module`, which traps when the
+/// bundle is missing. Single-architecture `swift build` products only search beside
+/// the .app and the CI build directory, never Contents/Resources (issue #86).
+enum FanBarResources {
+    private final class BundleFinder {}
+
+    static let bundle: Bundle? = {
+        let candidates = [
+            Bundle.main.resourceURL,
+            Bundle.main.bundleURL,
+            Bundle.main.executableURL?.deletingLastPathComponent(),
+            // `swift test` places the bundle beside the .xctest product.
+            Bundle(for: BundleFinder.self).bundleURL.deletingLastPathComponent(),
+        ]
+        for case let directory? in candidates {
+            if let bundle = Bundle(url: directory.appendingPathComponent("FanBar_FanBar.bundle")) {
+                return bundle
+            }
+        }
+        return nil
+    }()
+
+    static func url(forResource name: String, withExtension ext: String) -> URL? {
+        bundle?.url(forResource: name, withExtension: ext)
     }
 }
 

@@ -153,7 +153,10 @@ final class SMCClient: FanReadingSource {
             Array($0.prefix(Int(min(value.data_size, 32))))
         }
         if value.data_size == 4, bytes.count >= 4 {
-            return Int(bytes.withUnsafeBytes { $0.loadUnaligned(as: Float.self) }.rounded())
+            // Int(_:) traps on NaN or out-of-range values; treat them as a failed read.
+            let rpm = bytes.withUnsafeBytes { $0.loadUnaligned(as: Float.self) }.rounded()
+            guard rpm.isFinite, (0...100_000).contains(rpm) else { throw SMCError.unsupportedKey("RPM", -1) }
+            return Int(rpm)
         }
         if value.data_size == 2, bytes.count >= 2 {
             return Int(UInt16(bytes[0]) << 8 | UInt16(bytes[1])) / 4

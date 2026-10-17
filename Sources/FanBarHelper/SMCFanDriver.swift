@@ -326,6 +326,8 @@ final class SMCFanDriver {
     }
 
     private func writeFloat(_ name: String, value: Float) throws {
+        // A garbage Mn/Mx read must not reach UInt16(_:), which traps on NaN or overflow.
+        guard value.isFinite, (0...16_383).contains(value) else { throw FanHardwareError.invalidValue(name) }
         let metadata = try store.read(name)
         let encoded: [UInt8]
         if metadata.data_size == 4 {
