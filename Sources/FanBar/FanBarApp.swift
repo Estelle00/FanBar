@@ -116,9 +116,6 @@ struct FanBarApp: App {
         if CommandLine.arguments.contains("--settings-render-test") {
             Self.runSettingsRenderTest(controller: controller)
         }
-        if CommandLine.arguments.contains("--compatibility-render-test") {
-            Self.runCompatibilityRenderTest(controller: controller)
-        }
     }
 
     var body: some Scene {
@@ -174,37 +171,6 @@ struct FanBarApp: App {
                 }
                 print("settings-render-test=done")
                 SettingsWindowPresenter.shared.close()
-                exit(EXIT_SUCCESS)
-            }
-        }
-    }
-
-    /// Opens the compatibility window from the packaged app (issue #86), prints each
-    /// detected capability and renders the window to /tmp/fanbar-compatibility.png.
-    private static func runCompatibilityRenderTest(controller: FanController) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            let window = CompatibilityWindowPresenter.shared.show(controller: controller)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                print("compatibility-resources=\(FanBarResources.bundle?.bundlePath ?? "missing")")
-                print("compatibility-catalog-schema=\(CompatibilityCatalog.load().schemaVersion)")
-                guard let snapshot = controller.compatibilitySnapshot else {
-                    print("compatibility-render-test=no-snapshot")
-                    exit(EXIT_FAILURE)
-                }
-                print("compatibility-device=\(snapshot.device.displayName) (\(snapshot.device.modelIdentifier))")
-                for result in snapshot.results {
-                    print("compatibility-\(result.capability.rawValue)=\(result.status.rawValue) \(result.reasonCode)")
-                }
-                if let contentView = window.contentView,
-                   let bitmap = contentView.bitmapImageRepForCachingDisplay(in: contentView.bounds) {
-                    contentView.cacheDisplay(in: contentView.bounds, to: bitmap)
-                    if let data = bitmap.representation(using: .png, properties: [:]) {
-                        try? data.write(to: URL(fileURLWithPath: "/tmp/fanbar-compatibility.png"))
-                        print("compatibility-render=\(data.count) bytes")
-                    }
-                }
-                print("compatibility-render-test=done")
-                CompatibilityWindowPresenter.shared.close()
                 exit(EXIT_SUCCESS)
             }
         }

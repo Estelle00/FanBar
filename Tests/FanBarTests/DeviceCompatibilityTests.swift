@@ -128,6 +128,16 @@ final class DeviceCompatibilityTests: XCTestCase {
         XCTAssertNotNil(FanBarResources.url(forResource: "mac-model-names", withExtension: "json"))
     }
 
+    func testRPMDecodingRejectsInvalidFloatsInsteadOfTrapping() throws {
+        func floatBytes(_ value: Float) -> [UInt8] { withUnsafeBytes(of: value) { Array($0) } }
+        XCTAssertEqual(try SMCClient.rpm(dataSize: 4, bytes: floatBytes(1_234.6)), 1_235)
+        XCTAssertEqual(try SMCClient.rpm(dataSize: 2, bytes: [0x13, 0x88]), 1_250)
+        for invalid in [Float.nan, .infinity, -1, 1e12] {
+            XCTAssertThrowsError(try SMCClient.rpm(dataSize: 4, bytes: floatBytes(invalid)))
+        }
+        XCTAssertThrowsError(try SMCClient.rpm(dataSize: 1, bytes: [0]))
+    }
+
     func testDiagnosticRetryReadsTemperatureDespiteFanFailure() throws {
         let source = FakeFanReadingSource()
         let controller = FanController(
