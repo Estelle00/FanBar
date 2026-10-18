@@ -43,6 +43,14 @@ fi
 swift build "${build_arguments[@]}"
 binary_path="$(swift build "${build_arguments[@]}" --show-bin-path)"
 
+# Single- and multi-architecture builds generate different Bundle.module
+# accessors; the single-architecture one never searches Contents/Resources and
+# traps on users' Macs (issue #86). Resources must go through FanBarResources.
+if strings -a "${binary_path}/FanBar" | grep -qE "could not load resource bundle|unable to find bundle named"; then
+    print -u2 "FanBar links SwiftPM's trapping Bundle.module accessor; use FanBarResources instead."
+    exit 1
+fi
+
 widget_build_arguments=(
     -project "WidgetExtension/FanBarWidgetExtension.xcodeproj"
     -scheme FanBarWidget

@@ -123,6 +123,11 @@ final class DeviceCompatibilityTests: XCTestCase {
         XCTAssertEqual(CompatibilityCatalog.load().schemaVersion, 1)
     }
 
+    func testBundledResourcesResolveWithoutGeneratedAccessor() {
+        XCTAssertNotNil(FanBarResources.url(forResource: "compatibility", withExtension: "json"))
+        XCTAssertNotNil(FanBarResources.url(forResource: "mac-model-names", withExtension: "json"))
+    }
+
     func testDiagnosticRetryReadsTemperatureDespiteFanFailure() throws {
         let source = FakeFanReadingSource()
         let controller = FanController(
