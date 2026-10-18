@@ -26,6 +26,8 @@ The main areas are `Sources/FanBar` (app), `Sources/FanBarShared` (shared models
 
 Use `scripts/package-app.sh` with a real signing identity for testing the privileged helper. The app and helper must share the signing team. Never commit certificates, provisioning profiles, credentials, or signing keys.
 
+Package with the Xcode that `DEVELOPER_DIR` pins in `.github/workflows/macos-release.yml` (currently Xcode 26.0.1). Xcode 27's SDK raises SwiftPM's deployment target to macOS 12, which breaks macOS 11 support, so the script stops when any executable's minimum macOS differs from `LSMinimumSystemVersion`. Building and testing with a newer Xcode is fine.
+
 An ad-hoc package is useful for build verification only; it cannot authenticate the privileged helper:
 
 ```sh
