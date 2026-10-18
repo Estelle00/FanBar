@@ -11,12 +11,14 @@ import { Table } from '@cloudflare/kumo/components/table';
 import { Tabs } from '@cloudflare/kumo/components/tabs';
 import { cn } from '@cloudflare/kumo/utils';
 import { ArrowClockwiseIcon, KeyIcon, TrayIcon, WarningCircleIcon } from '@phosphor-icons/react';
+import { AuditTab, FlagBadges, OverviewTab, VerificationLists } from '../components/admin-insights';
 import { DataTable } from '../components/data-table';
 import { Page, PageTitle, SiteHeader } from '../components/shell';
 import { StatusLabel } from '../components/status';
 import { t } from '../i18n';
 import {
-  ApiError, api, type AdminDetail, type AdminList, type Capability, type ReviewReason, type ReviewStatus, type VerificationStatus,
+  ApiError, api, type AdminDetail, type AdminList, type Capability, type ReviewReason, type ReviewStatus, type VerificationCandidate,
+  type VerificationStatus,
 } from '../lib/api';
 import { capabilityOrder, capabilityTitle, errorMessage, modelTitle, statusTitle, toneOf } from '../lib/labels';
 import { mount } from '../lib/mount';
@@ -35,7 +37,9 @@ function AdminPage() {
   // The access key lives only in memory; a reload asks for it again.
   const [token, setToken] = useState('');
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
-  const [tab, setTab] = useState('review');
+  const [tab, setTab] = useState('overview');
+  // A report opened from the overview; the review tab selects it.
+  const [focus, setFocus] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
   const request = useCallback(<T,>(path: string, options: RequestInit = {}) => api<T>(path, {
@@ -76,14 +80,25 @@ function AdminPage() {
               className="mb-5"
               value={tab}
               onValueChange={setTab}
-              tabs={[{ value: 'review', label: t('审核报告') }, { value: 'verify', label: t('开发者验证') }, { value: 'diagnostics', label: t('诊断日志') }]}
+              tabs={[
+                { value: 'overview', label: t('概览') }, { value: 'review', label: t('审核报告') }, { value: 'verify', label: t('开发者验证') },
+                { value: 'audit', label: t('审核记录') }, { value: 'diagnostics', label: t('诊断日志') },
+              ]}
             />
             {notice && <NoticeLine notice={notice} />}
-            {tab === 'diagnostics'
-              ? <DiagnosticsTab request={request} onError={fail} />
-              : tab === 'review'
-              ? <ReviewTab request={request} onReady={ready} onError={fail} onNotice={setNotice} />
-              : <VerifyTab request={request} onError={fail} onNotice={setNotice} />}
+            {tab === 'overview' && (
+              <OverviewTab
+                request={request}
+                onReady={ready}
+                onError={fail}
+                onOpenReport={id => { setFocus(id); setTab('review'); }}
+                onOpenVerification={() => setTab('verify')}
+              />
+            )}
+            {tab === 'review' && <ReviewTab request={request} focus={focus} onReady={ready} onError={fail} onNotice={setNotice} />}
+            {tab === 'verify' && <VerifyTab request={request} onError={fail} onNotice={setNotice} />}
+            {tab === 'audit' && <AuditTab request={request} onError={fail} />}
+            {tab === 'diagnostics' && <DiagnosticsTab request={request} onError={fail} />}
           </>
         )}
       </Page>
@@ -250,8 +265,8 @@ function Login({ onSubmit, notice }: { onSubmit: (token: string) => void; notice
 }
 
 /* ---------- Review ---------- */
-function ReviewTab({ request, onReady, onError, onNotice }: {
-  request: Request; onReady: () => void; onError: (error: unknown) => void; onNotice: (notice: Notice) => void;
+function ReviewTab({ request, focus, onReady, onError, onNotice }: {
+  request: Request; focus: string | null; onReady: () => void; onError: (error: unknown) => void; onNotice: (notice: Notice) => void;
 }) {
   const [status, setStatus] = useState<ReviewStatus | 'all'>('pending');
   const [model, setModel] = useState('');
@@ -285,6 +300,7 @@ function ReviewTab({ request, onReady, onError, onNotice }: {
   }, [request, onError]);
 
   useEffect(() => { void load(0); }, [load]);
+  useEffect(() => { if (focus) void show(focus); }, [focus, show]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -337,6 +353,7 @@ function ReviewTab({ request, onReady, onError, onNotice }: {
                 <span className="block text-xs text-kumo-subtle tabular">
                   {row.created_at.slice(0, 10)} · {t(row.publish_report ? '用户选择公开' : '原始报告私有')}
                 </span>
+                {row.flags.length > 0 && <span className="mt-1.5 flex flex-wrap gap-1"><FlagBadges flags={row.flags} /></span>}
               </button>
             ))}
             <div className="flex items-center gap-2 border-t border-kumo-hairline px-4 py-2.5">
@@ -348,7 +365,7 @@ function ReviewTab({ request, onReady, onError, onNotice }: {
         </LayerCard>
 
         {detail && selected
-          ? <ReportDetail id={selected} detail={detail} request={request} onError={onError} onChanged={() => { void show(selected); void load(offset); }} />
+          ? <ReportDetail id={selected} detail={detail} request={request} onError={onError} onOpen={id => void show(id)} onChanged={() => { void show(selected); void load(offset); }} />
           : (
             <LayerCard>
               <LayerCard.Primary>
@@ -361,13 +378,15 @@ function ReviewTab({ request, onReady, onError, onNotice }: {
   );
 }
 
-function ReportDetail({ id, detail, request, onError, onChanged }: {
-  id: string; detail: AdminDetail; request: Request; onError: (error: unknown) => void; onChanged: () => void;
+function ReportDetail({ id, detail, request, onError, onOpen, onChanged }: {
+  id: string; detail: AdminDetail; request: Request; onError: (error: unknown) => void; onOpen: (id: string) => void; onChanged: () => void;
 }) {
   const [reason, setReason] = useState<ReviewReason>('reviewed');
   const [busy, setBusy] = useState<ReviewStatus | null>(null);
   const { report } = detail;
   const byCapability = new Map(report.capabilities.map(row => [row.capability, row]));
+  const { comparison } = detail;
+  const compared = new Map(comparison.capabilities.map(row => [row.capability, row]));
 
   const review = async (status: ReviewStatus) => {
     setBusy(status);
@@ -395,32 +414,74 @@ function ReportDetail({ id, detail, request, onError, onChanged }: {
           {t(detail.publishReport ? '用户选择公开：审核通过后可通过报告编号查阅。' : '原始报告私有：审核通过只贡献汇总统计。')}
         </span>
         <span className="text-xs font-normal text-kumo-subtle">{t('报告编号：')}<span className="font-mono">{id}</span></span>
+        {comparison.flags.length > 0 && <span className="mt-1 flex flex-wrap gap-1"><FlagBadges flags={comparison.flags} /></span>}
       </LayerCard.Secondary>
       <LayerCard.Primary className="flex flex-col gap-0 p-0">
         <DataTable>
           <Table.Header>
             <Table.Row>
               <Table.Head>{t('能力')}</Table.Head>
-              <Table.Head>{t('报告结果')}</Table.Head>
-              <Table.Head>{t('原因码')}</Table.Head>
+              <Table.Head>{t('本报告')}</Table.Head>
+              <Table.Head>{t('同版本已审核报告')}</Table.Head>
+              <Table.Head>{t('对比')}</Table.Head>
             </Table.Row>
           </Table.Header>
           <Table.Body>
             {capabilityOrder.map(capability => {
               const row = byCapability.get(capability);
+              const other = compared.get(capability);
               return (
-                <Table.Row key={capability}>
+                <Table.Row key={capability} className={cn(other?.agrees === false && '!bg-fanbar-mixed-tint')}>
                   <Table.Cell>{capabilityTitle(capability)}</Table.Cell>
                   <Table.Cell>{row && <span className="flex flex-col gap-1">
-                            <StatusLabel tone={row.userConfirmedWorking ? 'ok' : toneOf(row.status)} label={row.userConfirmedWorking ? t('本机实测可用（用户确认）') : statusTitle(row.status)} />
-                            {row.userConfirmedWorking && <span className="text-xs text-kumo-subtle">{t('自动检测：{status}', { status: statusTitle(row.status) })}</span>}
-                          </span>}</Table.Cell>
-                  <Table.Cell className="font-mono text-xs text-kumo-subtle">{row?.reasonCode}</Table.Cell>
+                    <StatusLabel tone={row.userConfirmedWorking ? 'ok' : toneOf(row.status)} label={row.userConfirmedWorking ? t('本机实测可用（用户确认）') : statusTitle(row.status)} />
+                    {row.userConfirmedWorking && <span className="text-xs text-kumo-subtle">{t('自动检测：{status}', { status: statusTitle(row.status) })}</span>}
+                    <span className="font-mono text-[11px] text-kumo-subtle">{row.reasonCode}</span>
+                  </span>}</Table.Cell>
+                  <Table.Cell>
+                    {other && other.existing.length > 0
+                      ? <span className="flex flex-col gap-0.5">{other.existing.map(item => (
+                        <span key={item.status} className="flex items-center gap-2">
+                          <StatusLabel tone={toneOf(item.status)} label={statusTitle(item.status)} className="font-normal" />
+                          <span className="text-xs text-kumo-subtle tabular">{t('reportCount', { count: item.count })}</span>
+                        </span>
+                      ))}</span>
+                      : <span className="text-kumo-subtle">—</span>}
+                    {other?.verification && (
+                      <span className="mt-1 block text-xs text-kumo-subtle">
+                        {t('开发者验证')} · {statusTitle(other.verification.status)} · {other.verification.verified_on}
+                      </span>
+                    )}
+                  </Table.Cell>
+                  <Table.Cell className="text-xs">
+                    {other?.agrees === false
+                      ? <StatusLabel tone="mixed" label={t('不一致')} />
+                      : other?.agrees ? <span className="text-kumo-subtle">{t('一致')}</span> : <span className="text-kumo-subtle">—</span>}
+                  </Table.Cell>
                 </Table.Row>
               );
             })}
           </Table.Body>
         </DataTable>
+
+        {(comparison.flags.includes('conflict') || comparison.duplicateOf.length > 0 || comparison.otherApprovedReports === 0) && (
+          <div className="flex flex-col gap-2 border-t border-kumo-hairline p-4 text-[13px]">
+            {comparison.otherApprovedReports === 0 && <p className="text-kumo-subtle">{t('同一版本组合还没有其他已审核报告，无法对比。')}</p>}
+            {comparison.flags.includes('conflict') && (
+              <p className="rounded-md border border-kumo-hairline bg-fanbar-mixed-tint p-3 text-kumo-default">
+                {t('结果冲突本身不是排除理由。字段正常就应纳入，公开页会如实显示“结果不一致”。')}
+              </p>
+            )}
+            {comparison.duplicateOf.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 text-kumo-subtle">
+                {t('与以下报告内容相同，且相隔不到 10 分钟提交：')}
+                {comparison.duplicateOf.map(other => (
+                  <Button key={other} size="xs" variant="ghost" className="font-mono" onClick={() => onOpen(other)}>{other.slice(0, 8)}</Button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="border-t border-kumo-hairline px-4 py-3">
           <Collapsible.Root>
@@ -470,7 +531,14 @@ function VerifyTab({ request, onError, onNotice }: { request: Request; onError: 
   const [capability, setCapability] = useState<Capability>('cpuTemperature');
   const [result, setResult] = useState<VerificationStatus>('verifiedAvailable');
   const [busy, setBusy] = useState(false);
-  const [removal, setRemoval] = useState('');
+  const [refresh, setRefresh] = useState(0);
+
+  const prefill = (candidate: VerificationCandidate) => {
+    setForm({ ...emptyVerification, modelIdentifier: candidate.modelIdentifier, macOSVersion: candidate.macOSVersion,
+      appVersion: candidate.appVersion, helperVersion: candidate.helperVersion });
+    setCapability(candidate.capability);
+    document.getElementById('verification-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const field = (name: keyof typeof emptyVerification) => ({
     value: form[name],
@@ -484,24 +552,21 @@ function VerifyTab({ request, onError, onNotice }: { request: Request; onError: 
       await request('/api/admin/verifications', mutation('POST', { ...form, capability, status: result }));
       onNotice({ tone: 'info', text: t('已发布独立实测记录。') });
       setForm(emptyVerification);
+      setRefresh(value => value + 1);
     } catch (error) { onError(error); }
     finally { setBusy(false); }
   };
 
-  const remove = async (event: FormEvent) => {
-    event.preventDefault();
-    const id = removal.trim();
-    if (!/^[0-9a-f-]{36}$/i.test(id)) { onNotice({ tone: 'error', text: t('请检查验证记录编号。') }); return; }
-    try {
-      await request('/api/admin/verifications/' + id, mutation('DELETE'));
-      onNotice({ tone: 'info', text: t('实测记录已撤下。') });
-      setRemoval('');
-    } catch (error) { onError(error); }
-  };
-
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <LayerCard className="p-0">
+    <div className="flex flex-col gap-4">
+      <VerificationLists
+        request={request}
+        onError={onError}
+        onNotice={text => onNotice({ tone: 'info', text })}
+        onPrefill={prefill}
+        refresh={refresh}
+      />
+      <LayerCard className="scroll-mt-4 p-0" id="verification-form">
         <LayerCard.Secondary>
           {t('发布独立实测记录')}
           <p className="text-xs font-normal text-kumo-subtle">{t('完成对应功能的实际测试后填写。此记录长期公开，附带来源；填写“手动调速可用”需要实际控制证据。')}</p>
@@ -540,18 +605,6 @@ function VerifyTab({ request, onError, onNotice }: { request: Request; onError: 
         </LayerCard.Primary>
       </LayerCard>
 
-      <LayerCard className="p-0">
-        <LayerCard.Secondary>
-          {t('撤下错误的实测记录')}
-          <p className="text-xs font-normal text-kumo-subtle">{t('公开 JSON 中每条开发者验证含记录编号。撤下不会删除用户报告。')}</p>
-        </LayerCard.Secondary>
-        <LayerCard.Primary>
-          <form onSubmit={remove} className="flex flex-col gap-3">
-          <Input label={t('验证记录编号')} required maxLength={36} className="w-full font-mono" value={removal} onChange={event => setRemoval(event.target.value)} />
-          <Button type="submit" variant="secondary-destructive">{t('撤下记录')}</Button>
-        </form>
-        </LayerCard.Primary>
-      </LayerCard>
     </div>
   );
 }

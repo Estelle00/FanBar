@@ -816,5 +816,237 @@ export const translations = {
   "接收于 {date}": {
     "en": "Received {date}",
     "ja": "{date} に受信"
+  },
+  "概览": {
+    "en": "Overview",
+    "ja": "概要"
+  },
+  "审核记录": {
+    "en": "Review log",
+    "ja": "審査記録"
+  },
+  "本报告": {
+    "en": "This report",
+    "ja": "このレポート"
+  },
+  "同版本已审核报告": {
+    "en": "Reviewed reports, same versions",
+    "ja": "同じバージョンの審査済みレポート"
+  },
+  "对比": {
+    "en": "Comparison",
+    "ja": "比較"
+  },
+  "不一致": {
+    "en": "Differs",
+    "ja": "不一致"
+  },
+  "一致": {
+    "en": "Matches",
+    "ja": "一致"
+  },
+  "同一版本组合还没有其他已审核报告，无法对比。": {
+    "en": "No other reviewed reports exist for this version combination yet, so there is nothing to compare.",
+    "ja": "このバージョンの組み合わせには、比較できる審査済みレポートがまだありません。"
+  },
+  "结果冲突本身不是排除理由。字段正常就应纳入，公开页会如实显示“结果不一致”。": {
+    "en": "A conflicting result is not a reason to reject. If the fields are valid, include the report; the public page will show “Results differ”.",
+    "ja": "結果の食い違いだけでは除外の理由になりません。フィールドが正しければ取り込み、公開ページには「結果が一致しない」と表示されます。"
+  },
+  "与以下报告内容相同，且相隔不到 10 分钟提交：": {
+    "en": "Identical content submitted less than 10 minutes apart:",
+    "ja": "同じ内容が 10 分以内に送信されたレポート："
+  },
+  "结果冲突": {
+    "en": "Conflicting result",
+    "ja": "結果の食い違い"
+  },
+  "疑似重复": {
+    "en": "Possible duplicate",
+    "ja": "重複の疑い"
+  },
+  "新机型": {
+    "en": "New model",
+    "ja": "新しい機種"
+  },
+  "管理密钥": {
+    "en": "Administrator key",
+    "ja": "管理キー"
+  },
+  "独立实测": {
+    "en": "Independent test",
+    "ja": "独立した実機検証"
+  },
+  "更正错误记录": {
+    "en": "Correction",
+    "ja": "誤った記録の訂正"
+  },
+  "不到 1 小时": {
+    "en": "Under 1 hour",
+    "ja": "1 時間未満"
+  },
+  "{count} 小时": {
+    "en": "{count} h",
+    "ja": "{count} 時間"
+  },
+  "{count} 天": {
+    "en": "{count} days",
+    "ja": "{count} 日"
+  },
+  "与已审核报告不一致：{items}": {
+    "en": "Differs from reviewed reports: {items}",
+    "ja": "審査済みレポートと異なる項目：{items}"
+  },
+  "去审核": {
+    "en": "Review",
+    "ja": "審査する"
+  },
+  "与 {count} 份内容相同的报告相隔不到 10 分钟提交": {
+    "en": "Submitted less than 10 minutes from {count} identical reports",
+    "ja": "同じ内容のレポート {count} 件と 10 分以内に送信"
+  },
+  "该机型还没有已审核的报告或实测记录。": {
+    "en": "This model has no reviewed reports or developer tests yet.",
+    "ja": "この機種には審査済みレポートも実機検証もまだありません。"
+  },
+  "待开发者实测": {
+    "en": "Awaiting developer test",
+    "ja": "開発者の実機検証待ち"
+  },
+  "“请求成功” {count} 份": {
+    "en": "{count} “request succeeded” reports",
+    "ja": "「リクエスト成功」{count} 件"
+  },
+  "安排实测": {
+    "en": "Plan a test",
+    "ja": "実機検証を予定"
+  },
+  "最久已等待 {time}": {
+    "en": "Oldest waiting {time}",
+    "ja": "最長待ち時間 {time}"
+  },
+  "队列已清空": {
+    "en": "Queue is clear",
+    "ja": "キューは空です"
+  },
+  "本周收到": {
+    "en": "Received this week",
+    "ja": "今週の受信"
+  },
+  "上周 {count} 份": {
+    "en": "{count} last week",
+    "ja": "先週 {count} 件"
+  },
+  "本周纳入 / 排除": {
+    "en": "Included / rejected this week",
+    "ja": "今週の取り込み / 除外"
+  },
+  "只统计审核决定，不含撤回的报告": {
+    "en": "Review decisions only; withdrawn reports are not counted",
+    "ja": "審査の決定のみ。撤回されたレポートは含みません"
+  },
+  "满足条件、尚未实测的组合": {
+    "en": "Combinations that qualify and are not yet tested",
+    "ja": "条件を満たし、まだ実機検証されていない組み合わせ"
+  },
+  "需要关注": {
+    "en": "Needs attention",
+    "ja": "要確認"
+  },
+  "基于最早的 {count} 份待审核报告": {
+    "en": "Based on the oldest {count} pending reports",
+    "ja": "最も古い保留中レポート {count} 件に基づく"
+  },
+  "暂无需要关注的事项。": {
+    "en": "Nothing needs attention.",
+    "ja": "確認が必要な項目はありません。"
+  },
+  "每日新报告": {
+    "en": "New reports per day",
+    "ja": "日別の新着レポート"
+  },
+  "过去 14 天每日新报告": {
+    "en": "New reports per day over the last 14 days",
+    "ja": "過去 14 日間の日別新着レポート"
+  },
+  "今天": {
+    "en": "Today",
+    "ja": "今日"
+  },
+  "最近操作": {
+    "en": "Recent activity",
+    "ja": "最近の操作"
+  },
+  "暂无审核记录。": {
+    "en": "No review records yet.",
+    "ja": "審査記録はまだありません。"
+  },
+  "累计 ≥{count} 份已审核的“请求成功”报告、尚无实测记录的控制能力": {
+    "en": "Control capabilities with at least {count} reviewed “request succeeded” reports and no developer test",
+    "ja": "審査済みの「リクエスト成功」レポートが {count} 件以上あり、実機検証がまだない制御機能"
+  },
+  "暂无需要安排实测的组合。": {
+    "en": "No combinations need a developer test.",
+    "ja": "実機検証が必要な組み合わせはありません。"
+  },
+  "机型": {
+    "en": "Model",
+    "ja": "機種"
+  },
+  "版本组合": {
+    "en": "Versions",
+    "ja": "バージョンの組み合わせ"
+  },
+  "最近报告": {
+    "en": "Latest report",
+    "ja": "最新のレポート"
+  },
+  "填写实测": {
+    "en": "Record test",
+    "ja": "検証結果を入力"
+  },
+  "已发布的实测记录": {
+    "en": "Published developer tests",
+    "ja": "公開済みの実機検証"
+  },
+  "撤下不会删除用户报告。": {
+    "en": "Removing a test does not delete user reports.",
+    "ja": "取り下げてもユーザーのレポートは削除されません。"
+  },
+  "还没有发布实测记录。": {
+    "en": "No developer tests published yet.",
+    "ja": "公開済みの実機検証はまだありません。"
+  },
+  "确认撤下": {
+    "en": "Confirm removal",
+    "ja": "取り下げを確定"
+  },
+  "记录每个审核和实测决定。审核记录保留 90 天；用户撤回报告时，相关审核记录一并删除。": {
+    "en": "Every review and test decision is recorded. Records are kept for 90 days; when a user withdraws a report, its review records are deleted too.",
+    "ja": "すべての審査と実機検証の決定を記録します。記録は 90 日間保存し、ユーザーがレポートを撤回すると関連する審査記録も削除されます。"
+  },
+  "记录类型": {
+    "en": "Record type",
+    "ja": "記録の種類"
+  },
+  "报告审核": {
+    "en": "Report reviews",
+    "ja": "レポート審査"
+  },
+  "操作者": {
+    "en": "Actor",
+    "ja": "操作者"
+  },
+  "操作": {
+    "en": "Action",
+    "ja": "操作"
+  },
+  "对象": {
+    "en": "Subject",
+    "ja": "対象"
+  },
+  "已删除或已过期": {
+    "en": "Deleted or expired",
+    "ja": "削除済みまたは期限切れ"
   }
 };
