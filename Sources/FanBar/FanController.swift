@@ -203,6 +203,8 @@ final class FanController: ObservableObject {
     private let helperService = FanBarServiceManager()
     private let loginItemService = FanBarLoginItemManager()
     private var refreshTimer: Timer?
+    /// Optional CSV log fed by the same readings as the menu; see docs/design/temperature-logging.md.
+    let temperatureLog = TemperatureLogRecorder()
     private var diagnosticSamples: [DiagnosticSample] = []
     private let widgetSnapshotDestination: WidgetSnapshotDestination
     private var lastWidgetTimelineReloadDate: Date?
@@ -430,6 +432,7 @@ final class FanController: ObservableObject {
         appendTemperature(thermal)
         do {
             fans = try localClient.fans()
+            temperatureLog.record(thermal: thermal, fans: fans, mode: mode)
             recordDiagnosticSample(thermal: thermal, fanCount: fans.count)
             compatibilityObservation = CompatibilityObservation(
                 sampledAt: thermal.sampledAt, thermal: thermal, fanCount: fans.count, connectionFailed: false
@@ -446,6 +449,8 @@ final class FanController: ObservableObject {
                 message = fanBarText("由 macOS 自动管理", "Managed automatically by macOS")
             }
         } catch {
+            // Fanless Macs report no fan keys; the temperatures read above are still worth logging.
+            temperatureLog.record(thermal: thermal, fans: [], mode: mode)
             recordDiagnosticSample(thermal: thermal, error: error)
             compatibilityObservation = CompatibilityObservation(
                 sampledAt: thermal.sampledAt, thermal: thermal, fanCount: nil, connectionFailed: false

@@ -5,13 +5,15 @@ import SwiftUI
 /// Settings panes. The selection persists so the window reopens where the
 /// user left off. The native labeled toolbar navigation is installed by the
 /// window presenter so content can use the full height below the title bar.
-/// Case order is the toolbar order (and ⌘1…⌘3).
+/// Case order is the toolbar order (and ⌘1…⌘4).
 enum SettingsTab: String, CaseIterable, Identifiable {
     /// Primary task: smart cooling curve (see `.impeccable.md`).
     case cooling
     /// Raw value kept from the former "Menu Bar" pane so a saved selection survives.
     case appearance = "menuBar"
     case general
+    /// Last so ⌘1…⌘3 keep their existing meaning.
+    case log
 
     static let preferenceKey = "fanbar.settingsSelectedTab"
 
@@ -22,6 +24,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .cooling: fanBarText("散热", "Cooling")
         case .appearance: fanBarText("外观", "Appearance")
         case .general: fanBarText("通用", "General")
+        case .log: fanBarText("日志", "Log")
         }
     }
 
@@ -30,6 +33,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .cooling: "fan"
         case .appearance: "paintbrush"
         case .general: "gearshape"
+        case .log: "doc.text"
         }
     }
 }
@@ -63,6 +67,7 @@ struct FanBarSettingsView: View {
                 case .cooling: coolingTab
                 case .appearance: appearanceTab
                 case .general: generalTab
+                case .log: logTab
                 }
             }
             .padding(.horizontal, SettingsChrome.horizontalPadding)
@@ -189,6 +194,11 @@ struct FanBarSettingsView: View {
     }
 
     // MARK: - General
+
+    /// CSV logging of temperatures and fan speeds; see docs/design/temperature-logging.md.
+    private var logTab: some View {
+        TemperatureLogSettingsView(controller: controller)
+    }
 
     @ViewBuilder
     private var generalTab: some View {
