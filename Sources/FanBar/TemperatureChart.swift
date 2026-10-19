@@ -444,6 +444,7 @@ private struct TemperaturePlot: View {
             samples.compactMap { $0[keyPath: series.keyPath] }.filter(\.isFinite)
         })
     }
+
     private var showsWarningLine: Bool { domain.contains(warningLine) }
     private var gridTicks: [Double] {
         TemperatureChartScale.ticks(in: domain).filter { !showsWarningLine || abs($0 - warningLine) > 4 }
