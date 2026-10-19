@@ -2,35 +2,38 @@ import Foundation
 
 /// SF Symbol names that need a fallback on older macOS. FanBar supports macOS 11,
 /// and an unknown name renders as nothing, so each newer symbol pairs with one
-/// that exists there.
+/// that exists there. Each choice takes the OS version so every branch is testable.
 enum FanBarSymbols {
+    private static var current: OperatingSystemVersion { ProcessInfo.processInfo.operatingSystemVersion }
+
+    static var fan: String { fan(on: current) }
+    static var fanBlades: String { fanBlades(on: current) }
+    static var fanSlash: String { fanSlash(on: current) }
+    static var balanced: String { balanced(on: current) }
+    static var gauge: String { gauge(on: current) }
+
     /// Fan blades: `fan` is macOS 14+, `fanblades` macOS 12+.
-    static var fan: String {
-        if #available(macOS 14.0, *) { return "fan" }
-        return fanBlades
+    static func fan(on os: OperatingSystemVersion) -> String {
+        os.majorVersion >= 14 ? "fan" : fanBlades(on: os)
     }
 
     /// Bare blades for the spinning glyph; `wind` stands in on macOS 11.
-    static var fanBlades: String {
-        if #available(macOS 12.0, *) { return "fanblades" }
-        return "wind"
+    static func fanBlades(on os: OperatingSystemVersion) -> String {
+        os.majorVersion >= 12 ? "fanblades" : "wind"
     }
 
     /// "No fan data": `fan.slash` is macOS 14+.
-    static var fanSlash: String {
-        if #available(macOS 14.0, *) { return "fan.slash" }
-        return "exclamationmark.triangle"
+    static func fanSlash(on os: OperatingSystemVersion) -> String {
+        os.majorVersion >= 14 ? "fan.slash" : "exclamationmark.triangle"
     }
 
     /// Half-filled circle for Balanced: the `.filled` spelling is macOS 12+.
-    static var balanced: String {
-        if #available(macOS 12.0, *) { return "circle.lefthalf.filled" }
-        return "circle.lefthalf.fill"
+    static func balanced(on os: OperatingSystemVersion) -> String {
+        os.majorVersion >= 12 ? "circle.lefthalf.filled" : "circle.lefthalf.fill"
     }
 
     /// Gauge for Performance: macOS 14+; `speedometer` is available everywhere.
-    static var gauge: String {
-        if #available(macOS 14.0, *) { return "gauge.with.dots.needle.67percent" }
-        return "speedometer"
+    static func gauge(on os: OperatingSystemVersion) -> String {
+        os.majorVersion >= 14 ? "gauge.with.dots.needle.67percent" : "speedometer"
     }
 }
