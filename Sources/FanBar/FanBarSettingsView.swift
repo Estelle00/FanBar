@@ -342,6 +342,10 @@ struct FanBarSettingsView: View {
             SettingsChrome.rowDivider
 
             thresholdRow
+
+            SettingsChrome.rowDivider
+
+            ThermalAlertSoundRow(controller: controller)
         }
     }
 

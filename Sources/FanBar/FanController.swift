@@ -149,6 +149,7 @@ final class FanController: ObservableObject {
     }()
 
     @Published private(set) var highTemperatureThresholdCelsius = ThermalAlertSettings.thresholdCelsius
+    @Published private(set) var highTemperatureAlertSound = ThermalAlertSettings.sound
     @Published private(set) var isRequestingHighTemperatureNotificationPermission = false
     @Published private(set) var switchFeedback: SwitchFeedbackSignal?
     @Published private(set) var modeActionFeedback: ModeActionFeedback?
@@ -232,6 +233,7 @@ final class FanController: ObservableObject {
     private var thermalAlertMonitor = ThermalAlertMonitor(
         thresholdCelsius: ThermalAlertSettings.thresholdCelsius
     )
+    private var thermalAlertSoundGate = ThermalAlertSoundGate()
     /// Optional for unit-test hosts that are not application bundles; the app
     /// always uses the system notification center through the default value.
     private let notificationCenter: UNUserNotificationCenter?
@@ -1157,6 +1159,23 @@ final class FanController: ObservableObject {
         }
     }
 
+    /// Choosing a system sound plays it, as the system Sound settings do.
+    func setHighTemperatureAlertSound(_ sound: ThermalAlertSound) {
+        highTemperatureAlertSound = sound
+        if let storedValue = sound.storedValue {
+            UserDefaults.standard.set(storedValue, forKey: ThermalAlertSettings.soundKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: ThermalAlertSettings.soundKey)
+        }
+        previewHighTemperatureAlertSound()
+    }
+
+    func previewHighTemperatureAlertSound() {
+        if let name = highTemperatureAlertSound.systemSoundName {
+            ThermalAlertSoundPlayer.play(name)
+        }
+    }
+
     func setHighTemperatureNotificationsEnabled(_ enabled: Bool) {
         highTemperatureNotificationRequestID += 1
         let requestID = highTemperatureNotificationRequestID
@@ -1198,6 +1217,8 @@ final class FanController: ObservableObject {
 
                 self.highTemperatureNotificationsEnabled = true
                 self.thermalAlertMonitor.reset()
+                // The first alert after switching on should be heard.
+                self.thermalAlertSoundGate.reset()
                 UserDefaults.standard.set(
                     true,
                     forKey: ThermalAlertSettings.notificationsEnabledKey
@@ -1384,7 +1405,10 @@ final class FanController: ObservableObject {
             details,
             highTemperatureThresholdCelsius
         )
-        content.sound = .default
+        let sound = highTemperatureAlertSound
+        if sound != .silent, thermalAlertSoundGate.allowsSound(at: Date()) {
+            content.sound = sound.deliver(playing: ThermalAlertSoundPlayer.play)
+        }
 
         let request = UNNotificationRequest(
             identifier: "\(ThermalAlertSettings.notificationIdentifierPrefix).\(UUID().uuidString)",
