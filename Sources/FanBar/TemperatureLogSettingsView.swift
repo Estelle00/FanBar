@@ -37,8 +37,8 @@ struct TemperatureLogSettingsView: View {
         SettingsSection(
             title: fanBarText("温度日志", "Temperature Log"),
             footer: fanBarText(
-                "开启后，FanBar 会按间隔把温度和风扇转速追加到 CSV 文件，数据只保存在本机。",
-                "When enabled, FanBar appends temperatures and fan speeds to a CSV file at the chosen interval. The data stays on this Mac."
+                "CPU 日志和高温提醒使用平均温度；菜单栏和温度曲线显示最高温度。数据只保存在本机。",
+                "CPU logs and alerts use average temperature; the menu bar and chart show the highest. Data stays on this Mac."
             )
         ) {
             Toggle(isOn: $enabled) {
@@ -92,8 +92,8 @@ struct TemperatureLogSettingsView: View {
         SettingsSection(
             title: fanBarText("日志文件", "Log Files"),
             footer: fanBarText(
-                "更改任何日志选项都会立即新建文件，表头和数据列保持一致。",
-                "Changing any log option starts a new file right away, so each file's header matches its rows."
+                "更改记录内容时，若表头不匹配，会另建文件，避免混用数据列。",
+                "Changing the logged data creates a separate file when the header differs, keeping each file's columns consistent."
             )
         ) {
             VStack(alignment: .leading, spacing: SettingsChrome.rowVerticalPadding) {

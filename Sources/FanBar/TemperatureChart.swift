@@ -273,6 +273,10 @@ struct TemperatureChart: View {
                 )
                 .frame(height: 96)
                 .accessibilityLabel(fanBarText("温度曲线", "Temperature trends"))
+                .help(fanBarText(
+                    "CPU 告警按平均温度判断；最高温度曲线用于观察瞬时峰值。",
+                    "CPU alerts use the average temperature; the highest-temperature trace shows peaks."
+                ))
             }
 
             axisLabels
@@ -310,7 +314,7 @@ struct TemperatureChart: View {
                     .frame(width: 12, height: 3)
                 // Long names (Russian "Аккумулятор") shrink, then truncate; the reading never does.
                 // A fixed-size legend wider than the panel would widen the whole column off-center.
-                Text(series.title)
+                Text(series == .cpu ? cpuLegendTitle : series.title)
                     .foregroundColor(palette.secondaryText)
                     .minimumScaleFactor(0.85)
                     .truncationMode(.tail)
@@ -328,10 +332,16 @@ struct TemperatureChart: View {
             .opacity(value == nil ? 0.45 : isShown ? 1 : 0.4)
         }
         .buttonStyle(.plain)
-        .focusable(false)
         .disabled(value == nil)
-        .help(value == nil ? fanBarText("传感器不可用", "Sensor unavailable") : "")
+        .help(value == nil ? fanBarText("传感器不可用", "Sensor unavailable")
+              : series == .cpu ? latest?.cpuTemperatureSummary ?? "" : "")
         .accessibilityAddTraits(isShown ? .isSelected : [])
+    }
+
+    private var cpuLegendTitle: String {
+        latest?.cpuHottestCelsius == nil
+            ? fanBarText("CPU 平均", "CPU avg")
+            : fanBarText("CPU 最高", "CPU max")
     }
 
     private var axisLabels: some View {

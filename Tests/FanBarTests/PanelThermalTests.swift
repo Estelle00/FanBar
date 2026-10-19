@@ -2,6 +2,45 @@ import XCTest
 @testable import FanBar
 
 final class PanelThermalTests: XCTestCase {
+    private var savedThreshold: Any?
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        savedThreshold = UserDefaults.standard.object(forKey: ThermalAlertSettings.thresholdKey)
+        UserDefaults.standard.set(90.0, forKey: ThermalAlertSettings.thresholdKey)
+    }
+
+    override func tearDownWithError() throws {
+        if let savedThreshold {
+            UserDefaults.standard.set(savedThreshold, forKey: ThermalAlertSettings.thresholdKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: ThermalAlertSettings.thresholdKey)
+        }
+        try super.tearDownWithError()
+    }
+
+    func testPanelHeatAssessmentMatchesMonitorAtCustomThreshold() {
+        for threshold in [80.0, 105.0] {
+            UserDefaults.standard.set(threshold, forKey: ThermalAlertSettings.thresholdKey)
+            for temperature in [threshold - 2, threshold, threshold + 2] {
+                for sensor in ThermalSensor.allCases {
+                    let reading = ThermalReading(
+                        sampledAt: Date(),
+                        cpuCelsius: sensor == .cpu ? temperature : 50,
+                        gpuCelsius: sensor == .gpu ? temperature : 50,
+                        cpuHottestCelsius: 110
+                    )
+                    var monitor = ThermalAlertMonitor(thresholdCelsius: threshold)
+                    XCTAssertEqual(
+                        ThermalFocus.from(reading)?.level == .hot,
+                        !monitor.alerts(for: reading).isEmpty,
+                        "\(sensor), temperature \(temperature), threshold \(threshold)"
+                    )
+                }
+            }
+        }
+    }
+
     func testEachPartHasItsOwnLimits() {
         XCTAssertEqual(ThermalLevel(celsius: nil, part: .cpu), .normal)
         XCTAssertEqual(ThermalLevel(celsius: 84.9, part: .cpu), .normal)
@@ -34,7 +73,7 @@ final class PanelThermalTests: XCTestCase {
         XCTAssertEqual(decoded.first?.cpuDisplayCelsius, 55)
     }
 
-    func testFocusIsHottestChipWhenEverythingIsNormal() {
+    func testFocusUsesAverageCPUForHeatAssessment() {
         let reading = ThermalReading(
             sampledAt: Date(),
             cpuCelsius: 60,
@@ -44,8 +83,8 @@ final class PanelThermalTests: XCTestCase {
             cpuHottestCelsius: 71
         )
         let focus = ThermalFocus.from(reading)
-        XCTAssertEqual(focus?.part, .cpu)
-        XCTAssertEqual(focus?.celsius, 71)
+        XCTAssertEqual(focus?.part, .gpu)
+        XCTAssertEqual(focus?.celsius, 66)
         XCTAssertEqual(focus?.isAlert, false)
     }
 
@@ -65,12 +104,12 @@ final class PanelThermalTests: XCTestCase {
     func testHotterLevelWinsBetweenTwoAlerts() {
         let reading = ThermalReading(
             sampledAt: Date(),
-            cpuCelsius: 80,
+            cpuCelsius: 88,
             gpuCelsius: nil,
             ssdCelsius: 76,
             cpuHottestCelsius: 88
         )
-        // CPU 88 °C is warm; SSD 76 °C is hot.
+        // CPU average 88 °C is warm; SSD 76 °C is hot.
         let focus = ThermalFocus.from(reading)
         XCTAssertEqual(focus?.part, .ssd)
         XCTAssertEqual(focus?.level, .hot)

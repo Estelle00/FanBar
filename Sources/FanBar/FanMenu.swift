@@ -466,7 +466,12 @@ struct FanMenu: View {
     /// How the selected mode is steering the fans, said once.
     private var modeLine: some View {
         HStack(spacing: 8) {
-            Text(modeDescription)
+            Text(Self.modeDescription(
+                for: controller.mode,
+                sensor: controller.curveProfile.sensor,
+                reading: controller.temperatureHistory.last,
+                fanCount: controller.fans.count
+            ))
                 .lineLimit(1)
             Spacer(minLength: 4)
             modeTarget
@@ -475,19 +480,19 @@ struct FanMenu: View {
         .foregroundColor(palette.secondaryText)
     }
 
-    private var modeDescription: String {
-        switch controller.mode {
+    static func modeDescription(
+        for mode: FanController.Mode,
+        sensor: FanCurveSensor,
+        reading: ThermalReading?,
+        fanCount: Int
+    ) -> String {
+        switch mode {
         case .automatic:
             return fanBarText("交由 macOS 自动调节", "Controlled by macOS")
         case .temperatureCurve:
-            let celsius = controller.curveTemperatureCelsius ?? controller.temperatureHistory.last?.cpuCelsius
-            return fanBarFormat(
-                "按 CPU %@ 调节",
-                "Following CPU at %@",
-                celsius.map { "\(Int($0.rounded()))°" } ?? "—"
-            )
+            return sensor.controlDescription(for: reading)
         case .fixed:
-            return controller.fans.count > 1
+            return fanCount > 1
                 ? fanBarText("双风扇保持同一转速", "Fans hold the same speed")
                 : fanBarText("风扇保持固定转速", "The fan holds a fixed speed")
         }
@@ -570,7 +575,6 @@ struct FanMenu: View {
                         controller.openHelperSettings()
                     }
                     .buttonStyle(.plain)
-                    .focusable(false)
                     .font(.caption.weight(.medium))
                     .foregroundColor(palette.accent)
                     .fixedSize()
@@ -589,7 +593,6 @@ struct FanMenu: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .focusable(false)
                 .foregroundColor(.secondary)
                 .accessibilityLabel(fanBarText("关闭错误提示", "Dismiss error"))
             }
@@ -690,7 +693,6 @@ struct FanMenu: View {
                     .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 .buttonStyle(PanelDimButtonStyle())
-                .focusable(false)
                 .fixedSize()
             }
         }
@@ -785,7 +787,6 @@ struct FanMenu: View {
         }
         .buttonStyle(PanelDimButtonStyle())
         // A custom-drawn button; suppress the persistent AppKit focus ring after clicks.
-        .focusable(false)
         .fixedSize()
     }
 
@@ -852,7 +853,6 @@ private struct PanelIconButton: View {
         }
         .buttonStyle(PanelWellButtonStyle(cornerRadius: 7, isHovered: isHovered))
         // Prevent AppKit from drawing a persistent focus ring around this icon-only action.
-        .focusable(false)
         .onHover { isHovered = $0 }
     }
 }
@@ -876,7 +876,6 @@ private struct PanelTextButton<Label: View>: View {
                 .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(PanelWellButtonStyle(cornerRadius: 6, isHovered: isHovered))
-        .focusable(false)
         .onHover { isHovered = $0 }
     }
 }

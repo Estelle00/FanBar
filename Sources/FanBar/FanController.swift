@@ -3,10 +3,10 @@
 import AppKit
 import FanBarShared
 import Foundation
+import UserNotifications
 #if canImport(WidgetKit)
 import WidgetKit
 #endif
-import UserNotifications
 
 /// Determines whether launchd still points at the current embedded helper.
 /// Moving an app invalidates a BundleProgram registration just as surely as
@@ -244,7 +244,7 @@ final class FanController: ObservableObject {
     /// that much history on a crash.
     private static let temperatureHistorySaveInterval: TimeInterval = 30
     private var lastTemperatureHistorySaveDate: Date?
-    private let usageReader = SystemUsageReader()
+    private let readUsage: () -> SystemUsage
     /// Sixty seconds at the two-second refresh cadence.
     static let usageHistorySampleCount = 30
 
@@ -288,8 +288,11 @@ final class FanController: ObservableObject {
         makeReadingSource: @escaping () throws -> FanReadingSource = { try SMCClient() },
         makeDiagnosticSource: @escaping @Sendable () throws -> FanReadingSource = { try SMCClient() },
         queryRunningHelperBuild: @escaping @Sendable () async -> HelperBuildQuery = { await HelperClient.queryRunningBuild() },
-        compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil
+        compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil,
+        readUsage: (() -> SystemUsage)? = nil
     ) {
+        let usageReader = SystemUsageReader()
+        self.readUsage = readUsage ?? { usageReader.sample() }
         self.makeReadingSource = makeReadingSource
         self.makeDiagnosticSource = makeDiagnosticSource
         self.queryRunningHelperBuild = queryRunningHelperBuild
@@ -351,7 +354,7 @@ final class FanController: ObservableObject {
         notificationCenter?.delegate = notificationDelegate
         refreshHelperStatus()
         refreshLaunchAtLoginStatus()
-        connectAndRefresh()
+        refresh()
         refreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -449,10 +452,23 @@ final class FanController: ObservableObject {
             refreshServiceStatus()
         }
         // Usage comes from public system counters, so it still updates while the helper is unavailable.
-        usage = usageReader.sample()
+        usage = readUsage()
         Self.appendUsage(usage.cpuFraction, to: &cpuHistory)
         Self.appendUsage(usage.gpuFraction, to: &gpuHistory)
-        guard let localClient else { connectAndRefresh(); return }
+        if localClient == nil {
+            do {
+                localClient = try makeReadingSource()
+            } catch {
+                recordDiagnosticSample(error: error)
+                compatibilityObservation = CompatibilityObservation(
+                    sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
+                )
+                isAvailable = false
+                message = error.localizedDescription
+                return
+            }
+        }
+        guard let localClient else { return }
         let thermal = localClient.thermalReading()
         appendTemperature(thermal)
         do {
@@ -1164,9 +1180,7 @@ final class FanController: ObservableObject {
         }
         notificationCenter.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, _ in
             Task { @MainActor [weak self] in
-                guard let self else { return }
-
-                guard requestID == self.highTemperatureNotificationRequestID else { return }
+                guard let self, requestID == self.highTemperatureNotificationRequestID else { return }
                 self.isRequestingHighTemperatureNotificationPermission = false
 
                 guard granted else {
@@ -1341,17 +1355,7 @@ final class FanController: ObservableObject {
         from reading: ThermalReading,
         profile: FanCurveProfile? = nil
     ) -> Double? {
-        switch (profile ?? curveProfile).sensor {
-        case .maxChip:
-            return [reading.cpuCelsius, reading.gpuCelsius].compactMap { $0 }.max()
-        case .cpu:
-            return reading.cpuCelsius
-        case .gpu:
-            // A powered-down GPU reports nothing; CPU is the closest proxy.
-            return reading.gpuCelsius ?? reading.cpuCelsius
-        case .ssd:
-            return reading.ssdCelsius
-        }
+        (profile ?? curveProfile).sensor.temperature(in: reading)
     }
 
     private func evaluateThermalAlerts(using reading: ThermalReading) {
@@ -1591,20 +1595,6 @@ final class FanController: ObservableObject {
                 try? await helperClient.restoreAutomatic()
             }
             NSApplication.shared.terminate(nil)
-        }
-    }
-
-    private func connectAndRefresh() {
-        do {
-            localClient = try makeReadingSource()
-            refresh()
-        } catch {
-            recordDiagnosticSample(error: error)
-            compatibilityObservation = CompatibilityObservation(
-                sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
-            )
-            isAvailable = false
-            message = error.localizedDescription
         }
     }
 

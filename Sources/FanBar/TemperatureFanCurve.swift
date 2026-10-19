@@ -18,6 +18,30 @@ enum FanCurveSensor: String, Codable, CaseIterable, Identifiable, Sendable {
         case .ssd: fanBarText("硬盘（SSD）", "SSD")
         }
     }
+
+    /// Shared by control and its panel description, including the idle-GPU fallback.
+    func temperature(in reading: ThermalReading) -> Double? {
+        switch self {
+        case .maxChip: [reading.cpuCelsius, reading.gpuCelsius].compactMap { $0 }.max()
+        case .cpu: reading.cpuCelsius
+        case .gpu: reading.gpuCelsius ?? reading.cpuCelsius
+        case .ssd: reading.ssdCelsius
+        }
+    }
+
+    func controlDescription(for reading: ThermalReading?) -> String {
+        let source: String
+        switch self {
+        case .cpu: source = fanBarText("CPU 平均", "CPU average")
+        case .gpu:
+            source = reading?.gpuCelsius == nil && reading?.cpuCelsius != nil
+                ? fanBarText("CPU（GPU 不可用）", "CPU (GPU unavailable)") : "GPU"
+        case .ssd: source = "SSD"
+        case .maxChip: source = title
+        }
+        let value = reading.flatMap { temperature(in: $0) }.map { "\(Int($0.rounded()))°" } ?? "—"
+        return fanBarFormat("按%@ %@ 调节", "Following %@ at %@", source, value)
+    }
 }
 
 /// A single anchor on the temperature → cooling-fraction curve.
