@@ -5,16 +5,38 @@ import Combine
 import FanBarShared
 import SwiftUI
 
+/// Card-glass menu panel; live readings and control actions retain their existing sources.
 struct FanMenu: View {
     @ObservedObject var controller: FanController
     @AppStorage(CoolingPresetPreferences.preferenceKey)
     private var menuCoolingPresetsRawValue = CoolingPresetPreferences.defaultRawValue
-    @State private var isEditingCustomRPM = false
-    @State private var isShowingFixedRPMPicker = false
-    @Namespace private var modeSelectionNamespace
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage(PanelAnimationPreferences.preferenceKey)
     private var panelAnimationEnabled = true
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
+    @AppStorage(AppIconChoice.preferenceKey)
+    private var appIconRawValue = AppIconChoice.classic.rawValue
+
+    @State private var contentHeight: CGFloat = 580
+    @State private var chartRange: TemperatureChartRange = .tenMinutes
+    @State private var expandedResource: PanelResourceList.Resource?
+    @State private var fixedSliderRPM = 0.0
+    @State private var isDraggingFixedSlider = false
+
+    /// Width of the v2 panel.
+    static let panelWidth: CGFloat = 368
+    private static let padding: CGFloat = 16
+
+    private enum ModeOption: Hashable {
+        case automatic
+        case preset(CoolingPresetID)
+        case fixed
+    }
+
+    private var palette: PanelPalette { PanelPalette(colorScheme: colorScheme) }
 
     private var animatesPanel: Bool {
         panelAnimationEnabled && !reduceMotion
@@ -23,9 +45,6 @@ struct FanMenu: View {
     private var slideInTransition: AnyTransition {
         animatesPanel ? .opacity.combined(with: .move(edge: .top)) : .identity
     }
-
-    @AppStorage(FanBarLanguage.preferenceKey)
-    private var languageRawValue = FanBarLanguage.defaultValue
 
     private var isManual: Bool {
         controller.mode != .automatic
@@ -36,21 +55,13 @@ struct FanMenu: View {
         return false
     }
 
-    private var isCurveMode: Bool {
-        if case .temperatureCurve = controller.mode { return true }
-        return false
+    private var currentFixedRPM: Int? {
+        if case .fixed(let rpm) = controller.mode { return rpm }
+        return nil
     }
 
     private var isShowingModeFailureBanner: Bool {
         controller.modeActionFeedback?.kind == .failure
-    }
-
-    private var modeLabel: String {
-        switch controller.mode {
-        case .automatic: fanBarText("系统", "Automatic")
-        case .temperatureCurve: controller.presetTitle(for: controller.curveCoolingPreset)
-        case .fixed(let rpm): "\(rpm) RPM"
-        }
     }
 
     private var visibleCoolingPresets: [CoolingPresetSummary] {
@@ -61,207 +72,299 @@ struct FanMenu: View {
         ).compactMap { id in all.first { $0.id == id } }
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+    private var focus: ThermalFocus? {
+        ThermalFocus.from(controller.temperatureHistory.last)
+    }
 
-            if controller.isAvailable {
-                if !controller.fans.isEmpty { fanPanel }
-                TemperatureChart(samples: controller.temperatureHistory)
-                if !controller.fans.isEmpty {
-                    modeControl
-                } else {
-                    Text(fanBarText(
-                        "硬件接口未报告风扇，控制能力尚未验证",
-                        "No fans reported; control is not yet verified"
-                    ))
-                    .font(.caption).foregroundColor(.secondary)
+    private var level: ThermalLevel {
+        focus?.level ?? .normal
+    }
+
+    private var fanWord: String {
+        switch controller.fans.count {
+        case 1: fanBarText("单风扇", "Single fan")
+        case 2: fanBarText("双风扇", "Dual fans")
+        default: fanBarFormat("%d 个风扇", "%d fans", controller.fans.count)
+        }
+    }
+
+    private var modeName: String {
+        switch controller.mode {
+        case .automatic: fanBarText("系统", "Automatic")
+        case .temperatureCurve: controller.presetTitle(for: controller.curveCoolingPreset)
+        case .fixed: fanBarText("固定", "Fixed")
+        }
+    }
+
+    // MARK: Body
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            panelContent
+                .fixedSize(horizontal: false, vertical: true)
+                .background(GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { updateContentHeight(proxy.size.height) }
+                        .onChange(of: proxy.size.height) { updateContentHeight($0) }
+                })
+        }
+        .frame(width: Self.panelWidth, height: min(contentHeight, max(240, (NSScreen.main?.visibleFrame.height ?? 800) - 70)))
+        .background(PanelGlassBackground())
+    }
+
+    /// Measure the final intrinsic height without interpolation. The popover grows
+    /// downward to fit disk details; scrolling is reserved for the screen-height cap.
+    private func updateContentHeight(_ measuredHeight: CGFloat) {
+        let height = measuredHeight.rounded(.up)
+        guard height.isFinite, height > 0, abs(height - contentHeight) >= 1 else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { contentHeight = height }
+    }
+
+    private var panelContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            header
+                .padding(.horizontal, Self.padding)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
+
+            if controller.isAvailable, !controller.fans.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(controller.fans) { fan in
+                            PanelFanCard(fan: fan, target: targetRPM(fan), isSingleFan: controller.fans.count == 1)
+                                .frame(width: controller.fans.count == 1 ? 336 : 165)
+                        }
+                    }
                 }
+                .padding(.horizontal, Self.padding)
+                .padding(.bottom, 6)
+            } else if controller.isAvailable {
+                Text(fanBarText(
+                    "硬件接口未报告风扇，控制能力尚未验证",
+                    "No fans reported; control is not yet verified"
+                ))
+                .font(.system(size: 11))
+                .foregroundColor(palette.secondaryText)
+                .padding(.horizontal, Self.padding)
+                .padding(.bottom, 12)
             } else {
                 unavailableState
+                    .padding(.horizontal, Self.padding)
+                    .padding(.bottom, 12)
             }
 
             if controller.helperState != .enabled {
                 helperNotice
+                    .padding(.horizontal, Self.padding)
+                    .padding(.bottom, 12)
                     .transition(slideInTransition)
             }
 
+            PanelResourceList(
+                usage: controller.usage,
+                thermal: controller.temperatureHistory.last,
+                cpuHistory: controller.cpuHistory,
+                gpuHistory: controller.gpuHistory,
+                animates: animatesPanel,
+                expanded: $expandedResource
+            )
+            .padding(.horizontal, Self.padding)
+            .padding(.bottom, 10)
+
+            if controller.isAvailable {
+                TemperatureChart(samples: controller.temperatureHistory, range: $chartRange,
+                                 alertThreshold: controller.highTemperatureThresholdCelsius)
+                    .padding(.horizontal, Self.padding)
+                    .padding(.bottom, 10)
+            }
+
+            if controller.isAvailable, !controller.fans.isEmpty {
+                divider
+                modeSection
+                    .padding(.horizontal, Self.padding)
+                    .padding(.vertical, 10)
+            }
+
+            divider
             footer
         }
-        .padding(16)
-        .frame(width: 384)
+        .frame(width: Self.panelWidth)
     }
 
-    private var header: some View {
-        HStack(spacing: 11) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .antialiased(true)
-            .frame(width: 34, height: 34)
-            .accessibilityHidden(true)
+    private var divider: some View {
+        PanelDivider()
+            .padding(.horizontal, Self.padding)
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 7) {
-                    Text("FanBar")
-                        .font(.headline)
-                    modeBadge
-                }
-                Text(controller.message)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+    // MARK: Header
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(nsImage: (AppIconChoice(rawValue: appIconRawValue) ?? .classic).image
+                  ?? NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 32, height: 32)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text("FanBar")
+                    .font(.system(size: 13, weight: .semibold))
                     .lineLimit(1)
+                if controller.isAvailable, !controller.fans.isEmpty {
+                    subtitle
+                }
             }
 
             Spacer(minLength: 8)
 
-            Button {
+            PanelIconButton(systemImage: "slider.horizontal.3") {
                 SettingsWindowPresenter.shared.show(controller: controller)
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 28, height: 28)
-                    .background(Circle().fill(Color.primary.opacity(0.055)))
             }
-            .buttonStyle(.plain)
-            // Prevent AppKit from drawing a persistent focus ring around this icon-only action.
-            .focusable(false)
             .accessibilityLabel(fanBarText("打开 FanBar 设置", "Open FanBar Settings"))
             .help(fanBarText("设置", "Settings"))
         }
     }
 
-    private var modeBadge: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(isManual ? Color.accentColor : Color.green)
-                .frame(width: 5, height: 5)
-            Text(modeLabel)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+    /// One sentence that answers "how is it right now", naming the part when one is past its limit.
+    private var headerTitle: String {
+        guard controller.isAvailable else { return controller.message }
+        guard let focus, focus.isAlert else { return fanBarText("散热良好", "Cooling normally") }
+        let part = focus.part.name
+        if focus.level == .warm {
+            return fanBarFormat("%@温度偏高", "%@ is running warm", part)
         }
-        .foregroundColor(.secondary)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(Capsule().fill(Color.primary.opacity(0.055)))
+        // macOS raises fan speed for hot chips on its own; a hot SSD or battery it may not.
+        let macOSRespondsByItself = controller.mode == .automatic && [.cpu, .gpu].contains(focus.part)
+        return macOSRespondsByItself
+            ? fanBarFormat("%@温度很高 · 系统已提速", "%@ is very hot · macOS has sped up the fans", part)
+            : fanBarFormat("%@温度很高", "%@ is very hot", part)
     }
 
-    private var fanPanel: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(controller.fans.prefix(2)).indices, id: \.self) { position in
-                let fan = controller.fans[position]
-                FanGauge(fan: fan)
-
-                if position < min(controller.fans.count, 2) - 1 {
-                    Rectangle()
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(width: 1, height: 142)
+    /// "双风扇 · 静音模式", plus the automatic-restore countdown while FanBar is in control.
+    private var subtitle: some View {
+        HStack(spacing: 6) {
+            ZStack {
+                if level == .hot {
+                    Circle()
+                        .fill(palette.hot.opacity(0.22))
+                        .frame(width: 12, height: 12)
                 }
+                Circle()
+                    .fill(palette.color(for: level))
+                    .frame(width: 6, height: 6)
+            }
+            .frame(width: 6, height: 6)
+            .accessibilityHidden(true)
+
+            Text("\(fanWord) · \(focus?.isAlert == true ? headerTitle : modeName)")
+                .lineLimit(1)
+
+            if isManual {
+                restoreMenu
             }
         }
-        .padding(.horizontal, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.primary.opacity(0.045))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.primary.opacity(0.055), lineWidth: 1)
-        )
+        .font(.system(size: 11))
+        .foregroundColor(palette.secondaryText)
     }
 
-    private var modeControl: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(fanBarText("控制模式", "Control mode"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(.secondary)
-
-                Spacer(minLength: 8)
-            }
-            .frame(height: 16)
-            // An overlay is excluded from fitting-size calculation, keeping
-            // the popover frame pixel-stable while a mode request is in flight.
-            .overlay(modeProgressIndicator, alignment: .trailing)
-            .accessibilityElement(children: .combine)
-
-            // Segments hug their labels and the spacers share what is left, so
-            // a short label (Fixed) lends its slack to a long one (Balanced)
-            // instead of each being held to an equal quarter.
-            HStack(spacing: 0) {
-                Button {
-                    if controller.mode != .automatic {
-                        controller.setAutomatic()
-                    }
-                } label: {
-                    modeButtonLabel(
-                        title: automaticModeTitle,
-                        systemImage: "wand.and.stars",
-                        selected: controller.mode == .automatic
-                    )
-                }
-                .buttonStyle(.plain)
-                .focusable(false)
-                .accessibilityLabel(fanBarText("系统", "Automatic"))
-
-                ForEach(visibleCoolingPresets) { preset in
-                    Spacer(minLength: modeSegmentGap)
+    private var restoreMenu: some View {
+        CountdownTimerView { date in
+            Menu {
+                ForEach(FanController.AutomaticRestoreDuration.allCases) { duration in
                     Button {
-                        controller.setCoolingPreset(preset.id)
+                        controller.setAutomaticRestoreDuration(duration)
                     } label: {
-                        modeButtonLabel(
-                            title: preset.title,
-                            systemImage: preset.systemImage,
-                            selected: controller.mode == .temperatureCurve
-                                && controller.curveCoolingPreset == preset.id
-                        )
+                        if controller.automaticRestoreDuration == duration {
+                            Label(duration.title, systemImage: "checkmark")
+                        } else {
+                            Text(duration.title)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    // Match the adjacent Automatic and Fixed controls: mouse
-                    // activation must not leave an AppKit focus ring over the
-                    // custom selected-state capsule.
-                    .focusable(false)
-                    .help(fanBarFormat(
-                        "切换到 %@ 面板预设",
-                        "Switch to the %@ panel preset",
-                        preset.title
-                    ))
                 }
+            } label: {
+                Text("· \(restoreSummary(at: date))")
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundColor(palette.secondaryText)
+            }
+            .menuStyle(.borderlessButton)
+            .hidingSystemMenuIndicatorWhenAvailable()
+            .fixedSize()
+            .accessibilityLabel(fanBarText("自动恢复", "Automatic restore"))
+            .accessibilityValue(automaticRestoreAccessibilityValue(at: date))
+        }
+    }
 
-                Spacer(minLength: modeSegmentGap)
+    private func restoreSummary(at date: Date) -> String {
+        if controller.automaticRestoreDeadline == nil, controller.automaticRestoreDuration == .never {
+            return fanBarText("不自动恢复", "No auto restore")
+        }
+        return fanBarFormat("%@ 后恢复", "restores in %@", automaticRestoreValue(at: date))
+    }
 
-                // A native NSMenu can only mark items with a checkmark; a
-                // popover lets the current RPM share the control strip's
-                // selected-state background.
-                Button {
-                    isShowingFixedRPMPicker.toggle()
-                } label: {
-                    modeButtonLabel(
-                        title: fanBarText("固定", "Fixed"),
-                        systemImage: "slider.horizontal.3",
-                        selected: isFixed,
-                        showsChevron: true
-                    )
-                }
-                .buttonStyle(.plain)
-                .popover(isPresented: $isShowingFixedRPMPicker, arrowEdge: .bottom) {
-                    fixedRPMPicker
-                }
-                .focusable(false)
-                .accessibilityLabel(fanBarText("选择固定转速", "Choose a fixed RPM"))
-                .help(fanBarText(
-                    "选择固定转速",
-                    "Choose a fixed RPM"
-                ))
+    @ViewBuilder private var fanGlyph: some View {
+        if #available(macOS 13.0, *) {
+            Image(systemName: "fanblades")
+        } else {
+            Image(systemName: "fan")
+        }
+    }
+
+    // MARK: Fans
+
+    /// What FanBar is asking this fan to do: nil in Automatic, where macOS
+    /// decides. Curve targets use the helper's own rule; fixed targets are
+    /// clamped to the fan's range as the helper does.
+    private func targetRPM(_ fan: FanReading) -> Int? {
+        switch controller.mode {
+        case .automatic:
+            return nil
+        case .fixed(let requested):
+            return min(max(requested, fan.minimumRPM), fan.maximumRPM)
+        case .temperatureCurve:
+            guard let fraction = controller.curveOutputFraction else { return nil }
+            return Int(FanCoolingTarget.targetRPM(
+                fraction: fraction,
+                minimum: Float(fan.minimumRPM),
+                maximum: Float(fan.maximumRPM)
+            ))
+        }
+    }
+
+    // MARK: Modes
+
+    private var modeOptions: [(id: ModeOption, title: String)] {
+        [(ModeOption.automatic, fanBarText("系统", "Auto"))]
+            + visibleCoolingPresets.map { (ModeOption.preset($0.id), $0.title) }
+            + [(ModeOption.fixed, fanBarText("固定", "Fixed"))]
+    }
+
+    private var selectedMode: ModeOption {
+        switch controller.mode {
+        case .automatic: .automatic
+        case .temperatureCurve: .preset(controller.curveCoolingPreset)
+        case .fixed: .fixed
+        }
+    }
+
+    private func modeIcon(_ option: ModeOption) -> String? {
+        switch option {
+        case .automatic: "arrow.triangle.2.circlepath"
+        case .preset(let id): controller.allPresets.first { $0.id == id }?.systemImage
+        case .fixed: "slider.horizontal.3"
+        }
+    }
+
+    private var modeSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PanelSegmentedControl(options: modeOptions, selection: selectedMode, systemImage: modeIcon) { option in
+                select(option)
             }
             .disabled(controller.isBusy || controller.helperState != .enabled)
             .animation(
                 animatesPanel ? .spring(response: 0.34, dampingFraction: 0.86) : nil,
-                value: modeSelectionKey
-            )
-            .padding(4)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.primary.opacity(0.055))
+                value: selectedMode
             )
             // The failure banner covers the strip without changing popover size;
             // hide the strip (not remove it) so its labels can't show through.
@@ -270,124 +373,113 @@ struct FanMenu: View {
             .accessibilityHidden(isShowingModeFailureBanner)
             .overlay(
                 Group {
-                    if let feedback = controller.modeActionFeedback,
-                       feedback.kind == .failure {
+                    if let feedback = controller.modeActionFeedback, feedback.kind == .failure {
                         modeActionFeedbackBanner(feedback)
                     }
                 }
             )
+            // Floats in the gap above the strip: an overlay is excluded from fitting-size
+            // calculation, keeping the popover frame pixel-stable while a request is in flight.
+            .overlay(modeProgressIndicator.offset(y: -18), alignment: .topTrailing)
 
-            if isEditingCustomRPM, let range = controller.fixedRPMRange {
-                CustomFixedRPMEditor(
-                    range: range,
-                    initialRPM: currentFixedRPM ?? controller.customFixedRPM,
-                    onApply: { rpm in
-                        isEditingCustomRPM = false
-                        controller.setCustomFixedRPM(rpm)
-                    },
-                    onCancel: { isEditingCustomRPM = false }
-                )
-                .transition(slideInTransition)
+            if isFixed, let range = controller.fixedRPMRange {
+                fixedSlider(range: range)
+                    .padding(.top, 10)
             }
 
-            // Always laid out so leaving Automatic doesn't grow the popover:
-            // that resize landed mid-glide and jolted the control strip.
-            automaticRestoreRow
-                .opacity(isManual ? 1 : 0)
-                .allowsHitTesting(isManual)
-                .accessibilityHidden(!isManual)
+            modeLine
+                .padding(.top, 8)
         }
     }
 
-    private var fixedRPMPicker: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(fanBarText("固定转速", "Fixed RPM"))
-                .font(.caption.weight(.semibold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.bottom, 2)
-
-            ForEach(fixedRPMChoices, id: \.self) { rpm in
-                fixedRPMPickerRow(
-                    title: "\(rpm) RPM",
-                    selected: controller.mode == .fixed(rpm)
-                ) {
-                    isShowingFixedRPMPicker = false
-                    isEditingCustomRPM = false
-                    if controller.mode != .fixed(rpm) {
-                        controller.setFixedRPM(rpm)
-                    }
-                }
-            }
-
-            Divider()
-                .padding(.vertical, 3)
-
-            fixedRPMPickerRow(
-                title: fanBarText("自定义转速…", "Custom RPM…"),
-                selected: false
-            ) {
-                isShowingFixedRPMPicker = false
-                isEditingCustomRPM = true
-            }
-            .disabled(controller.fixedRPMRange == nil)
+    private func select(_ option: ModeOption) {
+        switch option {
+        case .automatic:
+            if controller.mode != .automatic { controller.setAutomatic() }
+        case .preset(let id):
+            controller.setCoolingPreset(id)
+        case .fixed:
+            guard !isFixed, let range = controller.fixedRPMRange else { return }
+            let preferred = controller.customFixedRPM
+                ?? FanController.fixedRPMPresets.first(where: range.contains)
+                ?? range.lowerBound
+            controller.setFixedRPM(min(max(preferred, range.lowerBound), range.upperBound))
         }
-        .padding(6)
-        .frame(width: 168)
-        // The popover makes its first row key; the selected background is the
-        // only selection cue, so suppress AppKit's focus ring.
-        .hidingFocusEffectWhenAvailable()
     }
 
-    private func fixedRPMPickerRow(
-        title: String,
-        selected: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 13, design: .monospaced))
-                .foregroundColor(selected ? Color.primary : Color.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(selected
-                            ? Color(NSColor.controlBackgroundColor)
-                            : Color.clear)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+    /// One RPM for every fan. The request goes out when the drag ends, so a
+    /// slide does not flood the helper with intermediate targets.
+    private func fixedSlider(range: ClosedRange<Int>) -> some View {
+        HStack(spacing: 10) {
+            Slider(
+                value: $fixedSliderRPM,
+                in: Double(range.lowerBound)...Double(range.upperBound),
+                step: 100
+            ) { editing in
+                isDraggingFixedSlider = editing
+                guard !editing else { return }
+                let rpm = min(max(Int(fixedSliderRPM.rounded()), range.lowerBound), range.upperBound)
+                if rpm != currentFixedRPM { controller.setCustomFixedRPM(rpm) }
+            }
+            .tintedWhenAvailable(palette.accent)
+            .disabled(controller.isBusy || controller.helperState != .enabled)
+            .accessibilityLabel(fanBarText("固定转速", "Fixed RPM"))
+
+            Text("\(FanBarNumberFormatter.grouped(Int(fixedSliderRPM.rounded()))) RPM")
+                .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                .frame(minWidth: 74, alignment: .trailing)
         }
-        .buttonStyle(.plain)
-        .focusable(false)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .onAppear { syncFixedSlider() }
+        .onChange(of: currentFixedRPM) { _ in
+            if !isDraggingFixedSlider { syncFixedSlider() }
+        }
     }
 
-    /// The strip button is short for "Automatic", which the header badge and
-    /// VoiceOver still spell out.
-    private var automaticModeTitle: String {
-        fanBarText("系统", "Auto")
+    private func syncFixedSlider() {
+        if let rpm = currentFixedRPM { fixedSliderRPM = Double(rpm) }
     }
 
-    private let modeSegmentGap: CGFloat = 6
+    /// How the selected mode is steering the fans, said once.
+    private var modeLine: some View {
+        HStack(spacing: 8) {
+            Text(modeDescription)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            modeTarget
+        }
+        .font(.system(size: 11).monospacedDigit())
+        .foregroundColor(palette.secondaryText)
+    }
 
-    /// Shrinks all mode labels together, only as far as their combined width
-    /// needs to fit the strip (segments size to content, not equal quarters).
-    private var modeLabelFontSize: CGFloat {
-        let baseSize: CGFloat = 13
-        let font = NSFont.monospacedSystemFont(ofSize: baseSize, weight: .medium)
-        let titles = [automaticModeTitle, fanBarText("固定", "Fixed")]
-            + visibleCoolingPresets.map(\.title)
-        // Panel 384 − padding 32 − strip inset 8, minus the gaps, each
-        // segment's padding (16) and icon + spacing (~21), and the chevron.
-        let count = CGFloat(titles.count)
-        let textBudget = 384 - 32 - 8 - (count - 1) * modeSegmentGap - count * (16 + 21) - 13
-        let textWidth = titles
-            .map { ($0 as NSString).size(withAttributes: [.font: font]).width }
-            .reduce(0, +)
-        guard textWidth > textBudget else { return baseSize }
-        return max((baseSize * textBudget / textWidth).rounded(.down), 10)
+    private var modeDescription: String {
+        switch controller.mode {
+        case .automatic:
+            return fanBarText("交由 macOS 自动调节", "Controlled by macOS")
+        case .temperatureCurve:
+            let celsius = controller.curveTemperatureCelsius ?? controller.temperatureHistory.last?.cpuCelsius
+            return fanBarFormat(
+                "%@曲线 · %@ 时",
+                "%@ curve · at %@",
+                controller.presetTitle(for: controller.curveCoolingPreset),
+                celsius.map { "\(Int($0.rounded()))°C" } ?? "—"
+            )
+        case .fixed:
+            return controller.fans.count > 1
+                ? fanBarText("双风扇保持同一转速", "Fans hold the same speed")
+                : fanBarText("风扇保持固定转速", "The fan holds a fixed speed")
+        }
+    }
+
+    @ViewBuilder private var modeTarget: some View {
+        if case .temperatureCurve = controller.mode {
+            let targets = controller.fans.prefix(2).compactMap(targetRPM)
+            if !targets.isEmpty {
+                Text(fanBarText("目标", "Target") + " ")
+                    + Text(targets.map(FanBarNumberFormatter.grouped).joined(separator: " / "))
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+            }
+        }
     }
 
     private var inProgressFeedback: FanController.ModeActionFeedback? {
@@ -396,9 +488,8 @@ struct FanMenu: View {
         return feedback
     }
 
-    /// Always laid out at a fixed height and faded in place: inserting a
-    /// ProgressView (whose intrinsic size is ~32pt even when scaled) made the
-    /// header row re-measure and nudged the control strip below it.
+    /// Always laid out at a fixed height and faded in place, so a request in
+    /// flight never re-measures the panel.
     private var modeProgressIndicator: some View {
         HStack(spacing: 5) {
             ProgressView()
@@ -418,40 +509,12 @@ struct FanMenu: View {
         .accessibilityHidden(inProgressFeedback == nil)
     }
 
-    /// Changes only when the highlighted segment changes, so RPM edits within
-    /// Fixed mode or curve updates don't re-trigger the glide.
-    private var modeSelectionKey: String {
-        switch controller.mode {
-        case .automatic: "automatic"
-        case .temperatureCurve: "curve.\(controller.curveCoolingPreset.token)"
-        case .fixed: "fixed"
-        }
-    }
-
-    private var currentFixedRPM: Int? {
-        if case .fixed(let rpm) = controller.mode { return rpm }
-        return nil
-    }
-
-    /// Presets inside the hardware range, plus the saved custom value.
-    private var fixedRPMChoices: [Int] {
-        var choices = FanController.fixedRPMPresets
-        if let range = controller.fixedRPMRange {
-            choices = choices.filter(range.contains)
-        }
-        for extra in [controller.customFixedRPM, currentFixedRPM].compactMap({ $0 })
-        where !choices.contains(extra) {
-            choices.append(extra)
-        }
-        return choices.sorted()
-    }
-
     // swiftlint:disable:next function_body_length
     private func modeActionFeedbackBanner(
         _ feedback: FanController.ModeActionFeedback
     ) -> some View {
         let isFailure = feedback.kind == .failure
-        let tint = isFailure ? Color.red : Color.accentColor
+        let tint = isFailure ? palette.hot : palette.accent
 
         return HStack(alignment: .center, spacing: 9) {
             Group {
@@ -485,7 +548,7 @@ struct FanMenu: View {
                     .buttonStyle(.plain)
                     .focusable(false)
                     .font(.caption.weight(.medium))
-                    .foregroundColor(Color.accentColor)
+                    .foregroundColor(palette.accent)
                     .fixedSize()
                     .accessibilityHint(fanBarText(
                         "前往“登录项与扩展”批准控制服务",
@@ -508,14 +571,14 @@ struct FanMenu: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(tint.opacity(isFailure ? 0.09 : 0.06))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .stroke(tint.opacity(isFailure ? 0.22 : 0.12), lineWidth: 0.5)
         )
         .accessibilityElement(children: .combine)
@@ -525,80 +588,6 @@ struct FanMenu: View {
                 : fanBarText("正在切换控制模式", "Switching control mode")
         )
         .accessibilityValue(feedback.message)
-    }
-
-    private var automaticRestoreRow: some View {
-        HStack(spacing: 8) {
-            Image(systemName: isCurveMode
-                ? "thermometer.variable"
-                : "checkmark.shield")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
-                .frame(width: 20)
-
-            Text(manualModeDetail)
-                .font(.caption)
-                .font(.system(size: 12, design: .monospaced))
-
-            Spacer()
-
-            CountdownTimerView { date in
-                Menu {
-                    ForEach(FanController.AutomaticRestoreDuration.allCases) { duration in
-                        Button {
-                            controller.setAutomaticRestoreDuration(duration)
-                        } label: {
-                            if controller.automaticRestoreDuration == duration {
-                                Label(duration.title, systemImage: "checkmark")
-                            } else {
-                                Text(duration.title)
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 7) {
-                        // Display the selected restore duration directly; when active, this becomes its countdown.
-                        Text(automaticRestoreValue(at: date))
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(.secondary)
-                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.leading, 9)
-                            .padding(.trailing, 7)
-                            .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.primary.opacity(0.045)))
-                    .contentShape(Capsule())
-                }
-                .menuStyle(.borderlessButton)
-                // Keep the custom trailing chevron as the only visible menu indicator.
-                .hidingSystemMenuIndicatorWhenAvailable()
-                .fixedSize()
-                .accessibilityLabel(fanBarText("自动恢复", "Automatic restore"))
-                .accessibilityValue(automaticRestoreAccessibilityValue(at: date))
-            }
-            .fixedSize()
-        }
-        .padding(.horizontal, 6)
-        .padding(.top, 1)
-    }
-
-    private var manualModeDetail: String {
-        if controller.mode == .temperatureCurve,
-           let temperature = controller.curveTemperatureCelsius,
-           let summary = controller.curveOutputSummary {
-            return fanBarFormat(
-                "%@ · %.0f°C → %@",
-                "%@ · %.0f°C → %@",
-                controller.presetTitle(for: controller.curveCoolingPreset),
-                temperature,
-                summary
-            )
-        }
-        return fanBarText("自动恢复系统控制", "Restore automatic control")
     }
 
     private func automaticRestoreValue(at date: Date) -> String {
@@ -648,62 +637,25 @@ struct FanMenu: View {
         )
     }
 
-    private func modeButtonLabel(
-        title: String,
-        systemImage: String,
-        selected: Bool,
-        showsChevron: Bool = false
-    ) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: systemImage)
-            Text(title)
-                // One size for every segment: per-label minimumScaleFactor let
-                // unselected labels shrink independently of the selected one.
-                .font(.system(size: modeLabelFontSize, design: .monospaced))
-                .lineLimit(1)
-                .allowsTightening(true)
-                .layoutPriority(1)
-            if showsChevron {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(.secondary)
-            }
-        }
-        .font(.subheadline.weight(.medium))
-        .foregroundColor(selected ? Color.primary : Color.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .background(
-            Group {
-                // One shared capsule glides between modes instead of each
-                // button fading its own background in and out.
-                if selected {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(Color(NSColor.controlBackgroundColor))
-                        .matchedGeometryEffect(id: "modeSelection", in: modeSelectionNamespace)
-                }
-            }
-        )
-        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-    }
+    // MARK: States and notices
 
     private var unavailableState: some View {
         HStack(spacing: 10) {
             Image(systemName: "fan.slash")
-                .font(.title3)
-                .foregroundColor(.secondary)
+                .font(.system(size: 14))
+                .foregroundColor(palette.secondaryText)
             Text(fanBarText(
                 "当前机型未返回可识别的风扇数据。",
                 "This Mac did not return readable fan data."
             ))
-                .font(.caption)
-                .foregroundColor(.secondary)
+            .font(.system(size: 11))
+            .foregroundColor(palette.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.primary.opacity(0.045))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(palette.well)
         )
     }
 
@@ -733,11 +685,11 @@ struct FanMenu: View {
         }
         .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(helperNoticeTint.opacity(0.065))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(helperNoticeTint.opacity(0.14), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
@@ -767,32 +719,98 @@ struct FanMenu: View {
         controller.helperState == .unavailable ? .red : .orange
     }
 
+    // MARK: Footer
+
     private var footer: some View {
-        HStack {
-            Text(fanBarText("每 2 秒更新", "Updates every 2 seconds"))
-                .font(.caption2)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Button {
-                OnboardingWindowPresenter.shared.show(controller: controller)
-            } label: {
-                Image(systemName: "questionmark.circle")
+        HStack(spacing: 2) {
+            PanelTextButton(action: openActivityMonitor) {
+                Text(fanBarText("活动监视器", "Activity Monitor"))
             }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundColor(.secondary)
+
+            Spacer(minLength: 8)
+
+            PanelIconButton(systemImage: "questionmark.circle", size: 22) {
+                OnboardingWindowPresenter.shared.show(controller: controller)
+            }
             .accessibilityLabel(fanBarText("重新查看快速开始", "Replay quick start"))
             .help(fanBarText("快速开始", "Quick start"))
 
-            Button(fanBarText("退出 FanBar", "Quit FanBar")) { controller.quit() }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .keyboardShortcut("q")
+            PanelTextButton(action: controller.quit) {
+                HStack(spacing: 4) {
+                    Text(fanBarText("退出", "Quit"))
+                    Text("⌘Q")
+                        .foregroundColor(palette.tertiaryText)
+                }
+            }
+            .keyboardShortcut("q")
+            .accessibilityLabel(fanBarText("退出 FanBar", "Quit FanBar"))
         }
-        .padding(.top, 1)
+        .padding(.horizontal, Self.padding)
+        .padding(.vertical, 8)
+    }
+
+    private func openActivityMonitor() {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.ActivityMonitor") else {
+            return
+        }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    }
+}
+
+/// A borderless icon button that shows the well on hover.
+private struct PanelIconButton: View {
+    let systemImage: String
+    var size: CGFloat = 26
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovered = false
+
+    var body: some View {
+        let palette = PanelPalette(colorScheme: colorScheme)
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: size > 24 ? 14 : 12))
+                .foregroundColor(isHovered ? .primary : palette.secondaryText)
+                .frame(width: size, height: size)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isHovered ? palette.well : Color.clear)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        // Prevent AppKit from drawing a persistent focus ring around this icon-only action.
+        .focusable(false)
+        .onHover { isHovered = $0 }
+    }
+}
+
+/// A small text action in the footer that shows the well on hover.
+private struct PanelTextButton<Label: View>: View {
+    let action: () -> Void
+    @ViewBuilder let label: () -> Label
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isHovered = false
+
+    var body: some View {
+        let palette = PanelPalette(colorScheme: colorScheme)
+        Button(action: action) {
+            label()
+                .font(.system(size: 11))
+                .foregroundColor(isHovered ? .primary : palette.secondaryText)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isHovered ? palette.well : Color.clear)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { isHovered = $0 }
     }
 }
 
@@ -814,20 +832,21 @@ private struct CountdownTimerView<Content: View>: View {
 }
 
 private extension View {
-    @ViewBuilder
-    func hidingFocusEffectWhenAvailable() -> some View {
-        if #available(macOS 14.0, *) {
-            focusEffectDisabled()
-        } else {
-            self
-        }
-    }
-
     /// Hides Menu's AppKit indicator on macOS 12+, while preserving macOS 11 compatibility.
     @ViewBuilder
     func hidingSystemMenuIndicatorWhenAvailable() -> some View {
         if #available(macOS 12.0, *) {
             menuIndicator(.hidden)
+        } else {
+            self
+        }
+    }
+
+    /// Accent-colors controls on macOS 12+; macOS 11 keeps the system accent.
+    @ViewBuilder
+    func tintedWhenAvailable(_ color: Color) -> some View {
+        if #available(macOS 12.0, *) {
+            tint(color)
         } else {
             self
         }

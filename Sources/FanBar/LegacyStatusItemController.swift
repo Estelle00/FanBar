@@ -80,9 +80,12 @@ final class LegacyStatusItemController: NSObject {
     private func handleSwitchFeedback(_ signal: FanController.SwitchFeedbackSignal?) {
         guard let signal, statusItem?.button != nil else { return }
         guard SwitchFeedbackPreferences.isEnabled else { return }
-        // The icon already follows the live RPM, so only a failed switch
-        // needs an extra cue.
-        if case .ended(successfully: false) = signal {
+        // The icon is otherwise still, so a switch spins it while the request
+        // runs and once more when it lands; a failure flashes instead.
+        switch signal {
+        case .began, .ended(successfully: true):
+            iconAnimator.playSwitchBurst()
+        case .ended(successfully: false):
             iconAnimator.flashFailure()
         }
     }
@@ -106,7 +109,8 @@ final class LegacyStatusItemController: NSObject {
         // Activate before presentation so dynamic AppKit/SwiftUI colors do not
         // change the first time the user clicks inside the popover.
         NSApplication.shared.activate(ignoringOtherApps: true)
-        popover.appearance = NSApplication.shared.effectiveAppearance
+        // Inherit appearance live instead of pinning the scheme at presentation.
+        popover.appearance = nil
         popover.show(
             relativeTo: button.bounds,
             of: button,
@@ -126,8 +130,8 @@ final class LegacyStatusItemController: NSObject {
         hostingController.view.layoutSubtreeIfNeeded()
         let fittingSize = hostingController.view.fittingSize
         popover.contentSize = NSSize(
-            width: max(384, fittingSize.width),
-            height: max(560, fittingSize.height)
+            width: FanMenu.panelWidth,
+            height: min(fittingSize.height, (NSScreen.main?.visibleFrame.height ?? 800) - 70)
         )
     }
 
@@ -212,6 +216,7 @@ final class LegacyStatusItemController: NSObject {
 
     private func updateButton() {
         guard let button = statusItem?.button, let controller else { return }
+        button.toolTip = controller.temperatureHistory.last?.cpuTemperatureSummary ?? "FanBar"
         let modeRawValue = UserDefaults.standard.string(forKey: MenuBarDisplayMode.preferenceKey)
         let displayMode = MenuBarDisplayMode(rawValue: modeRawValue ?? "") ?? .defaultMode
         let iconStyle = MenuBarIconStyle.current
@@ -328,7 +333,7 @@ final class LegacyStatusItemController: NSObject {
     }
 
     private func temperatureText(for controller: FanController) -> String {
-        controller.temperatureHistory.last?.cpuCelsius
+        controller.temperatureHistory.last?.cpuDisplayCelsius
             .map { "\(Int($0.rounded()))°" } ?? "—°"
     }
 

@@ -43,7 +43,12 @@ struct FanReading: Identifiable {
 
 struct ThermalReading: Codable, Equatable, Sendable {
     let sampledAt: Date
+    /// Average of the CPU sensors. Fan curves, alerts, and the CSV log use this
+    /// steadier value, so the hottest-core reading cannot change control behavior.
     let cpuCelsius: Double?
+    /// The hottest sampled CPU sensor. Display only;
+    /// nil in history saved before it existed.
+    let cpuHottestCelsius: Double?
     let gpuCelsius: Double?
     let ssdCelsius: Double?
     let batteryCelsius: Double?
@@ -55,14 +60,29 @@ struct ThermalReading: Codable, Equatable, Sendable {
         gpuCelsius: Double?,
         ssdCelsius: Double? = nil,
         batteryCelsius: Double? = nil,
-        hasBuiltInBattery: Bool? = nil
+        hasBuiltInBattery: Bool? = nil,
+        cpuHottestCelsius: Double? = nil
     ) {
         self.sampledAt = sampledAt
         self.cpuCelsius = cpuCelsius
+        self.cpuHottestCelsius = cpuHottestCelsius
         self.gpuCelsius = gpuCelsius
         self.ssdCelsius = ssdCelsius
         self.batteryCelsius = batteryCelsius
         self.hasBuiltInBattery = hasBuiltInBattery
+    }
+
+    /// The CPU temperature people see: the hottest core when known, else the average.
+    var cpuDisplayCelsius: Double? { cpuHottestCelsius ?? cpuCelsius }
+
+    var cpuTemperatureSummary: String {
+        func label(_ value: Double?) -> String {
+            value.map { "\(Int($0.rounded()))°C" } ?? "—"
+        }
+        return fanBarFormat(
+            "CPU 平均 %@ · 最高 %@", "CPU average %@ · highest %@",
+            label(cpuCelsius), label(cpuHottestCelsius)
+        )
     }
 }
 
@@ -88,6 +108,7 @@ extension FanReadingSource {
 }
 
 final class SMCClient: FanReadingSource {
+    private let cpuCandidates: [String]
     private var cpuTemperatureKeys: [String]?
     private var gpuTemperatureKeys: [String]?
     private var ssdTemperatureKeys: [String]?
@@ -109,6 +130,20 @@ final class SMCClient: FanReadingSource {
         "Tp00", "Tp04", "Tp08", "Tp0C", "Tp0G", "Tp0K", "Tp0O", "Tp0R",
         "Tp0U", "Tp0a", "Tp0d", "Tp0g", "Tp0m", "Tp0p", "Tp0u", "Tp0y"
     ]
+
+    /// M4-family CPU thermal zones from the Stats catalogue. Never merge these
+    /// with other generations: a readable key alone does not identify its role.
+    static func cpuTemperatureCandidates(for processor: String) -> [String] {
+        switch processor {
+        case "Apple M4", "Apple M4 Pro", "Apple M4 Max":
+            return [
+                "Te05", "Te0S", "Te09", "Te0H",
+                "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0V", "Tp0Y", "Tp0b", "Tp0e"
+            ]
+        default:
+            return cpuTemperatureCandidates
+        }
+    }
 
     private static let gpuTemperatureCandidates = [
         "TCGC", "TG0D", "TGDD", "TG0H", "TG0P",
@@ -134,6 +169,9 @@ final class SMCClient: FanReadingSource {
     }
 
     init() throws {
+        cpuCandidates = Self.cpuTemperatureCandidates(
+            for: CompatibilityDevice.current(helperVersion: "unknown").processor
+        )
         let result = fanbar_smc_open()
         guard result == 0 else { throw SMCError.unavailable(result) }
     }
@@ -239,7 +277,7 @@ final class SMCClient: FanReadingSource {
         var probes: [DiagnosticProbe] = []
         var known = Set<String>()
         for (sensor, candidates) in [
-            ("cpu", Self.cpuTemperatureCandidates), ("gpu", Self.gpuTemperatureCandidates),
+            ("cpu", cpuCandidates), ("gpu", Self.gpuTemperatureCandidates),
             ("ssd", Self.ssdTemperatureCandidates), ("battery", Self.batteryTemperatureCandidates),
         ] {
             for name in candidates {
@@ -328,7 +366,7 @@ final class SMCClient: FanReadingSource {
     func thermalReading(at date: Date = Date()) -> ThermalReading {
         let cpuValues = temperatures(
             cachedKeys: &cpuTemperatureKeys,
-            candidates: Self.cpuTemperatureCandidates
+            candidates: cpuCandidates
         )
         let gpuValues = temperatures(
             cachedKeys: &gpuTemperatureKeys,
@@ -358,7 +396,8 @@ final class SMCClient: FanReadingSource {
                 smartBattery: BatteryTemperatureReader.smartBattery,
                 batteryPack: BatteryTemperatureReader.batteryPack
             ),
-            hasBuiltInBattery: BatteryTemperatureReader.hasBuiltInBattery()
+            hasBuiltInBattery: BatteryTemperatureReader.hasBuiltInBattery(),
+            cpuHottestCelsius: cpuValues.max()
         )
     }
 }

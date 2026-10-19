@@ -20,7 +20,7 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .iconOnly: fanBarText("仅图标", "Icon only")
-        case .cpuTemperature: fanBarText("CPU 温度", "CPU temperature")
+        case .cpuTemperature: fanBarText("CPU 最高温度", "CPU highest temperature")
         case .fanSpeed: fanBarText("风扇转速", "Fan speed")
         case .temperatureAndFanSpeed: fanBarText("温度与转速", "Temperature + fan speed")
         case .temperatureOverFanSpeed: fanBarText("温度与转速（上下排列）", "Temperature over fan speed")
@@ -30,9 +30,9 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
     var detail: String {
         switch self {
         case .iconOnly: fanBarText("保持菜单栏最简洁，只显示当前控制模式图标。", "Keep the menu bar minimal with only the current mode icon.")
-        case .cpuTemperature: fanBarText("显示当前 CPU 温度，适合快速观察负载变化。", "Show the current CPU temperature for a quick load check.")
+        case .cpuTemperature: fanBarText("显示当前 CPU 最高温度，适合快速观察负载变化。", "Show the highest CPU temperature for a quick load check.")
         case .fanSpeed: fanBarText("显示全部风扇的平均 RPM，并使用千位分隔。", "Show the average RPM across all fans with grouping separators.")
-        case .temperatureAndFanSpeed: fanBarText("同时显示 CPU 温度和平均风扇转速。", "Show CPU temperature and average fan speed together.")
+        case .temperatureAndFanSpeed: fanBarText("同时显示 CPU 最高温度和平均风扇转速。", "Show highest CPU temperature and average fan speed together.")
         case .temperatureOverFanSpeed: fanBarText("温度在上、转速在下，占用更少的菜单栏宽度。", "Stack temperature above fan speed to take less menu bar width.")
         }
     }
@@ -67,6 +67,7 @@ struct MenuBarStatusLabel: View {
             }
         }
         .accessibilityLabel(accessibilityText)
+        .help(controller.temperatureHistory.last?.cpuTemperatureSummary ?? "FanBar")
     }
 
     private var statusText: String? {
@@ -83,7 +84,7 @@ struct MenuBarStatusLabel: View {
     }
 
     private var temperatureText: String {
-        guard let temperature = controller.temperatureHistory.last?.cpuCelsius else { return "—°" }
+        guard let temperature = controller.temperatureHistory.last?.cpuDisplayCelsius else { return "—°" }
         return "\(Int(temperature.rounded()))°"
     }
 

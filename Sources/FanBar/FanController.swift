@@ -120,6 +120,10 @@ final class FanController: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var helperState: HelperState = .notRegistered
     @Published private(set) var temperatureHistory: [ThermalReading] = []
+    @Published private(set) var usage = SystemUsage()
+    /// CPU and GPU utilization over the last minute, oldest first, for the panel's trend lines.
+    @Published private(set) var cpuHistory: [Double] = []
+    @Published private(set) var gpuHistory: [Double] = []
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var launchAtLoginRequiresApproval = false
     /// Persisted default applied each time control leaves Automatic.
@@ -233,8 +237,25 @@ final class FanController: ObservableObject {
     private let notificationCenter: UNUserNotificationCenter?
     private let notificationDelegate = ThermalNotificationDelegate()
     private let automaticRestoreTestInterval: TimeInterval?
-    // Ten minutes of readings at the two-second refresh cadence used below.
-    private let maximumTemperatureSamples = 300
+    // One hour of readings at the two-second refresh cadence used below.
+    private let maximumTemperatureSamples = 2_000
+    /// The full hour is about 1,800 samples, so persisting on every tick would rewrite
+    /// the whole defaults entry every two seconds. Saving every 30 seconds loses at most
+    /// that much history on a crash.
+    private static let temperatureHistorySaveInterval: TimeInterval = 30
+    private var lastTemperatureHistorySaveDate: Date?
+    private let usageReader = SystemUsageReader()
+    /// Sixty seconds at the two-second refresh cadence.
+    static let usageHistorySampleCount = 30
+
+    private static func appendUsage(_ value: Double?, to history: inout [Double]) {
+        guard let value else { return }
+        history.append(value)
+        if history.count > usageHistorySampleCount {
+            history.removeFirst(history.count - usageHistorySampleCount)
+        }
+    }
+
     private let automaticRestorePreferenceKey = "fanbar.automaticRestoreDuration"
     private let helperBuildVersionPreferenceKey = "fanbar.helperBuildVersion"
     private let helperBundlePathPreferenceKey = "fanbar.helperBundlePath"
@@ -427,6 +448,10 @@ final class FanController: ObservableObject {
             || Date().timeIntervalSince(lastServiceStatusRefresh) >= Self.settledServiceStatusInterval {
             refreshServiceStatus()
         }
+        // Usage comes from public system counters, so it still updates while the helper is unavailable.
+        usage = usageReader.sample()
+        Self.appendUsage(usage.cpuFraction, to: &cpuHistory)
+        Self.appendUsage(usage.gpuFraction, to: &gpuHistory)
         guard let localClient else { connectAndRefresh(); return }
         let thermal = localClient.thermalReading()
         appendTemperature(thermal)
@@ -1710,7 +1735,7 @@ final class FanController: ObservableObject {
                     isManual: $0.isManual
                 )
             },
-            cpuCelsius: thermal.cpuCelsius,
+            cpuCelsius: thermal.cpuDisplayCelsius,
             mode: widgetSnapshotMode(for: mode),
             isAvailable: true,
             language: FanBarLanguage.current
@@ -1729,7 +1754,7 @@ final class FanController: ObservableObject {
                     isManual: $0.isManual
                 )
             },
-            cpuCelsius: temperatureHistory.last?.cpuCelsius,
+            cpuCelsius: temperatureHistory.last?.cpuDisplayCelsius,
             mode: widgetSnapshotMode(for: mode),
             isAvailable: false,
             language: FanBarLanguage.current
@@ -1827,7 +1852,7 @@ final class FanController: ObservableObject {
             || reading.ssdCelsius != nil
             || reading.batteryCelsius != nil else { return }
         temperatureHistory.append(reading)
-        let earliestSampleDate = reading.sampledAt.addingTimeInterval(-TemperatureChart.historyDuration)
+        let earliestSampleDate = reading.sampledAt.addingTimeInterval(-TemperatureChartTimeAxis.retainedDuration)
         temperatureHistory.removeAll { $0.sampledAt < earliestSampleDate }
         if temperatureHistory.count > maximumTemperatureSamples {
             temperatureHistory.removeFirst(temperatureHistory.count - maximumTemperatureSamples)
@@ -1835,8 +1860,13 @@ final class FanController: ObservableObject {
         persistTemperatureHistoryIfNeeded()
     }
 
-    private func persistTemperatureHistoryIfNeeded() {
+    private func persistTemperatureHistoryIfNeeded(now: Date = Date()) {
         if case .disabled = widgetSnapshotDestination { return }
+        if let lastSave = lastTemperatureHistorySaveDate,
+           now.timeIntervalSince(lastSave) < Self.temperatureHistorySaveInterval {
+            return
+        }
+        lastTemperatureHistorySaveDate = now
         TemperatureHistoryStore.save(temperatureHistory)
     }
 }
