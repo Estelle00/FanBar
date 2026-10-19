@@ -161,10 +161,12 @@ struct FanCurveEditorView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fanBarFormat("控制点 %d / %d", "Point %d of %d", index + 1, points.count))
                         .font(.system(size: 12, weight: .semibold))
+                    // Two lines rather than truncating the RPM target mid-word.
                     Text(targetSummary(for: point.fraction))
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.system(size: 11).monospacedDigit())
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(minWidth: 116, alignment: .leading)
 
@@ -231,7 +233,7 @@ struct FanCurveEditorView: View {
                 .foregroundColor(.secondary)
             Stepper(value: value, in: range) {
                 Text(valueText)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 12).monospacedDigit())
                     .frame(width: valueWidth, alignment: .trailing)
             }
             .fixedSize()
@@ -243,7 +245,7 @@ struct FanCurveEditorView: View {
     /// The per-fan RPM this fraction targets, or a plain idle note at 0%.
     private func targetSummary(for fraction: Float) -> String {
         guard fraction > 0 else {
-            return fanBarText("怠速（目标 0 RPM）", "Idle (target 0 RPM)")
+            return fanBarText("停转 · 目标 0 RPM", "Stopped · target 0 RPM")
         }
         guard let range = FanController.curveTargetRange(fraction: fraction, fans: controller.fans) else {
             return "—"
@@ -310,7 +312,7 @@ struct FanCurveEditorView: View {
                     .foregroundColor(.primary)
                 Spacer()
                 Text(advancedSummary)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11).monospacedDigit())
                     .foregroundColor(.secondary)
             }
             .padding(.horizontal, SettingsChrome.rowHorizontalPadding + 2)
@@ -375,7 +377,7 @@ struct FanCurveEditorView: View {
             Spacer(minLength: 12)
             Stepper(value: value, in: range) {
                 Text(valueText)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 12).monospacedDigit())
                     .frame(width: 36, alignment: .trailing)
             }
             .fixedSize()
@@ -401,6 +403,8 @@ struct FanCurveEditorView: View {
 /// Interactive temperature → fraction chart. Drag control points to reshape
 /// the curve; pressing a point also selects it for the inspector.
 struct FanCurveCanvas: View {
+    @Environment(\.colorScheme) private var colorScheme
+    private var alertPalette: PanelPalette { PanelPalette(colorScheme: colorScheme) }
     let profile: FanCurveProfile
     @Binding var selectedPointID: UUID?
     var currentCelsius: Double?
@@ -525,7 +529,7 @@ struct FanCurveCanvas: View {
                                 point.celsius,
                                 point.fraction * 100
                             ))
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.system(size: 9).monospacedDigit())
                             .padding(.horizontal, 6)
                             .padding(.vertical, 3)
                             .background(
@@ -638,7 +642,7 @@ struct FanCurveCanvas: View {
     /// The live-reading chip. Wraps to two lines so the RPM range never runs off the plot.
     private func currentLabel(_ text: String, onLeft: Bool, inset: CGFloat) -> some View {
         Text(text)
-            .font(.system(size: 10, design: .monospaced))
+            .font(.system(size: 10).monospacedDigit())
             .multilineTextAlignment(onLeft ? .trailing : .leading)
             .lineLimit(2)
             .frame(maxWidth: 200, alignment: onLeft ? .trailing : .leading)
@@ -661,17 +665,18 @@ struct FanCurveCanvas: View {
         let width = max(0, plot.maxX - x)
         return ZStack(alignment: .topLeading) {
             Rectangle()
-                .fill(Color.orange.opacity(0.08))
+                .fill(alertPalette.warm.opacity(0.08))
                 .frame(width: width, height: plot.height)
                 .position(x: x + width / 2, y: plot.midY)
             Path { path in
                 path.move(to: CGPoint(x: x, y: plot.minY))
                 path.addLine(to: CGPoint(x: x, y: plot.maxY))
             }
-            .stroke(Color.orange.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-            Text(fanBarText("高温提醒", "Heat alert"))
-                .font(.system(size: 9))
-                .foregroundColor(.orange)
+            .stroke(alertPalette.warm.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            // Same warm step and wording as the panel's alert line.
+            Text(fanBarFormat("告警 %d°", "Alert %d°", Int(ThermalAlertSettings.thresholdCelsius.rounded())))
+                .font(.system(size: 10, weight: .medium).monospacedDigit())
+                .foregroundColor(alertPalette.warmInk)
                 .fixedSize()
                 .position(x: plot.maxX - 26, y: plot.maxY - 9)
         }
@@ -733,7 +738,7 @@ struct FanCurveCanvas: View {
                     plot: plot
                 ).y
                 Text("\(percent)%")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.system(size: 9).monospacedDigit())
                     .foregroundColor(.secondary)
                     .frame(width: yAxisWidth - 4, alignment: .trailing)
                     .position(x: yAxisWidth / 2 - 1, y: y)
@@ -747,7 +752,7 @@ struct FanCurveCanvas: View {
                     plot: plot
                 ).x
                 Text("\(Int(celsius))°C")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.system(size: 9).monospacedDigit())
                     .foregroundColor(.secondary)
                     .position(x: x, y: plot.maxY + xAxisHeight / 2)
             }

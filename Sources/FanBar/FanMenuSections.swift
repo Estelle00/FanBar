@@ -4,8 +4,13 @@ import SwiftUI
 
 // MARK: - Tokens
 
-/// Semantic colors from docs/design/menu-panel-redesign-v2.html. One material,
-/// one hairline, one raised selection; color is reserved for data.
+enum PanelLayout {
+    static let columnInset: CGFloat = 8
+    static let rowVerticalPadding: CGFloat = 12
+    static let separatorWidth: CGFloat = 1
+}
+
+/// One flat material with shared separators; color is reserved for data and state.
 struct PanelPalette {
     let colorScheme: ColorScheme
 
@@ -20,29 +25,43 @@ struct PanelPalette {
         )
     }
 
-    /// Laid over the popover's own blur.
-    var surface: Color { isDark ? Self.rgb(0x24262A, 0.84) : Self.rgb(0xF6F7F9, 0.86) }
-    var well: Color { isDark ? Color.white.opacity(0.07) : Self.rgb(0x141E2D, 0.055) }
-    var raised: Color { isDark ? Self.rgb(0x4A4D53) : .white }
-    var hairline: Color { isDark ? Color.white.opacity(0.09) : Self.rgb(0x141E2D, 0.09) }
-    var secondaryText: Color { isDark ? Self.rgb(0xC2C8D8) : Self.rgb(0x5F6670) }
-    var tertiaryText: Color { isDark ? Self.rgb(0xAEB7C8) : Self.rgb(0x626D80) }
+    /// Solid fallback when Reduce Transparency is on.
+    var surface: Color { isDark ? Self.rgb(0x161617) : .white }
+    /// Tint laid over the popover's own material: light stays airy, dark reads near-black.
+    var materialTint: Color { isDark ? Self.rgb(0x161617, 0.86) : Color.white.opacity(0.80) }
+    /// Empty part of bars and meters.
+    var well: Color { isDark ? Color.white.opacity(0.13) : Self.rgb(0x141E2D, 0.09) }
+    /// Background of segmented controls and quiet notices.
+    var track: Color { isDark ? Color.white.opacity(0.06) : Self.rgb(0x141E2D, 0.055) }
+    /// The well while a borderless button is held down: about 1.6× the hover well.
+    var pressedWell: Color { isDark ? Color.white.opacity(0.20) : Self.rgb(0x141E2D, 0.15) }
+    var raised: Color { isDark ? Self.rgb(0x3A3A3C) : .white }
+    var hairline: Color { isDark ? Color.white.opacity(0.1) : Self.rgb(0x1E2837, 0.12) }
+    var secondaryText: Color { isDark ? Self.rgb(0xA8A8AD) : Self.rgb(0x5F6670) }
+    var tertiaryText: Color { isDark ? Self.rgb(0x8E8E93) : Self.rgb(0x6E7581) }
 
-    var accent: Color { isDark ? Self.rgb(0x5CC29F) : Self.rgb(0x1F7A62) }
-    var warm: Color { isDark ? Self.rgb(0xF0995A) : Self.rgb(0xC8641C) }
-    var hot: Color { isDark ? Self.rgb(0xF07070) : Self.rgb(0xC93A3A) }
+    // Status: color says how much, never which. The three steps also differ in lightness.
+    var accent: Color { isDark ? Self.rgb(0x4CC38A) : Self.rgb(0x1D7A57) }
+    var warm: Color { isDark ? Self.rgb(0xF0A050) : Self.rgb(0xE08A2E) }
+    /// Text in the warm state, dark enough to read on the panel.
+    var warmInk: Color { isDark ? Self.rgb(0xF5B26B) : Self.rgb(0x9A4F0C) }
+    var hot: Color { isDark ? Self.rgb(0xF07070) : Self.rgb(0xA82424) }
 
-    var cpu: Color { isDark ? Self.rgb(0xF0995A) : Self.rgb(0xE07A2F) }
-    var gpu: Color { isDark ? Self.rgb(0x7AAEDB) : Self.rgb(0x4A86B8) }
-    var ssd: Color { isDark ? Self.rgb(0x5CC29F) : Self.rgb(0x2F9A7A) }
-    var battery: Color { isDark ? Self.rgb(0xB79CE0) : Self.rgb(0x8E6BBF) }
-    var memoryApp: Color { gpu }
-    var memoryCache: Color { isDark ? Self.rgb(0x8FCBCF) : Self.rgb(0x6FB3B8) }
-    var memoryCompressed: Color { isDark ? Self.rgb(0xDDB46E) : Self.rgb(0xC99A4A) }
+    // Series identity for the temperature chart; kept clear of green, orange, and red.
+    var cpu: Color { isDark ? Self.rgb(0x7AA2FF) : Self.rgb(0x2F64D6) }
+    var gpu: Color { isDark ? Self.rgb(0xB794F0) : Self.rgb(0x8456CF) }
+    var ssd: Color { isDark ? Self.rgb(0x5BC8E8) : Self.rgb(0x0E8FB3) }
+    /// Brighter than the SSD line it often sits on, so its dots stay visible.
+    var battery: Color { isDark ? Self.rgb(0xD1D1D6) : Self.rgb(0x5F6670) }
+
+    /// Reclaimable cache: memory macOS can hand back, so it never takes a status color.
+    var memoryCache: Color { isDark ? Self.rgb(0x636366) : Self.rgb(0xBCC2CA) }
+    /// Disk space stays neutral until free space runs low.
+    var capacity: Color { isDark ? Self.rgb(0xAEAEB2) : Self.rgb(0x6B7480) }
 
     var glyphGradient: LinearGradient {
         LinearGradient(
-            colors: isDark ? [Self.rgb(0x5A5E65), Self.rgb(0x3A3D42)] : [Self.rgb(0xFDFDFE), Self.rgb(0xE4E7EB)],
+            colors: isDark ? [Self.rgb(0x3A3A3C), Self.rgb(0x242426)] : [Self.rgb(0xFDFDFE), Self.rgb(0xE4E7EB)],
             startPoint: .top,
             endPoint: .bottom
         )
@@ -182,12 +201,12 @@ struct PanelDivider: View {
     var body: some View {
         Rectangle()
             .fill(PanelPalette(colorScheme: colorScheme).hairline)
-            .frame(height: 1)
+            .frame(height: PanelLayout.separatorWidth)
             .frame(maxWidth: .infinity)
     }
 }
 
-/// Equal-width segments on a well, with one raised selection: the panel's only selected state.
+/// Equal-width segments with a flat, bordered selection.
 struct PanelSegmentedControl<ID: Hashable>: View {
     let options: [(id: ID, title: String)]
     let selection: ID?
@@ -207,13 +226,13 @@ struct PanelSegmentedControl<ID: Hashable>: View {
         }
         .padding(2)
         .background(
-            RoundedRectangle(cornerRadius: compact ? 7 : 8, style: .continuous)
-                .fill(palette.well)
+            RoundedRectangle(cornerRadius: compact ? 7 : 9, style: .continuous)
+                .fill(palette.track)
         )
     }
 
     private func segment(_ option: (id: ID, title: String), selected: Bool, palette: PanelPalette) -> some View {
-        let radius: CGFloat = compact ? 5 : 6
+        let radius: CGFloat = compact ? 5 : 7
         return Button {
             onSelect(option.id)
         } label: {
@@ -225,7 +244,7 @@ struct PanelSegmentedControl<ID: Hashable>: View {
                 }
                 Text(option.title)
             }
-                .font(.system(size: compact ? 10.5 : 12, weight: .medium))
+                .font(.system(size: compact ? 11 : 12, weight: selected ? .semibold : .regular))
                 .foregroundColor(selected ? .primary : palette.secondaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -237,10 +256,10 @@ struct PanelSegmentedControl<ID: Hashable>: View {
                         if selected {
                             RoundedRectangle(cornerRadius: radius, style: .continuous)
                                 .fill(palette.raised)
-                                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.4 : 0.12), radius: 1, y: 1)
+                                .shadow(color: Color.black.opacity(0.10), radius: 1, y: 1)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                        .stroke(Color.black.opacity(colorScheme == .dark ? 0 : 0.08), lineWidth: 0.5)
+                                        .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
                                 )
                                 .matchedGeometryEffect(id: "selection", in: namespace)
                         }
@@ -251,6 +270,49 @@ struct PanelSegmentedControl<ID: Hashable>: View {
         .buttonStyle(.plain)
         .focusable(false)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// Borderless panel buttons: the well shows on hover and deepens the instant the button is
+/// pressed, easing back on release. No scale; macOS acknowledges a press by darkening.
+struct PanelWellButtonStyle: ButtonStyle {
+    var cornerRadius: CGFloat
+    var isHovered: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        PanelPressBody(configuration: configuration) { isPressed, palette in
+            configuration.label
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(isPressed ? palette.pressedWell : isHovered ? palette.well : Color.clear)
+                )
+        }
+    }
+}
+
+/// Filled buttons and whole-cell buttons dim while held, then ease back.
+struct PanelDimButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PanelPressBody(configuration: configuration) { isPressed, _ in
+            configuration.label.opacity(isPressed ? 0.75 : 1)
+        }
+    }
+}
+
+/// Shared timing: instant on press, 0.1 s ease-out on release, instant when panel animation is off.
+private struct PanelPressBody<Content: View>: View {
+    let configuration: ButtonStyleConfiguration
+    @ViewBuilder let content: (Bool, PanelPalette) -> Content
+
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage(PanelAnimationPreferences.preferenceKey) private var panelAnimationEnabled = true
+
+    var body: some View {
+        content(configuration.isPressed, PanelPalette(colorScheme: colorScheme))
+            .animation(
+                configuration.isPressed || !panelAnimationEnabled ? nil : .easeOut(duration: 0.1),
+                value: configuration.isPressed
+            )
     }
 }
 

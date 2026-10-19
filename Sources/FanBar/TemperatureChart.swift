@@ -84,9 +84,19 @@ enum TemperatureChartTimeAxis {
 }
 
 enum TemperatureChartScale {
-    static func domain(alertThreshold: Double) -> ClosedRange<Double> {
-        let threshold = ThermalAlertSettings.clampedThreshold(alertThreshold)
-        return 20...max(100, threshold + 5)
+    /// Fits the visible readings with 5° of air, on whole tens, at least 40° tall, so the
+    /// traces fill the plot instead of hugging the floor under a distant alert line.
+    static func fitted(to values: [Double]) -> ClosedRange<Double> {
+        guard let low = values.min(), let high = values.max() else { return 20...100 }
+        let lower = max(0, ((low - 5) / 10).rounded(.down) * 10)
+        let upper = max(((high + 5) / 10).rounded(.up) * 10, lower + 40)
+        return lower...upper
+    }
+
+    /// Every 10°, or every 20° when the range is tall enough to crowd the axis.
+    static func ticks(in domain: ClosedRange<Double>) -> [Double] {
+        let step: Double = domain.upperBound - domain.lowerBound > 60 ? 20 : 10
+        return Array(stride(from: domain.lowerBound, through: domain.upperBound, by: step))
     }
 }
 
@@ -229,8 +239,7 @@ struct TemperatureChart: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center) {
                 Text(fanBarText("温度", "Temperature"))
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(palette.secondaryText)
+                    .font(.system(size: 12, weight: .semibold))
 
                 Spacer()
 
@@ -253,7 +262,7 @@ struct TemperatureChart: View {
                     .font(.system(size: 11))
                     .foregroundColor(palette.tertiaryText)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 76)
+                    .frame(height: 96)
             } else {
                 TemperaturePlot(
                     samples: chartSamples,
@@ -262,7 +271,7 @@ struct TemperatureChart: View {
                     palette: palette,
                     warningLine: alertThreshold
                 )
-                .frame(height: 76)
+                .frame(height: 96)
                 .accessibilityLabel(fanBarText("温度曲线", "Temperature trends"))
             }
 
@@ -297,18 +306,22 @@ struct TemperatureChart: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Capsule()
-                    .fill(series.color(in: palette))
-                    .frame(width: 8, height: 2)
+                SeriesSwatch(series: series, color: series.color(in: palette))
+                    .frame(width: 12, height: 3)
+                // Long names (Russian "Аккумулятор") shrink, then truncate; the reading never does.
+                // A fixed-size legend wider than the panel would widen the whole column off-center.
                 Text(series.title)
                     .foregroundColor(palette.secondaryText)
+                    .minimumScaleFactor(0.85)
+                    .truncationMode(.tail)
                 Text(value.map { "\(Int($0.rounded()))°" } ?? "—")
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
+                    .fixedSize()
+                    .layoutPriority(1)
             }
             .font(.system(size: 11).monospacedDigit())
             .lineLimit(1)
-            .fixedSize()
             .padding(.horizontal, 5)
             .padding(.vertical, 3)
             .contentShape(Rectangle())
@@ -330,7 +343,7 @@ struct TemperatureChart: View {
             Spacer()
             Text(fanBarText("现在", "Now"))
         }
-        .font(.system(size: 9.5).monospacedDigit())
+        .font(.system(size: 10).monospacedDigit())
         .foregroundColor(palette.tertiaryText)
         .padding(.trailing, TemperaturePlot.axisWidth)
     }
@@ -346,7 +359,7 @@ private enum TemperatureSeries: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .cpu: fanBarText("CPU 最高", "CPU highest")
+        case .cpu: "CPU"
         case .gpu: "GPU"
         case .ssd: fanBarText("SSD", "SSD")
         case .battery: fanBarText("电池", "Battery")
@@ -370,6 +383,36 @@ private enum TemperatureSeries: String, CaseIterable, Identifiable {
         case .battery: \.batteryCelsius
         }
     }
+
+    /// Line style is a second cue beside color: GPU dashed, battery dotted.
+    var dash: [CGFloat] {
+        switch self {
+        case .cpu, .ssd: []
+        case .gpu: [5, 3]
+        case .battery: [0.5, 3.5]
+        }
+    }
+}
+
+/// The legend's sample of a series' line, dash and all.
+private struct SeriesSwatch: View {
+    let series: TemperatureSeries
+    let color: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            Path { path in
+                path.move(to: CGPoint(x: 1, y: proxy.size.height / 2))
+                path.addLine(to: CGPoint(x: proxy.size.width - 1, y: proxy.size.height / 2))
+            }
+            .stroke(color, style: StrokeStyle(
+                lineWidth: series == .battery ? 2.5 : 2,
+                lineCap: .round,
+                dash: series == .battery ? [0.5, 3] : series.dash
+            ))
+        }
+        .accessibilityHidden(true)
+    }
 }
 
 private struct TemperaturePlot: View {
@@ -378,12 +421,33 @@ private struct TemperaturePlot: View {
     let timeRange: ClosedRange<Date>
     let palette: PanelPalette
 
-    /// Room on the right for the warning, 60°, and 40° labels.
+    /// Room on the right for the tick labels.
     static let axisWidth: CGFloat = 26
-    /// Starts at 20 °C so a cool battery stays visible above the baseline.
+    /// Drawn only when it falls inside the fitted range; otherwise it would flatten every trace.
     let warningLine: Double
-    private var domain: ClosedRange<Double> { TemperatureChartScale.domain(alertThreshold: warningLine) }
-    private var gridTicks: [Double] { [60, 40].filter { abs($0 - warningLine) > 5 } }
+    /// Fitted once per plot: every point's y position reads it, so it must not be recomputed per point.
+    private let domain: ClosedRange<Double>
+
+    init(
+        samples: [ThermalReading],
+        series: [TemperatureSeries],
+        timeRange: ClosedRange<Date>,
+        palette: PanelPalette,
+        warningLine: Double
+    ) {
+        self.samples = samples
+        self.series = series
+        self.timeRange = timeRange
+        self.palette = palette
+        self.warningLine = warningLine
+        domain = TemperatureChartScale.fitted(to: series.flatMap { series in
+            samples.compactMap { $0[keyPath: series.keyPath] }.filter(\.isFinite)
+        })
+    }
+    private var showsWarningLine: Bool { domain.contains(warningLine) }
+    private var gridTicks: [Double] {
+        TemperatureChartScale.ticks(in: domain).filter { !showsWarningLine || abs($0 - warningLine) > 4 }
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -394,16 +458,21 @@ private struct TemperaturePlot: View {
                     gridLine(at: tick, in: plot)
                         .stroke(palette.hairline, lineWidth: 1)
                 }
-                gridLine(at: warningLine, in: plot)
-                    .stroke(palette.warm.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                if showsWarningLine {
+                    gridLine(at: warningLine, in: plot)
+                        .stroke(palette.warm.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+                }
 
                 ForEach(series) { series in
                     let values = samples.map { $0[keyPath: series.keyPath] }
-                    areaPath(values: values, in: plot)
-                        .fill(LinearGradient(
-                            colors: [series.color(in: palette).opacity(0.10), series.color(in: palette).opacity(0)],
-                            startPoint: .top, endPoint: .bottom
-                        ))
+                    // Only CPU carries a faint fill; more fills would outshout the panel's conclusion.
+                    if series == .cpu {
+                        areaPath(values: values, in: plot)
+                            .fill(LinearGradient(
+                                colors: [series.color(in: palette).opacity(0.10), series.color(in: palette).opacity(0)],
+                                startPoint: .top, endPoint: .bottom
+                            ))
+                    }
                     missingIntervalPath(values: values, in: plot)
                         .stroke(
                             series.color(in: palette).opacity(0.35),
@@ -412,12 +481,18 @@ private struct TemperaturePlot: View {
                     curvePath(values: values, in: plot)
                         .stroke(
                             series.color(in: palette),
-                            style: StrokeStyle(lineWidth: 1.6, lineCap: .round, lineJoin: .round)
+                            style: StrokeStyle(
+                                lineWidth: series == .battery ? 2.6 : 1.6,
+                                lineCap: .round,
+                                lineJoin: .round,
+                                dash: series.dash
+                            )
                         )
-                        .shadow(color: series.color(in: palette).opacity(0.22), radius: 2, y: 2)
                 }
 
-                axisLabel("\(Int(warningLine))°", at: warningLine, in: plot, color: palette.warm)
+                if showsWarningLine {
+                    axisLabel("\(Int(warningLine))°", at: warningLine, in: plot, color: palette.warm)
+                }
                 ForEach(gridTicks, id: \.self) { tick in
                     axisLabel("\(Int(tick))°", at: tick, in: plot, color: palette.tertiaryText)
                 }
@@ -427,7 +502,7 @@ private struct TemperaturePlot: View {
 
     private func axisLabel(_ text: String, at value: Double, in plot: CGRect, color: Color) -> some View {
         Text(text)
-            .font(.system(size: 9.5).monospacedDigit())
+            .font(.system(size: 10).monospacedDigit())
             .foregroundColor(color)
             .frame(width: Self.axisWidth - 4, alignment: .leading)
             .position(x: plot.maxX + 4 + (Self.axisWidth - 4) / 2, y: yPosition(value, in: plot))

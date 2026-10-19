@@ -5,7 +5,7 @@ import Combine
 import FanBarShared
 import SwiftUI
 
-/// Card-glass menu panel; live readings and control actions retain their existing sources.
+/// A flat menu panel with shared borders between its fan and resource columns.
 struct FanMenu: View {
     @ObservedObject var controller: FanController
     @AppStorage(CoolingPresetPreferences.preferenceKey)
@@ -129,17 +129,26 @@ struct FanMenu: View {
                 .padding(.top, 14)
                 .padding(.bottom, 12)
 
+            if let focus, focus.level == .hot {
+                overheatBanner(focus)
+                    .padding(.horizontal, Self.padding)
+                    .padding(.bottom, 12)
+                    .transition(slideInTransition)
+            }
+
             if controller.isAvailable, !controller.fans.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(controller.fans) { fan in
-                            PanelFanCard(fan: fan, target: targetRPM(fan), isSingleFan: controller.fans.count == 1)
-                                .frame(width: controller.fans.count == 1 ? 336 : 165)
+                    HStack(spacing: 0) {
+                        ForEach(Array(controller.fans.enumerated()), id: \.element.id) { index, fan in
+                            PanelFanReadout(fan: fan, isSingleFan: controller.fans.count == 1)
+                                .padding(.leading, index > 0 ? 12 : 0)
+                                .padding(.trailing, index < controller.fans.count - 1 ? 12 : 0)
+                                .frame(width: (Self.panelWidth - Self.padding * 2) / (controller.fans.count == 1 ? 1 : 2))
                         }
                     }
                 }
                 .padding(.horizontal, Self.padding)
-                .padding(.bottom, 6)
+                .padding(.bottom, 8)
             } else if controller.isAvailable {
                 Text(fanBarText(
                     "硬件接口未报告风扇，控制能力尚未验证",
@@ -162,6 +171,15 @@ struct FanMenu: View {
                     .transition(slideInTransition)
             }
 
+            if controller.isAvailable, !controller.fans.isEmpty {
+                modeSection
+                    .padding(.horizontal, Self.padding)
+                    .padding(.top, 4)
+                    .padding(.bottom, 12)
+            }
+
+            divider
+
             PanelResourceList(
                 usage: controller.usage,
                 thermal: controller.temperatureHistory.last,
@@ -171,26 +189,20 @@ struct FanMenu: View {
                 expanded: $expandedResource
             )
             .padding(.horizontal, Self.padding)
-            .padding(.bottom, 10)
 
             if controller.isAvailable {
+                divider
                 TemperatureChart(samples: controller.temperatureHistory, range: $chartRange,
                                  alertThreshold: controller.highTemperatureThresholdCelsius)
                     .padding(.horizontal, Self.padding)
-                    .padding(.bottom, 10)
+                    .padding(.vertical, PanelLayout.rowVerticalPadding)
             }
 
-            if controller.isAvailable, !controller.fans.isEmpty {
-                divider
-                modeSection
-                    .padding(.horizontal, Self.padding)
-                    .padding(.vertical, 10)
-            }
-
-            divider
             footer
         }
         .frame(width: Self.panelWidth)
+        .animation(animatesPanel ? .easeOut(duration: 0.2) : nil, value: focus?.level == .hot)
+        .animation(animatesPanel ? .easeOut(duration: 0.2) : nil, value: controller.helperState != .enabled)
     }
 
     private var divider: some View {
@@ -219,11 +231,13 @@ struct FanMenu: View {
 
             Spacer(minLength: 8)
 
-            PanelIconButton(systemImage: "slider.horizontal.3") {
+            PanelIconButton(systemImage: "gearshape") {
                 SettingsWindowPresenter.shared.show(controller: controller)
             }
             .accessibilityLabel(fanBarText("打开 FanBar 设置", "Open FanBar Settings"))
             .help(fanBarText("设置", "Settings"))
+            // Optically align the glyph, not its hover well, with the content edge.
+            .padding(.trailing, -6)
         }
     }
 
@@ -242,23 +256,26 @@ struct FanMenu: View {
             : fanBarFormat("%@温度很高", "%@ is very hot", part)
     }
 
-    /// "双风扇 · 静音模式", plus the automatic-restore countdown while FanBar is in control.
+    /// Scoped to the fans: their state and who drives them, plus the restore countdown while FanBar does.
     private var subtitle: some View {
-        HStack(spacing: 6) {
-            ZStack {
+        let isAlert = focus?.isAlert == true
+        return HStack(spacing: 6) {
+            Group {
                 if level == .hot {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(palette.hot)
+                } else {
                     Circle()
-                        .fill(palette.hot.opacity(0.22))
-                        .frame(width: 12, height: 12)
+                        .fill(palette.color(for: level))
+                        .frame(width: 6, height: 6)
                 }
-                Circle()
-                    .fill(palette.color(for: level))
-                    .frame(width: 6, height: 6)
             }
-            .frame(width: 6, height: 6)
             .accessibilityHidden(true)
 
-            Text("\(fanWord) · \(focus?.isAlert == true ? headerTitle : modeName)")
+            Text(isAlert ? headerTitle : calmSubtitle)
+                .fontWeight(isAlert ? .semibold : .regular)
+                .foregroundColor(isAlert ? (level == .hot ? palette.hot : palette.warmInk) : palette.secondaryText)
                 .lineLimit(1)
 
             if isManual {
@@ -267,6 +284,16 @@ struct FanMenu: View {
         }
         .font(.system(size: 11))
         .foregroundColor(palette.secondaryText)
+    }
+
+    /// "风扇正常 · macOS 控制 · CPU 65°": names what is normal and who is in control.
+    private var calmSubtitle: String {
+        let owner = isManual ? fanBarText("FanBar 控制", "FanBar in control") : fanBarText("macOS 控制", "macOS in control")
+        var parts = [fanBarText("风扇正常", "Fans normal"), owner]
+        if !isManual, let focus {
+            parts.append("\(focus.part.name) \(Int(focus.celsius.rounded()))°")
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var restoreMenu: some View {
@@ -335,7 +362,7 @@ struct FanMenu: View {
     // MARK: Modes
 
     private var modeOptions: [(id: ModeOption, title: String)] {
-        [(ModeOption.automatic, fanBarText("系统", "Auto"))]
+        [(ModeOption.automatic, fanBarText("自动", "Auto"))]
             + visibleCoolingPresets.map { (ModeOption.preset($0.id), $0.title) }
             + [(ModeOption.fixed, fanBarText("固定", "Fixed"))]
     }
@@ -352,7 +379,7 @@ struct FanMenu: View {
         switch option {
         case .automatic: "arrow.triangle.2.circlepath"
         case .preset(let id): controller.allPresets.first { $0.id == id }?.systemImage
-        case .fixed: "slider.horizontal.3"
+        case .fixed: "lock"
         }
     }
 
@@ -363,7 +390,7 @@ struct FanMenu: View {
             }
             .disabled(controller.isBusy || controller.helperState != .enabled)
             .animation(
-                animatesPanel ? .spring(response: 0.34, dampingFraction: 0.86) : nil,
+                animatesPanel ? .spring(response: 0.3, dampingFraction: 1) : .easeOut(duration: 0.15),
                 value: selectedMode
             )
             // The failure banner covers the strip without changing popover size;
@@ -375,9 +402,11 @@ struct FanMenu: View {
                 Group {
                     if let feedback = controller.modeActionFeedback, feedback.kind == .failure {
                         modeActionFeedbackBanner(feedback)
+                            .transition(.opacity)
                     }
                 }
             )
+            .animation(animatesPanel ? .easeOut(duration: 0.15) : nil, value: isShowingModeFailureBanner)
             // Floats in the gap above the strip: an overlay is excluded from fitting-size
             // calculation, keeping the popover frame pixel-stable while a request is in flight.
             .overlay(modeProgressIndicator.offset(y: -18), alignment: .topTrailing)
@@ -387,8 +416,11 @@ struct FanMenu: View {
                     .padding(.top, 10)
             }
 
-            modeLine
-                .padding(.top, 8)
+            // Automatic needs no caption: the selected "自动" already says macOS is driving.
+            if isManual {
+                modeLine
+                    .padding(.top, 8)
+            }
         }
     }
 
@@ -458,10 +490,9 @@ struct FanMenu: View {
         case .temperatureCurve:
             let celsius = controller.curveTemperatureCelsius ?? controller.temperatureHistory.last?.cpuCelsius
             return fanBarFormat(
-                "%@曲线 · %@ 时",
-                "%@ curve · at %@",
-                controller.presetTitle(for: controller.curveCoolingPreset),
-                celsius.map { "\(Int($0.rounded()))°C" } ?? "—"
+                "按 CPU %@ 调节",
+                "Following CPU at %@",
+                celsius.map { "\(Int($0.rounded()))°" } ?? "—"
             )
         case .fixed:
             return controller.fans.count > 1
@@ -476,8 +507,9 @@ struct FanMenu: View {
             if !targets.isEmpty {
                 Text(fanBarText("目标", "Target") + " ")
                     + Text(targets.map(FanBarNumberFormatter.grouped).joined(separator: " / "))
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
                     .foregroundColor(.primary)
+                    + Text(" RPM")
             }
         }
     }
@@ -639,6 +671,66 @@ struct FanMenu: View {
 
     // MARK: States and notices
 
+    private static let maximumCoolingPreset = CoolingPresetID.builtIn(.extreme)
+
+    /// Only for a part past its hot limit: what is happening, and one way to act on it.
+    private func overheatBanner(_ focus: ThermalFocus) -> some View {
+        HStack(spacing: 10) {
+            Text(overheatDetail(focus))
+                .font(.system(size: 11))
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if canBoostCooling {
+                Button {
+                    controller.setCoolingPreset(Self.maximumCoolingPreset)
+                } label: {
+                    Text(fanBarFormat(
+                        "切到%@",
+                        "Switch to %@",
+                        controller.presetTitle(for: Self.maximumCoolingPreset)
+                    ))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(palette.surface)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary))
+                    .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(PanelDimButtonStyle())
+                .focusable(false)
+                .fixedSize()
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(palette.hot.opacity(0.08))
+        )
+        .accessibilityElement(children: .contain)
+    }
+
+    private var canBoostCooling: Bool {
+        guard controller.helperState == .enabled, !controller.isBusy else { return false }
+        if case .temperatureCurve = controller.mode, controller.curveCoolingPreset == Self.maximumCoolingPreset {
+            return false
+        }
+        return true
+    }
+
+    private func overheatDetail(_ focus: ThermalFocus) -> String {
+        let reading = fanBarFormat(
+            "%@ %d°，已超过 %d° 告警线。",
+            "%@ is at %d°, past its %d° limit.",
+            focus.part.name,
+            Int(focus.celsius.rounded()),
+            Int(focus.part.hotThreshold)
+        )
+        guard controller.mode == .automatic else { return reading }
+        return reading + fanBarText("当前为自动模式，macOS 可能正在降频。", " macOS is in control and may be throttling.")
+    }
+
     private var unavailableState: some View {
         HStack(spacing: 10) {
             Image(systemName: "fan.slash")
@@ -652,71 +744,61 @@ struct FanMenu: View {
             .foregroundColor(palette.secondaryText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(palette.well)
-        )
+        .padding(.vertical, PanelLayout.rowVerticalPadding)
     }
 
     private var helperNotice: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: controller.helperState.symbolName)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundColor(helperNoticeTint)
-                .frame(width: 28, height: 28)
-                .background(Circle().fill(helperNoticeTint.opacity(0.1)))
+                .frame(width: 16, height: 16)
+                .padding(.top, 1)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(controller.helperState.noticeTitle)
-                    .font(.caption.weight(.semibold))
-                Text(controller.helperState.noticeDetail)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-            }
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(controller.helperState.noticeTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(controller.helperState.noticeDetail)
+                        .font(.system(size: 11))
+                        .foregroundColor(palette.secondaryText)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-            Spacer(minLength: 8)
-
-            if let actionTitle = controller.helperState.actionTitle {
-                helperActionButton(actionTitle, action: controller.performHelperAction)
+                if let actionTitle = controller.helperState.actionTitle {
+                    helperActionButton(actionTitle, action: controller.performHelperAction)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(10)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(helperNoticeTint.opacity(0.065))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(helperNoticeTint.opacity(0.14), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(palette.track)
         )
         .accessibilityElement(children: .contain)
     }
 
     private func helperActionButton(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 4) {
-                Text(title)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .bold))
-            }
-            .font(.caption.weight(.medium))
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(Color.primary.opacity(0.055)))
-            .contentShape(Capsule())
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(palette.surface)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary))
+                .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
-        .buttonStyle(.plain)
-        // This custom capsule communicates selection on press; suppress the
-        // persistent AppKit focus ring that otherwise survives mouse clicks.
+        .buttonStyle(PanelDimButtonStyle())
+        // A custom-drawn button; suppress the persistent AppKit focus ring after clicks.
         .focusable(false)
-        .foregroundColor(Color.accentColor)
+        .fixedSize()
     }
 
     private var helperNoticeTint: Color {
-        controller.helperState == .unavailable ? .red : .orange
+        controller.helperState == .unavailable ? palette.hot : palette.secondaryText
     }
 
     // MARK: Footer
@@ -745,8 +827,9 @@ struct FanMenu: View {
             .keyboardShortcut("q")
             .accessibilityLabel(fanBarText("退出 FanBar", "Quit FanBar"))
         }
-        .padding(.horizontal, Self.padding)
-        .padding(.vertical, 8)
+        // Text buttons carry a 7pt hover inset; pull it out so labels sit on the content edge.
+        .padding(.horizontal, Self.padding - 7)
+        .padding(.vertical, 10)
     }
 
     private func openActivityMonitor() {
@@ -773,13 +856,9 @@ private struct PanelIconButton: View {
                 .font(.system(size: size > 24 ? 14 : 12))
                 .foregroundColor(isHovered ? .primary : palette.secondaryText)
                 .frame(width: size, height: size)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isHovered ? palette.well : Color.clear)
-                )
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PanelWellButtonStyle(cornerRadius: 7, isHovered: isHovered))
         // Prevent AppKit from drawing a persistent focus ring around this icon-only action.
         .focusable(false)
         .onHover { isHovered = $0 }
@@ -802,13 +881,9 @@ private struct PanelTextButton<Label: View>: View {
                 .foregroundColor(isHovered ? .primary : palette.secondaryText)
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
-                .background(
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isHovered ? palette.well : Color.clear)
-                )
                 .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PanelWellButtonStyle(cornerRadius: 6, isHovered: isHovered))
         .focusable(false)
         .onHover { isHovered = $0 }
     }

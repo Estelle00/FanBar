@@ -2,7 +2,7 @@ import AppKit
 import FanBarShared
 import SwiftUI
 
-/// The Log settings pane: a CSV file of temperatures and fan speeds, modeled on TG Pro's Log tab.
+/// Recording options and file management for the local CSV temperature log.
 struct TemperatureLogSettingsView: View {
     @ObservedObject var controller: FanController
 
@@ -29,6 +29,11 @@ struct TemperatureLogSettingsView: View {
     }
 
     var body: some View {
+        recordingSection
+        fileSection
+    }
+
+    private var recordingSection: some View {
         SettingsSection(
             title: fanBarText("温度日志", "Temperature Log"),
             footer: fanBarText(
@@ -44,58 +49,77 @@ struct TemperatureLogSettingsView: View {
 
             SettingsChrome.rowDivider
 
-            HStack {
-                SettingsRowText(title: fanBarText("文件位置", "Location"), detail: locationText)
-                Spacer(minLength: 8)
-                Button(fanBarText("在访达中显示", "Reveal in Finder"), action: revealInFinder)
-                Button(fanBarText("选择文件夹…", "Choose Folder…"), action: chooseFolder)
-            }
-            .settingsRow()
-
-            SettingsChrome.rowDivider
-
-            HStack {
+            HStack(spacing: SettingsChrome.rowHorizontalPadding) {
                 SettingsRowText(
                     title: fanBarText("采样间隔", "Sampling interval"),
                     detail: fanBarText("间隔越短，文件越大。", "Shorter intervals make larger files.")
                 )
                 Spacer(minLength: 8)
-                Picker("", selection: $intervalSeconds) {
+                Picker(fanBarText("采样间隔", "Sampling interval"), selection: $intervalSeconds) {
                     ForEach(TemperatureLogPreferences.intervalOptions, id: \.self) { seconds in
                         Text(fanBarFormat("%d 秒", "%d s", seconds)).tag(seconds)
                     }
                 }
                 .labelsHidden()
-                .frame(width: 120)
+                .frame(width: SettingsChrome.trailingControlMinWidth)
             }
-            .settingsRow()
-        }
-
-        SettingsSection(title: fanBarText("记录内容", "Logged Data")) {
-            Toggle(isOn: $logTemperatures) {
-                SettingsRowText(title: fanBarText("温度", "Temperatures"))
-            }
-            .toggleStyle(.checkbox)
             .settingsRow()
 
             SettingsChrome.rowDivider
 
-            Toggle(isOn: $logFanSpeeds) {
-                SettingsRowText(title: fanBarText("风扇转速和模式", "Fan speeds and mode"))
+            VStack(alignment: .leading, spacing: SettingsChrome.headerToCardSpacing) {
+                Text(fanBarText("记录内容", "Logged Data"))
+                HStack(alignment: .top, spacing: SettingsChrome.rowHorizontalPadding) {
+                    Toggle(isOn: $logTemperatures) {
+                        Text(fanBarText("温度", "Temperatures"))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Toggle(isOn: $logFanSpeeds) {
+                        Text(fanBarText("风扇转速和模式", "Fan speeds and mode"))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .toggleStyle(.checkbox)
             }
-            .toggleStyle(.checkbox)
             .settingsRow()
         }
+    }
 
+    private var fileSection: some View {
         SettingsSection(
-            title: fanBarText("新建日志", "Create New Log"),
+            title: fanBarText("日志文件", "Log Files"),
             footer: fanBarText(
                 "更改任何日志选项都会立即新建文件，表头和数据列保持一致。",
                 "Changing any log option starts a new file right away, so each file's header matches its rows."
             )
         ) {
-            VStack(alignment: .leading, spacing: 10) {
-                Picker("", selection: newLogPolicy) {
+            VStack(alignment: .leading, spacing: SettingsChrome.rowVerticalPadding) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(fanBarText("文件位置", "Location"))
+                    Text(locationText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(locationText)
+                }
+
+                HStack(spacing: SettingsChrome.headerToCardSpacing) {
+                    Spacer(minLength: 0)
+                    Button(fanBarText("在访达中显示", "Reveal in Finder"), action: revealInFinder)
+                    Button(fanBarText("选择文件夹…", "Choose Folder…"), action: chooseFolder)
+                }
+            }
+            .settingsRow()
+
+            SettingsChrome.rowDivider
+
+            VStack(alignment: .leading, spacing: SettingsChrome.headerToCardSpacing) {
+                Text(fanBarText("新建日志", "Create New Log"))
+                Picker(fanBarText("新建日志", "Create New Log"), selection: newLogPolicy) {
                     Text(fanBarText("从不（持续追加到同一文件）", "Never (keep appending to one file)"))
                         .tag(TemperatureLogPreferences.NewLogPolicy.never)
                     Text(fanBarText("每次启动应用", "On app startup"))

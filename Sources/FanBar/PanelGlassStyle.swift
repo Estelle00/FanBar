@@ -1,124 +1,132 @@
 import FanBarShared
 import SwiftUI
 
-/// Light appearance uses opaque white; dark appearance retains its native glass tint.
+/// The popover's system material with a light or near-black tint; solid under Reduce Transparency.
 struct PanelGlassBackground: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
-        LinearGradient(
-            colors: scheme == .dark
-                ? [Color(red: 0.16, green: 0.18, blue: 0.23).opacity(reduceTransparency ? 1 : 0.91),
-                   Color(red: 0.09, green: 0.11, blue: 0.16).opacity(reduceTransparency ? 1 : 0.94)]
-                : [.white, .white],
-            startPoint: .topLeading, endPoint: .bottomTrailing
-        )
+        let palette = PanelPalette(colorScheme: scheme)
+        // The popover already draws the system material; tint it rather than paint over it.
+        reduceTransparency ? palette.surface : palette.materialTint
     }
 }
 
-struct PanelCardBackground: View {
-    @Environment(\.colorScheme) private var scheme
+/// How fast a fan is turning within its own range, said in words beside the number.
+enum FanSpeedBand {
+    /// Apple silicon Macs stop their fans entirely when cool; that is not "low speed".
+    case stopped
+    case low
+    case medium
+    case high
 
-    var body: some View {
-        RoundedRectangle(cornerRadius: 11, style: .continuous)
-            .fill(LinearGradient(
-                colors: scheme == .dark
-                    ? [Color.white.opacity(0.035), Color.white.opacity(0.035)]
-                    : [Color.white.opacity(0.86), Color(red: 0.94, green: 0.95, blue: 0.97).opacity(0.65)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ))
-            .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .strokeBorder(
-                        LinearGradient(
-                            colors: scheme == .dark ? [.clear, .clear] : [.white.opacity(0.95), .white.opacity(0.15)],
-                            startPoint: .top, endPoint: .bottom
-                        ), lineWidth: 1
-                    )
-                    .padding(0.7)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(scheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.09), lineWidth: 0.7)
-            )
-            .shadow(color: .black.opacity(scheme == .dark ? 0.08 : 0.045), radius: 2, y: 1)
+    init(rpm: Int, fraction: Double) {
+        if rpm <= 0 {
+            self = .stopped
+        } else {
+            self = fraction < 0.35 ? .low : fraction < 0.7 ? .medium : .high
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .stopped: fanBarText("已停转", "Stopped")
+        case .low: fanBarText("低速运行", "Low speed")
+        case .medium: fanBarText("中速运行", "Medium speed")
+        case .high: fanBarText("高速运行", "High speed")
+        }
     }
 }
 
-struct PanelFanCard: View {
+/// One fan: name and speed band, the RPM, and a read-only meter across its range.
+struct PanelFanReadout: View {
     let fan: FanReading
-    let target: Int?
     var isSingleFan = false
     @Environment(\.colorScheme) private var scheme
 
+    private var fraction: Double {
+        let span = Double(fan.maximumRPM - fan.minimumRPM)
+        guard span > 0 else { return 0 }
+        return min(1, max(0, Double(fan.currentRPM - fan.minimumRPM) / span))
+    }
+
     var body: some View {
         let palette = PanelPalette(colorScheme: scheme)
-        Group {
-            if isSingleFan {
-                singleFanContent(palette: palette)
-            } else {
-                multiFanContent(palette: palette)
+        let band = FanSpeedBand(rpm: fan.currentRPM, fraction: fraction)
+        let name = isSingleFan ? fanBarText("风扇", "Fan") : fanBarFormat("风扇 %d", "Fan %d", fan.index + 1)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                SpinningFanGlyph(rpm: fan.currentRPM)
+                    .frame(width: 13, height: 13)
+                Text(name)
+                    .font(.system(size: 11, weight: .medium))
+                Spacer(minLength: 6)
+                Text(band.title)
+                    .font(.system(size: 11, weight: band == .high ? .semibold : .regular))
+                    .foregroundColor(band == .high ? palette.warmInk : palette.tertiaryText)
             }
+            .foregroundColor(palette.secondaryText)
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(FanBarNumberFormatter.grouped(fan.currentRPM))
+                    .font(.system(size: 28, weight: .semibold).monospacedDigit())
+                    .tracking(-0.5)
+                    // A fan at the bottom of its range recedes; it comes forward as it speeds up.
+                    .foregroundColor(band == .low || band == .stopped ? palette.secondaryText : .primary)
+                Text("RPM")
+                    .font(.system(size: 10, weight: .semibold))
+                    .tracking(0.4)
+                    .foregroundColor(palette.tertiaryText)
+            }
+
+            FanRangeMeter(
+                fraction: fraction,
+                color: band == .high ? palette.warm : band == .medium ? palette.secondaryText : palette.tertiaryText,
+                palette: palette
+            )
+            .frame(height: 4)
+            .padding(.top, 4)
+
+            HStack {
+                Text(fanBarFormat("最低 %@", "Min %@", FanBarNumberFormatter.grouped(fan.minimumRPM)))
+                Spacer(minLength: 6)
+                Text(fanBarFormat("最高 %@", "Max %@", FanBarNumberFormatter.grouped(fan.maximumRPM)))
+            }
+            .font(.system(size: 10).monospacedDigit())
+            .foregroundColor(palette.tertiaryText)
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(PanelCardBackground())
-        .accessibilityElement(children: .combine)
+        .padding(.vertical, PanelLayout.columnInset)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(name)
+        .accessibilityValue(fanBarFormat(
+            "%@ RPM，%@，范围 %@ 到 %@",
+            "%@ RPM, %@, range %@ to %@",
+            FanBarNumberFormatter.grouped(fan.currentRPM),
+            band.title,
+            FanBarNumberFormatter.grouped(fan.minimumRPM),
+            FanBarNumberFormatter.grouped(fan.maximumRPM)
+        ))
     }
+}
 
-    private func singleFanContent(palette: PanelPalette) -> some View {
-        VStack(spacing: 7) {
-            HStack(spacing: 6) {
-                SpinningFanGlyph(rpm: fan.currentRPM)
-                    .frame(width: 16, height: 16)
-                    .foregroundColor(palette.secondaryText)
-                Text(fanBarFormat("风扇 %d", "Fan %d", fan.index + 1))
-                    .font(.system(size: 11, weight: .medium))
-                Spacer(minLength: 8)
-                Text(FanBarNumberFormatter.grouped(fan.currentRPM))
-                    .font(.system(size: 26, weight: .semibold).monospacedDigit())
-                Text("RPM").font(.system(size: 9, weight: .medium))
-            }
-            HStack {
-                Text(fanBarFormat("范围 %@–%@", "Range %@–%@",
-                                  FanBarNumberFormatter.grouped(fan.minimumRPM),
-                                  FanBarNumberFormatter.grouped(fan.maximumRPM)))
-                Spacer(minLength: 8)
-                Text(target.map { fanBarFormat("目标 %@ RPM", "Target %@ RPM", FanBarNumberFormatter.grouped($0)) }
-                     ?? fanBarText("系统自动调节", "Managed by macOS"))
-            }
-            .font(.system(size: 10).monospacedDigit())
-            .foregroundColor(palette.secondaryText)
-        }
-    }
+/// A filled bar with no knob, so it never reads as a slider.
+private struct FanRangeMeter: View {
+    let fraction: Double
+    let color: Color
+    let palette: PanelPalette
 
-    private func multiFanContent(palette: PanelPalette) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                SpinningFanGlyph(rpm: fan.currentRPM)
-                    .frame(width: 16, height: 16)
-                    .foregroundColor(palette.secondaryText)
-                Text(fanBarFormat("风扇 %d", "Fan %d", fan.index + 1))
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                palette.well
+                color.frame(width: proxy.size.width * CGFloat(fraction))
             }
-            .font(.system(size: 11, weight: .medium))
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(FanBarNumberFormatter.grouped(fan.currentRPM))
-                    .font(.system(size: 26, weight: .semibold).monospacedDigit())
-                Text("RPM").font(.system(size: 9, weight: .medium))
-            }
-            .padding(.vertical, 2)
-            Text(fanBarFormat("范围 %@–%@", "Range %@–%@",
-                              FanBarNumberFormatter.grouped(fan.minimumRPM),
-                              FanBarNumberFormatter.grouped(fan.maximumRPM)))
-                .font(.system(size: 10).monospacedDigit())
-                .foregroundColor(palette.secondaryText)
-            Text(target.map { fanBarFormat("目标 %@ RPM", "Target %@ RPM", FanBarNumberFormatter.grouped($0)) }
-                 ?? fanBarText("系统自动调节", "Managed by macOS"))
-                .font(.system(size: 10).monospacedDigit())
-                .foregroundColor(palette.secondaryText)
+            .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
         }
+        .accessibilityHidden(true)
     }
 }

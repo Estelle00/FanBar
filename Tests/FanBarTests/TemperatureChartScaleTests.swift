@@ -2,17 +2,14 @@ import XCTest
 @testable import FanBar
 
 final class TemperatureChartScaleTests: XCTestCase {
-    func testScaleKeepsConfiguredAlertLineInsidePlotAtEverySupportedThreshold() {
-        for threshold in stride(from: 60.0, through: 105, by: 1) {
-            let domain = TemperatureChartScale.domain(alertThreshold: threshold)
-            XCTAssertEqual(domain.lowerBound, 20)
-            XCTAssertTrue(domain.contains(threshold))
-            XCTAssertGreaterThanOrEqual(domain.upperBound - threshold, 5)
-        }
+    func testFittedRangeHugsReadingsOnWholeTens() {
+        XCTAssertEqual(TemperatureChartScale.fitted(to: [33, 59, 65]), 20...70)
+        XCTAssertEqual(TemperatureChartScale.fitted(to: [41, 44]), 30...70)
+        XCTAssertEqual(TemperatureChartScale.fitted(to: []), 20...100)
     }
 
-    func testUsualThresholdRetainsScaleAndMaximumThresholdHasHeadroom() {
-        XCTAssertEqual(TemperatureChartScale.domain(alertThreshold: 90), 20...100)
-        XCTAssertEqual(TemperatureChartScale.domain(alertThreshold: 105), 20...110)
+    func testTicksWidenOnTallRanges() {
+        XCTAssertEqual(TemperatureChartScale.ticks(in: 30...70), [30, 40, 50, 60, 70])
+        XCTAssertEqual(TemperatureChartScale.ticks(in: 20...100), [20, 40, 60, 80, 100])
     }
 }
