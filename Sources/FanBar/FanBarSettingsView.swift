@@ -5,13 +5,15 @@ import SwiftUI
 /// Settings panes. The selection persists so the window reopens where the
 /// user left off. The native labeled toolbar navigation is installed by the
 /// window presenter so content can use the full height below the title bar.
-/// Case order is the toolbar order (and ⌘1…⌘3).
+/// Case order is the toolbar order (and ⌘1…⌘4).
 enum SettingsTab: String, CaseIterable, Identifiable {
     /// Primary task: smart cooling curve (see `.impeccable.md`).
     case cooling
     /// Raw value kept from the former "Menu Bar" pane so a saved selection survives.
     case appearance = "menuBar"
     case general
+    /// Last so ⌘1…⌘3 keep their existing meaning.
+    case log
 
     static let preferenceKey = "fanbar.settingsSelectedTab"
 
@@ -22,6 +24,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .cooling: fanBarText("散热", "Cooling")
         case .appearance: fanBarText("外观", "Appearance")
         case .general: fanBarText("通用", "General")
+        case .log: fanBarText("日志", "Log")
         }
     }
 
@@ -30,11 +33,13 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .cooling: "fan"
         case .appearance: "paintbrush"
         case .general: "gearshape"
+        case .log: "doc.text"
         }
     }
 }
 
 struct FanBarSettingsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @ObservedObject var controller: FanController
     @AppStorage(MenuBarDisplayMode.preferenceKey)
     private var displayModeRawValue = MenuBarDisplayMode.defaultMode.rawValue
@@ -63,6 +68,7 @@ struct FanBarSettingsView: View {
                 case .cooling: coolingTab
                 case .appearance: appearanceTab
                 case .general: generalTab
+                case .log: logTab
                 }
             }
             .padding(.horizontal, SettingsChrome.horizontalPadding)
@@ -164,8 +170,8 @@ struct FanBarSettingsView: View {
                 SettingsRowText(
                     title: fanBarText("菜单栏图标动画", "Menu bar icon animation"),
                     detail: fanBarText(
-                        "风扇运转时图标旋转并跟随实际转速，停转后缓缓静止。",
-                        "The icon spins with the fans and coasts to a stop when they halt."
+                        "切换模式或风扇转速明显变化时，图标旋转几秒后静止。",
+                        "The icon spins for a few seconds when the mode changes or fan speed shifts noticeably."
                     )
                 )
             }
@@ -190,12 +196,17 @@ struct FanBarSettingsView: View {
 
     // MARK: - General
 
+    /// CSV logging of temperatures and fan speeds; see docs/design/temperature-logging.md.
+    private var logTab: some View {
+        TemperatureLogSettingsView(controller: controller)
+    }
+
     @ViewBuilder
     private var generalTab: some View {
-        compatibilitySection
         fanControlSection
         notificationsSection
         appSection
+        compatibilitySection
         freeSoftwareNotice
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
@@ -281,8 +292,9 @@ struct FanBarSettingsView: View {
             HStack(spacing: 8) {
                 Text(fanBarText("控制服务", "Control service"))
                 Spacer(minLength: 12)
-                Image(systemName: state.symbolName)
-                    .foregroundColor(state.tint)
+                Circle()
+                    .fill(PanelPalette(colorScheme: colorScheme).accent)
+                    .frame(width: 6, height: 6)
                     .accessibilityHidden(true)
                 Text(fanBarText("已启用", "Enabled"))
                     .foregroundColor(.secondary)
@@ -318,8 +330,8 @@ struct FanBarSettingsView: View {
                 SettingsRowText(
                     title: fanBarText("高温提醒", "High-temperature alerts"),
                     detail: fanBarText(
-                        "同一次高温只提醒一次；温度回落后再次升高会重新通知。",
-                        "One alert per high-temperature episode; it resets after cooling down."
+                        "同一次高温只提醒一次，降温后重置。面板会同时显示过热提示。",
+                        "One alert per high-temperature episode; it resets after cooling down. The panel shows the same warning."
                     )
                 )
             }
@@ -343,8 +355,8 @@ struct FanBarSettingsView: View {
             SettingsRowText(
                 title: fanBarText("提醒温度", "Alert temperature"),
                 detail: fanBarFormat(
-                    "默认 %.0f°C。",
-                    "Default %.0f°C.",
+                    "默认 %.0f°C；面板和曲线上的告警线使用同一数值。",
+                    "Default %.0f°C. The panel and the curve's alert line use the same value.",
                     ThermalAlertSettings.defaultThresholdCelsius
                 )
             )
@@ -356,8 +368,10 @@ struct FanBarSettingsView: View {
                 ),
                 in: Int(range.lowerBound)...Int(range.upperBound)
             ) {
+                // The panel's warm step: this value is where its alert line sits.
                 Text(valueText)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundColor(PanelPalette(colorScheme: colorScheme).warmInk)
                     .frame(width: 40, alignment: .trailing)
             }
             .fixedSize()
@@ -371,7 +385,7 @@ struct FanBarSettingsView: View {
     private var automaticRestoreRow: some View {
         HStack {
             SettingsRowText(
-                title: fanBarText("自动恢复系统控制", "Restore automatic control"),
+                title: fanBarText("自动恢复为自动模式", "Restore automatic control"),
                 detail: fanBarText(
                     "手动模式到时交还 macOS；主界面中的修改只对当次生效。",
                     "Manual modes hand back to macOS when time runs out. Menu changes apply to that session only."
@@ -379,7 +393,7 @@ struct FanBarSettingsView: View {
             )
             Spacer(minLength: 12)
             Picker(
-                fanBarText("自动恢复系统控制", "Restore automatic control"),
+                fanBarText("自动恢复为自动模式", "Restore automatic control"),
                 selection: Binding(
                     get: { controller.defaultAutomaticRestoreDuration },
                     set: { controller.setDefaultAutomaticRestoreDuration($0) }

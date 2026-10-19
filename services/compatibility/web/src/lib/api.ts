@@ -59,3 +59,34 @@ export interface AdminDetail {
   };
   reviews: { actor: string; status: ReviewStatus; reason: ReviewReason; reviewed_at: string }[];
 }
+
+/* ---------- Administrator insights (src/insights.ts) ---------- */
+export interface AttentionItem {
+  reportID: string; modelIdentifier: string; macOSVersion: string; appVersion: string; helperVersion: string; receivedAt: string;
+  duplicateOf?: string[]; capabilities?: Capability[];
+}
+export interface VerificationCandidate {
+  modelIdentifier: string; macOSVersion: string; appVersion: string; helperVersion: string;
+  capability: Capability; reports: number; lastReportAt: string;
+}
+export interface AuditEntry {
+  id: number; objectType: 'report' | 'verification'; objectID: string; actor: string;
+  status: string; reason: string; reviewedAt: string; modelIdentifier: string | null;
+}
+export interface AuditList { entries: AuditEntry[]; hasMore: boolean; offset: number }
+export interface Overview {
+  generatedAt: string;
+  queue: { pending: number; oldestPendingAt: string | null; inspected: number };
+  week: { received: number; receivedPrevious: number; approved: number; rejected: number };
+  daily: { date: string; count: number }[];
+  attention: {
+    conflicts: AttentionItem[]; duplicates: AttentionItem[]; newModels: AttentionItem[];
+    verificationCandidates: VerificationCandidate[];
+  };
+  recent: AuditEntry[];
+}
+export interface AdminVerification {
+  id: string; modelIdentifier: string; macOSVersion: string; appVersion: string; helperVersion: string;
+  capability: Capability; status: VerificationStatus; notes: string; sourceURL: string; verifiedOn: string;
+}
+export interface VerificationList { verifications: AdminVerification[]; candidates: VerificationCandidate[]; candidateMinimum: number }

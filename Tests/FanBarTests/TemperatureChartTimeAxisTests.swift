@@ -5,7 +5,7 @@ final class TemperatureChartTimeAxisTests: XCTestCase {
     private let timeZone = TimeZone(secondsFromGMT: 8 * 3600)!
 
     /// Issue #15: a window ending at 17:09:52 must keep the hour, not render
-    /// as `59:52  04:52  09:52`.
+    /// as minutes and seconds only.
     func testLabelsKeepHourWhenWindowCrossesHourBoundary() {
         let end = date(hour: 17, minute: 9, second: 52)
         let start = end.addingTimeInterval(-TemperatureChartTimeAxis.historyDuration)
@@ -14,7 +14,7 @@ final class TemperatureChartTimeAxisTests: XCTestCase {
             timeZone: timeZone
         )
 
-        XCTAssertEqual(labels, ["16:59:52", "17:04:52", "17:09:52"])
+        XCTAssertEqual(labels, ["16:59", "17:04", "17:09"])
     }
 
     func testTickDatesCoverTenMinuteWindow() {
@@ -42,7 +42,7 @@ final class TemperatureChartTimeAxisTests: XCTestCase {
         XCTAssertEqual(range.upperBound, last)
         XCTAssertEqual(
             TemperatureChartTimeAxis.labels(in: range, timeZone: timeZone),
-            ["17:54:10", "17:59:10", "18:04:10"]
+            ["17:54", "17:59", "18:04"]
         )
     }
 
@@ -60,14 +60,19 @@ final class TemperatureChartTimeAxisTests: XCTestCase {
         XCTAssertEqual(range.upperBound, last)
     }
 
-    func testHistoryStoreRoundTripDropsSamplesOlderThanTenMinutes() {
+    func testHistoryStoreRoundTripDropsSamplesOlderThanOneHour() {
         let defaults = UserDefaults(suiteName: "fanbar.tests.temperatureHistory")!
         defaults.removePersistentDomain(forName: "fanbar.tests.temperatureHistory")
         let now = date(hour: 18, minute: 4, second: 0)
         let samples = [
             ThermalReading(
-                sampledAt: now.addingTimeInterval(-12 * 60),
+                sampledAt: now.addingTimeInterval(-70 * 60),
                 cpuCelsius: 40,
+                gpuCelsius: nil
+            ),
+            ThermalReading(
+                sampledAt: now.addingTimeInterval(-12 * 60),
+                cpuCelsius: 45,
                 gpuCelsius: nil
             ),
             ThermalReading(
@@ -80,8 +85,8 @@ final class TemperatureChartTimeAxisTests: XCTestCase {
         TemperatureHistoryStore.save(samples, to: defaults)
         let loaded = TemperatureHistoryStore.load(from: defaults, now: now)
 
-        XCTAssertEqual(loaded.count, 1)
-        XCTAssertEqual(loaded.first?.cpuCelsius, 50)
+        // The 12-minute-old reading stays so the 30-minute and 1-hour windows have data.
+        XCTAssertEqual(loaded.map(\.cpuCelsius), [45, 50])
     }
 
     func testSegmentsKeepTwoSecondCadenceAsOneRun() {

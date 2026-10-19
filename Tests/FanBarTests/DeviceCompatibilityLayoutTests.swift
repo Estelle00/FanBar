@@ -95,7 +95,7 @@ final class DeviceCompatibilityLayoutTests: XCTestCase {
             let host = NSHostingView(rootView: OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {}))
             host.layoutSubtreeIfNeeded()
             XCTAssertEqual(host.fittingSize.width, OnboardingCard.width, accuracy: 0.5)
-            XCTAssertEqual(host.fittingSize.height, OnboardingCard.height, accuracy: 0.5)
+            XCTAssertEqual(host.fittingSize.height, OnboardingCard.height(for: controller.helperState), accuracy: 0.5)
             XCTAssertEqual(controller.mode, .automatic)
             XCTAssertFalse(controller.isTestingCompatibilityControl)
         }
@@ -121,7 +121,8 @@ final class DeviceCompatibilityLayoutTests: XCTestCase {
         ] {
             UserDefaults.standard.set(language.rawValue, forKey: FanBarLanguage.preferenceKey)
             let host = NSHostingView(rootView: OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {}))
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: OnboardingCard.height),
+            let height = OnboardingCard.height(for: controller.helperState)
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: height),
                                   styleMask: [.titled], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.contentView = host

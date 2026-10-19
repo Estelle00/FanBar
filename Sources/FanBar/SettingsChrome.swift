@@ -39,7 +39,7 @@ enum SettingsChrome {
             Spacer(minLength: 8)
             if let trailing {
                 Text(trailing)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(.system(size: 11).monospacedDigit())
                     .foregroundColor(.secondary)
             }
         }

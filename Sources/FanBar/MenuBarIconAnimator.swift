@@ -1,12 +1,15 @@
 import AppKit
 
-/// Keeps the status-item icon rotating while the physical fans are running.
+/// Spins the status-item icon briefly when something worth noticing happens:
+/// a mode switch, or a fan speed change large enough to matter. Otherwise the
+/// icon stays still.
 ///
-/// The controller refreshes fan readings every two seconds and calls
-/// `update(rpm:on:style:isManual:)` with the average RPM; the animator spins at a
-/// perceptual speed mapped from that reading and coasts to a stop once the
-/// fans halt. A failed mode switch can still flash the icon via
-/// `flashFailure()`.
+/// The controller calls `update(rpm:on:style:isManual:)` with the average RPM on
+/// every change. A noticeable change in that reading starts a few seconds of
+/// rotation at a matching speed, then the icon coasts to rest. A continuous
+/// spin cost several percent of CPU: every frame makes AppKit re-snapshot the
+/// status item for each display's menu bar. A failed mode switch can still
+/// flash the icon via `flashFailure()`.
 ///
 /// The status item is pure AppKit (macOS 11 target), so SF Symbol effects are
 /// unavailable; rotation is produced by pre-rendering quantized frames of the
@@ -36,6 +39,15 @@ final class MenuBarIconAnimator {
     private var blinkAccumulator = 0.0
     private var blinkRemaining = 0
     private var frameCache: [String: NSImage] = [:]
+    private var trigger = SpinTrigger()
+    private var lastRPM = 0.0
+    private var burstEndsAt = Date.distantPast
+
+    /// How long a burst spins at full speed before coasting to rest.
+    static let burstDuration: TimeInterval = 3
+    /// Lowest speed for a switch acknowledgement, so it reads as motion even
+    /// when the fans are slow or stopped.
+    private static let minimumBurstVelocity = 0.18 * 360
 
     private let frameQuantum = 15.0 // 24 cached frames per full turn
     private let blinkInterval = 0.12
@@ -53,8 +65,10 @@ final class MenuBarIconAnimator {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     }
 
-    /// Follows the live fan reading: spins while fans run, coasts to a stop
-    /// when they halt. Called on every controller refresh.
+    /// Records the live fan reading. The icon stays still unless the reading
+    /// moved noticeably since the last burst; then it spins for a few seconds
+    /// at the matching speed and coasts to rest. Called on every controller
+    /// change, usually with an unchanged reading.
     func update(rpm: Double, on button: NSButton, style: MenuBarIconStyle, isManual: Bool) {
         self.button = button
         if self.style != style || self.isManual != isManual {
@@ -62,6 +76,8 @@ final class MenuBarIconAnimator {
             self.isManual = isManual
             frameCache.removeAll()
         }
+        lastRPM = rpm
+        let isNotableChange = trigger.registerReading(rpm)
 
         guard !reduceMotion else {
             if phase != .idle { stop() }
@@ -69,29 +85,31 @@ final class MenuBarIconAnimator {
         }
 
         let target = Self.perceptualVelocity(forRPM: rpm)
-        switch phase {
-        case .idle:
-            guard target > 0 else { return }
+        if isNotableChange {
+            startBurst(velocity: target)
+        } else if phase == .spinning, target > 0 {
+            // Keep the speed honest while a burst is already running.
             targetVelocity = target
-            angularVelocity = target * 0.35 // gentle spin-up from rest
-            phase = .spinning
-            lastTick = Date()
-            startTimerIfNeeded()
-        case .spinning:
-            targetVelocity = target
-            if target <= 0 {
-                phase = .coasting
-            }
-        case .coasting:
-            if target > 0 {
-                targetVelocity = target
-                phase = .spinning
-            }
-        case .blinking:
-            // The blink owns the image; the refresh after it (via onFinish)
-            // resumes spinning if the fans are still running.
-            break
         }
+    }
+
+    /// Spins briefly to acknowledge a mode switch, then coasts to rest.
+    func playSwitchBurst() {
+        guard !reduceMotion, button != nil else { return }
+        startBurst(velocity: max(Self.perceptualVelocity(forRPM: lastRPM), Self.minimumBurstVelocity))
+    }
+
+    /// Starts or extends a burst. A running blink keeps the icon until it ends.
+    private func startBurst(velocity: Double) {
+        guard velocity > 0, phase != .blinking else { return }
+        burstEndsAt = Date().addingTimeInterval(Self.burstDuration)
+        targetVelocity = velocity
+        if phase == .idle {
+            angularVelocity = velocity * 0.35 // gentle spin-up from rest
+            lastTick = Date()
+        }
+        phase = .spinning
+        startTimerIfNeeded()
     }
 
     /// Flashes the icon to signal a failed switch, then restores the state
@@ -140,6 +158,9 @@ final class MenuBarIconAnimator {
             if reduceMotion {
                 stop()
                 return
+            }
+            if now >= burstEndsAt {
+                phase = .coasting
             }
             let smoothing = min(delta * velocitySmoothing, 1)
             angularVelocity += (targetVelocity - angularVelocity) * smoothing
@@ -200,5 +221,28 @@ final class MenuBarIconAnimator {
         let rendered = style.image(isManual: isManual, degrees: quantized, alpha: alpha)
         frameCache[key] = rendered
         return rendered
+    }
+}
+
+/// Decides when a fan reading differs enough from the last burst to spin again.
+struct SpinTrigger {
+    /// Smaller changes are sensor noise or slow drift, not news.
+    static let absoluteThreshold = 250.0
+    static let relativeThreshold = 0.15
+
+    private(set) var referenceRPM: Double?
+
+    /// The first reading only sets the baseline, so launching FanBar does not
+    /// spin the icon. The baseline moves only when a burst fires, so slow drift
+    /// still triggers once it adds up.
+    mutating func registerReading(_ rpm: Double) -> Bool {
+        guard let reference = referenceRPM else {
+            referenceRPM = rpm
+            return false
+        }
+        let threshold = max(Self.absoluteThreshold, reference * Self.relativeThreshold)
+        guard abs(rpm - reference) >= threshold else { return false }
+        referenceRPM = rpm
+        return true
     }
 }

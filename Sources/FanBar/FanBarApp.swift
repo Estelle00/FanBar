@@ -20,6 +20,12 @@ final class FanBarAppDelegate: NSObject, NSApplicationDelegate {
         Self.pendingController = nil
         self.controller = controller
         LegacyStatusItemController.shared.install(controller: controller)
+        // Optional local launch convenience; appearance always follows macOS.
+        if CommandLine.arguments.contains("--show-panel") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                LegacyStatusItemController.shared.showPopover()
+            }
+        }
         RuntimeDiagnostics.shared.record(.app, .menuReady, .succeeded)
         if !OnboardingPreferences.hasCompleted {
             DispatchQueue.main.async {

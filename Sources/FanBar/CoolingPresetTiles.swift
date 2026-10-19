@@ -175,8 +175,8 @@ struct CoolingPresetTiles: View {
                         .padding(.vertical, 2)
 
                     HStack {
-                        Text("≤\(Int((profile.peakFraction * 100).rounded()))%")
-                            .font(.system(size: 11, design: .monospaced))
+                        Text(fanBarFormat("最高 %d%%", "Max %d%%", Int((profile.peakFraction * 100).rounded())))
+                            .font(.system(size: 11).monospacedDigit())
                             .foregroundColor(.secondary)
                         Spacer(minLength: 4)
                         if isRunning {
@@ -298,7 +298,7 @@ struct CoolingPresetTiles: View {
     @ViewBuilder
     private func addTileLabel(span: Int, count: Int, isFull: Bool) -> some View {
         let counter = Text("\(count) / \(CustomPresetRules.maximumCount)")
-            .font(.system(size: 11, design: .monospaced))
+            .font(.system(size: 11).monospacedDigit())
             .foregroundColor(.secondary)
                 if span >= 2 {
                     HStack(spacing: 12) {

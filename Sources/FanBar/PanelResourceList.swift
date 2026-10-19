@@ -1,0 +1,565 @@
+import FanBarShared
+import SwiftUI
+
+// MARK: - Resources
+
+/// A two-by-two resource grid held together by whitespace; disk details expand beneath it.
+struct PanelResourceList: View {
+    enum Resource: Hashable {
+        case cpu
+        case memory
+        case gpu
+        case disk
+    }
+
+    let usage: SystemUsage
+    let thermal: ThermalReading?
+    let cpuHistory: [Double]
+    let gpuHistory: [Double]
+    let animates: Bool
+
+    @Binding var expanded: Resource?
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isDiskDetailRevealed = false
+
+    private var palette: PanelPalette { PanelPalette(colorScheme: colorScheme) }
+
+    /// Height shared by the CPU core bars and the memory bar's row, so the first row lines up.
+    private static let vizHeight: CGFloat = 20
+
+    var body: some View {
+        VStack(spacing: 0) {
+            resourceGrid
+                .padding(.vertical, 7)
+            if expanded == .disk {
+                PanelDivider()
+                diskDetail
+                    .padding(.vertical, PanelLayout.rowVerticalPadding)
+                    // Height changes instantly (see setExpanded); only the drawing eases in.
+                    .opacity(isDiskDetailRevealed ? 1 : 0)
+                    .scaleEffect(isDiskDetailRevealed ? 1 : 0.98, anchor: .top)
+                    .onAppear {
+                        guard animates else {
+                            isDiskDetailRevealed = true
+                            return
+                        }
+                        withAnimation(.easeOut(duration: 0.15)) { isDiskDetailRevealed = true }
+                    }
+                    .onDisappear { isDiskDetailRevealed = false }
+            }
+        }
+    }
+
+    private func setExpanded(_ resource: Resource?) {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { expanded = resource }
+    }
+
+    private var resourceGrid: some View {
+        VStack(spacing: 0) {
+            gridRow {
+                cell(.cpu, title: "CPU", value: percent(usage.cpuFraction)) {
+                    CoreGroups(
+                        fractions: usage.cpuCoreFractions,
+                        kinds: usage.cpuCoreKinds,
+                        coreCount: usage.cpuCoreCount,
+                        color: resourceColor(.cpu),
+                        barHeight: Self.vizHeight,
+                        palette: palette
+                    )
+                    .padding(.top, 4)
+                }
+            } trailing: {
+                cell(
+                    .memory,
+                    title: fanBarText("内存", "Memory"),
+                    meta: usage.memory.map(memoryMeta),
+                    value: percent(usage.memoryFraction)
+                ) {
+                    let used = resourceColor(.memory)
+                    VStack(alignment: .leading, spacing: 6) {
+                        MemoryBar(memory: usage.memory, usedColor: used, palette: palette)
+                            .frame(height: 6)
+                            .frame(height: Self.vizHeight, alignment: .bottom)
+                        HStack(spacing: 9) {
+                            memoryKey(used, fanBarText("应用", "App"))
+                            memoryKey(used.opacity(MemoryBar.compressedOpacity), fanBarText("压缩", "Comp."))
+                            memoryKey(palette.memoryCache, fanBarText("缓存", "Cache"))
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            gridRow {
+                cell(
+                    .gpu,
+                    title: "GPU",
+                    meta: usage.gpuCoreCount.map { fanBarFormat("%d 核", "%d cores", $0) },
+                    value: percent(usage.gpuFraction)
+                ) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        CapacityBar(fraction: usage.gpuFraction, color: resourceColor(.gpu), palette: palette)
+                            .frame(height: 6)
+                        summaryText(usage.gpuMemoryInUseBytes.map {
+                            fanBarFormat("显存 %@", "Memory %@", PanelByteFormat.compact($0))
+                        } ?? "—")
+                    }
+                    .padding(.top, 6)
+                }
+            } trailing: {
+                diskCell
+            }
+        }
+    }
+
+    /// Equal-height halves separated by a 24pt gutter.
+    private func gridRow(
+        @ViewBuilder leading: () -> some View,
+        @ViewBuilder trailing: () -> some View
+    ) -> some View {
+        HStack(spacing: 0) {
+            leading()
+                .padding(.trailing, 12)
+            trailing()
+                .padding(.leading, 12)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    // MARK: Cells
+
+    /// Label and meta, the value, then one visualization; every cell shares this rhythm.
+    private func cell(
+        _ resource: Resource,
+        title: String,
+        meta: String? = nil,
+        value: String,
+        @ViewBuilder viz: () -> some View
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            labelRow(title: title, meta: meta, level: level(resource))
+            Text(value)
+                .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                .foregroundColor(.primary)
+            viz()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.vertical, 9)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+        .accessibilityValue([value, meta, level(resource).spokenName].compactMap { $0 }.joined(separator: ", "))
+    }
+
+    private func labelRow(
+        title: String,
+        meta: String?,
+        level: ResourceLevel = .normal,
+        chevron: String? = nil
+    ) -> some View {
+        HStack(spacing: 3) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(palette.secondaryText)
+            // Color is never the only cue: a raised level is also said in words.
+            if let name = level.spokenName {
+                Text(name)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(level == .critical ? palette.hot : palette.warmInk)
+                    .padding(.leading, 3)
+            }
+            Spacer(minLength: 4)
+            if let meta {
+                Text(meta)
+                    .font(.system(size: 11).monospacedDigit())
+                    .foregroundColor(palette.tertiaryText)
+            }
+            if let chevron {
+                Image(systemName: chevron)
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundColor(palette.tertiaryText)
+            }
+        }
+        .lineLimit(1)
+    }
+
+    /// Leads with free space, the number the disk rule is judged by, and says what it means.
+    private var diskCell: some View {
+        let isOpen = expanded == .disk
+        let level = diskLevel
+        let summary: Text = {
+            let total = Text(fanBarFormat("共 %@", "%@ total", wholeGigabytes(usage.diskTotalBytes)))
+            switch level {
+            case .normal:
+                return total + Text(usage.disks.count > 1
+                    ? fanBarFormat(" · %d 块磁盘", " · %d disks", usage.disks.count)
+                    : "")
+            case .elevated:
+                return Text(fanBarText("空间偏低", "Space low")).fontWeight(.semibold).foregroundColor(palette.warmInk)
+                    + Text(" · ") + total
+            case .critical:
+                return Text(fanBarText("空间不足", "Almost full")).fontWeight(.semibold).foregroundColor(palette.hot)
+                    + Text(" · ") + total
+            }
+        }()
+        let used = percent(usage.diskFraction)
+        return Button {
+            setExpanded(isOpen ? nil : .disk)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                labelRow(
+                    title: fanBarText("磁盘", "Disk"),
+                    meta: fanBarFormat("已用 %@", "%@ used", used),
+                    chevron: isOpen ? "chevron.up" : "chevron.down"
+                )
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(wholeGigabytes(freeDiskBytes))
+                        .font(.system(size: 22, weight: .semibold).monospacedDigit())
+                        .foregroundColor(.primary)
+                    Text(fanBarText("可用", "free"))
+                        .font(.system(size: 11))
+                        .foregroundColor(palette.secondaryText)
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    CapacityBar(fraction: usage.diskFraction, color: level.color(palette, normal: palette.capacity),
+                                palette: palette)
+                        .frame(height: 6)
+                    summary
+                        .font(.system(size: 11).monospacedDigit())
+                        .foregroundColor(palette.secondaryText)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .padding(.top, 6)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.vertical, 9)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PanelDimButtonStyle())
+        .focusable(false)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(fanBarText("磁盘", "Disk"))
+        .accessibilityValue([
+            fanBarFormat("可用 %@", "%@ free", wholeGigabytes(freeDiskBytes)),
+            fanBarFormat("已用 %@", "%@ used", used),
+            level.diskSpokenName
+        ].compactMap { $0 }.joined(separator: ", "))
+        .accessibilityAddTraits(isOpen ? .isSelected : [])
+        .accessibilityHint(isOpen ? fanBarText("收起磁盘详情", "Hide disk details") : fanBarText("展开磁盘详情", "Show disk details"))
+    }
+
+    private func summaryText(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11).monospacedDigit())
+            .foregroundColor(palette.secondaryText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+    }
+
+    // MARK: Levels
+
+    /// Processors by load; memory by app and compressed pages. Disks use free space instead.
+    private func level(_ resource: Resource) -> ResourceLevel {
+        switch resource {
+        case .cpu: ResourceLevel(fraction: usage.cpuFraction, thresholds: .processor)
+        case .memory: ResourceLevel(fraction: usage.memoryFraction, thresholds: .capacity)
+        case .gpu: ResourceLevel(fraction: usage.gpuFraction, thresholds: .processor)
+        case .disk: diskLevel
+        }
+    }
+
+    private func resourceColor(_ resource: Resource) -> Color {
+        level(resource).color(palette)
+    }
+
+    private var freeDiskBytes: UInt64? {
+        guard let used = usage.diskUsedBytes, let total = usage.diskTotalBytes else { return nil }
+        return total > used ? total - used : 0
+    }
+
+    private var diskLevel: ResourceLevel {
+        ResourceLevel(freeBytes: freeDiskBytes, totalBytes: usage.diskTotalBytes)
+    }
+
+    // MARK: Formatting
+
+    private func memoryKey(_ color: Color, _ title: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(title)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .foregroundColor(palette.secondaryText)
+    }
+
+    private var diskDetail: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(usage.disks.count > 1
+                     ? fanBarFormat("磁盘 · %d 块", "Disks · %d", usage.disks.count)
+                     : fanBarText("磁盘", "Disk"))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(palette.secondaryText)
+                Spacer()
+                Button {
+                    setExpanded(nil)
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 9, weight: .semibold))
+                        .frame(width: 22, height: 22)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PanelDimButtonStyle())
+                .focusable(false)
+                .foregroundColor(palette.secondaryText)
+                .padding(.trailing, -5)
+                .accessibilityLabel(fanBarText("收起磁盘详情", "Hide disk details"))
+            }
+            ForEach(usage.disks) { disk in
+                let free = disk.totalBytes > disk.usedBytes ? disk.totalBytes - disk.usedBytes : 0
+                let level = ResourceLevel(freeBytes: free, totalBytes: disk.totalBytes)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        (Text(disk.name).fontWeight(.medium).foregroundColor(.primary)
+                            + Text(disk.isInternal ? "" : fanBarText(" · 外置", " · External"))
+                            .foregroundColor(palette.tertiaryText))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer(minLength: 4)
+                        Text(fanBarFormat("可用 %@ / %@", "%@ free of %@",
+                                          wholeGigabytes(free), wholeGigabytes(disk.totalBytes)))
+                            .foregroundColor(level == .normal ? palette.secondaryText
+                                             : level == .elevated ? palette.warmInk : palette.hot)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .font(.system(size: 12).monospacedDigit())
+                    CapacityBar(fraction: disk.fraction, color: level.color(palette, normal: palette.capacity),
+                                palette: palette)
+                        .frame(height: 6)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func percent(_ fraction: Double?) -> String {
+        fraction.map { "\(Int(($0 * 100).rounded()))%" } ?? "—"
+    }
+
+    /// "29 GB" above ten gigabytes, "4.2 GB" below, where the tenth matters.
+    private func wholeGigabytes(_ bytes: UInt64?) -> String {
+        guard let bytes else { return "—" }
+        let gigabytes = Double(bytes) / PanelByteFormat.gibibyte
+        return String(format: gigabytes >= 10 ? "%.0f GB" : "%.1f GB", gigabytes)
+    }
+
+    /// "8.4 / 16 GB": used to a tenth, installed memory as the whole number Apple sells.
+    private func memoryMeta(_ memory: MemoryBreakdown) -> String {
+        String(
+            format: "%.1f / %.0f GB",
+            Double(memory.usedBytes) / PanelByteFormat.gibibyte,
+            Double(memory.totalBytes) / PanelByteFormat.gibibyte
+        )
+    }
+}
+
+/// How much attention a resource needs. Processors spike briefly and recover, so they warn
+/// later than memory, which only fills up; disks are judged by the space left.
+private enum ResourceLevel {
+    case normal
+    case elevated
+    case critical
+
+    struct Thresholds {
+        var elevated: Double
+        var critical: Double
+
+        static let processor = Thresholds(elevated: 0.7, critical: 0.9)
+        static let capacity = Thresholds(elevated: 0.8, critical: 0.9)
+    }
+
+    init(fraction: Double?, thresholds: Thresholds) {
+        switch fraction ?? 0 {
+        case thresholds.critical...: self = .critical
+        case thresholds.elevated...: self = .elevated
+        default: self = .normal
+        }
+    }
+
+    /// Low under 10% or 20 GB free; almost full under 2% or 5 GB.
+    init(freeBytes: UInt64?, totalBytes: UInt64?) {
+        guard let freeBytes, let totalBytes, totalBytes > 0 else {
+            self = .normal
+            return
+        }
+        let free = Double(freeBytes)
+        let freeFraction = free / Double(totalBytes)
+        let gigabyte = PanelByteFormat.gibibyte
+        if free < 5 * gigabyte || freeFraction < 0.02 {
+            self = .critical
+        } else if free < 20 * gigabyte || freeFraction < 0.10 {
+            self = .elevated
+        } else {
+            self = .normal
+        }
+    }
+
+    /// Green, orange, red: the same steps as temperature. Capacity passes its own neutral.
+    func color(_ palette: PanelPalette, normal: Color? = nil) -> Color {
+        switch self {
+        case .normal: normal ?? palette.accent
+        case .elevated: palette.warm
+        case .critical: palette.hot
+        }
+    }
+
+    /// VoiceOver hears the state the color shows; sighted users read the percentage.
+    var spokenName: String? {
+        switch self {
+        case .normal: nil
+        case .elevated: fanBarText("偏高", "High")
+        case .critical: fanBarText("很高", "Very high")
+        }
+    }
+
+    var diskSpokenName: String? {
+        switch self {
+        case .normal: nil
+        case .elevated: fanBarText("空间偏低", "Space low")
+        case .critical: fanBarText("空间不足", "Almost full")
+        }
+    }
+}
+
+// MARK: - Visualizations
+
+/// App and compressed memory, which set the level, in its color; reclaimable cache stays neutral.
+private struct MemoryBar: View {
+    static let compressedOpacity = 0.55
+
+    let memory: MemoryBreakdown?
+    let usedColor: Color
+    let palette: PanelPalette
+
+    var body: some View {
+        GeometryReader { proxy in
+            HStack(spacing: 1) {
+                if let memory, memory.totalBytes > 0 {
+                    let total = Double(memory.totalBytes)
+                    segment(Double(memory.appBytes) / total, usedColor, width: proxy.size.width)
+                    segment(
+                        Double(memory.compressedBytes) / total,
+                        usedColor.opacity(Self.compressedOpacity),
+                        width: proxy.size.width
+                    )
+                    segment(Double(memory.cachedBytes) / total, palette.memoryCache, width: proxy.size.width)
+                }
+                Spacer(minLength: 0)
+            }
+            .background(palette.well)
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func segment(_ fraction: Double, _ color: Color, width: CGFloat) -> some View {
+        Rectangle()
+            .fill(color)
+            .frame(width: max(0, CGFloat(fraction) * width - 1))
+    }
+}
+
+/// One filled bar for load or capacity.
+private struct CapacityBar: View {
+    let fraction: Double?
+    let color: Color
+    let palette: PanelPalette
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                palette.well
+                color.frame(width: CGFloat(min(1, max(0, fraction ?? 0))) * proxy.size.width)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Per-core load bars in performance and efficiency groups, each labelled under its own bars.
+/// Every bar takes the overall CPU color: efficiency cores often run full, which is not an alarm.
+private struct CoreGroups: View {
+    let fractions: [Double]
+    let kinds: [CPUCoreKind]
+    let coreCount: Int?
+    let color: Color
+    let barHeight: CGFloat
+    let palette: PanelPalette
+
+    private static let groupGap: CGFloat = 6
+
+    private struct CoreGroup: Identifiable {
+        var id: String { title }
+        var title: String
+        var loads: [Double]
+    }
+
+    private var groups: [CoreGroup] {
+        let placeholderCount = coreCount ?? (kinds.isEmpty ? ProcessInfo.processInfo.activeProcessorCount : kinds.count)
+        let loads = fractions.isEmpty ? Array(repeating: 0, count: placeholderCount) : fractions
+        guard kinds.count == loads.count, Set(kinds.map { $0 == .performance }).count > 1 else {
+            return [CoreGroup(title: fanBarFormat("%d 核", "%d cores", loads.count), loads: loads)]
+        }
+        let performance = zip(kinds, loads).filter { $0.0 == .performance }.map(\.1)
+        let efficiency = zip(kinds, loads).filter { $0.0 == .efficiency }.map(\.1)
+        return [
+            CoreGroup(title: fanBarFormat("性能核 ×%d", "Performance ×%d", performance.count), loads: performance),
+            CoreGroup(title: fanBarFormat("能效核 ×%d", "Efficiency ×%d", efficiency.count), loads: efficiency)
+        ]
+    }
+
+    var body: some View {
+        let groups = groups
+        let total = max(groups.reduce(0) { $0 + $1.loads.count }, 1)
+        // Mac Pro and Ultra chips have 24+ cores; tighter gaps keep each bar readable.
+        let barSpacing: CGFloat = total > 16 ? 1 : 2
+        GeometryReader { proxy in
+            let available = proxy.size.width - CGFloat(groups.count - 1) * Self.groupGap
+            HStack(alignment: .top, spacing: Self.groupGap) {
+                ForEach(groups) { group in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: barSpacing) {
+                            ForEach(Array(group.loads.enumerated()), id: \.offset) { _, load in
+                                ZStack(alignment: .bottom) {
+                                    RoundedRectangle(cornerRadius: 2).fill(palette.well)
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(color)
+                                        .frame(height: max(2, barHeight * CGFloat(min(1, max(0, load)))))
+                                }
+                                .frame(height: barHeight)
+                            }
+                        }
+                        Text(group.title)
+                            .font(.system(size: 11))
+                            .foregroundColor(palette.secondaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(width: available * CGFloat(group.loads.count) / CGFloat(total), alignment: .leading)
+                }
+            }
+        }
+        .frame(height: barHeight + 6 + 14)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(fanBarText("每核 CPU 使用率", "CPU usage per core"))
+        .accessibilityValue(fractions.map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: ", "))
+    }
+}
