@@ -121,7 +121,8 @@ final class DeviceCompatibilityLayoutTests: XCTestCase {
         ] {
             UserDefaults.standard.set(language.rawValue, forKey: FanBarLanguage.preferenceKey)
             let host = NSHostingView(rootView: OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {}))
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: OnboardingCard.height(for: controller.helperState)),
+            let height = OnboardingCard.height(for: controller.helperState)
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: OnboardingCard.width, height: height),
                                   styleMask: [.titled], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.contentView = host

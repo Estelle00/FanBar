@@ -3,7 +3,7 @@ import XCTest
 @testable import FanBar
 
 final class TemperatureLogTests: XCTestCase {
-    private var directory: URL!
+    private var directory = FileManager.default.temporaryDirectory
     private var savedDefaults: [String: Any] = [:]
 
     override func setUpWithError() throws {
@@ -158,7 +158,7 @@ final class TemperatureLogTests: XCTestCase {
     func testDailyPolicyRollsOverToNextDayFile() throws {
         let writer = TemperatureLogWriter()
         let calendar = Calendar.current
-        let day = calendar.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 23, minute: 59, second: 50))!
+        let day = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 23, minute: 59, second: 50)))
         writer.append(sample(at: day), settings: settings(policy: .daily))
         writer.append(sample(at: day.addingTimeInterval(20)), settings: settings(policy: .daily))
 
@@ -214,7 +214,7 @@ final class TemperatureLogTests: XCTestCase {
 
     func testDailyPolicyWritesOneHeaderPerDayFile() throws {
         let writer = TemperatureLogWriter()
-        let day = Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 9))!
+        let day = try XCTUnwrap(Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 9)))
         for offset in stride(from: 0.0, to: 60, by: 10) {
             writer.append(sample(at: day.addingTimeInterval(offset)), settings: settings(policy: .daily))
         }
