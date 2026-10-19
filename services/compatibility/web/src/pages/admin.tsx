@@ -134,7 +134,7 @@ type DiagnosticDetail = {
     recentSamples?: unknown[];
     discovery?: { reportedKeyCount?: number; scannedKeyCount: number; truncated: boolean; probesTruncated?: boolean; errorCode?: number };
     probes: { sensor: string; key?: string; source?: string; stage?: string; result: string; value?: number;
-      code?: number; dataType?: string; dataSize?: number; rawBytes?: string; recognized?: boolean }[];
+      code?: number; dataType?: string; dataSize?: number; rawBytes?: string; recognized?: boolean; name?: string }[];
   };
 };
 
@@ -169,7 +169,7 @@ function DiagnosticEvidence({ detail }: { detail: DiagnosticDetail }) {
     <div className="overflow-auto"><table className="w-full text-left text-xs">
       <thead><tr>{['来源 / 键', '阶段 / 结果', '读数 / 错误码', '类型 / 长度 / 原始字节'].map(label => <th key={label} className="p-3">{t(label)}</th>)}</tr></thead>
       <tbody>{data.probes.map((row, index) => <tr key={index} className="border-t border-kumo-line">
-        <td className="p-3">{row.sensor} · {row.source ?? 'smc'} · {row.key ?? '—'}</td>
+        <td className="p-3">{row.sensor} · {row.source ?? 'smc'} · {row.key ?? row.name ?? '—'}</td>
         <td className="p-3">{row.stage ?? '—'} · {row.result}</td>
         <td className="p-3">{row.value ?? '—'} / {row.code === undefined ? '—' : `${row.code} (0x${(row.code >>> 0).toString(16)})`}</td>
         <td className="p-3 font-mono">{row.dataType ?? '—'} / {row.dataSize ?? '—'} / {row.rawBytes ?? '—'}</td>

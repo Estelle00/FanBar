@@ -32,13 +32,15 @@ export const diagnosticSchema = z.strictObject({
   probes: z.array(z.strictObject({
     sensor: z.enum(['cpu', 'gpu', 'ssd', 'battery', 'fan', 'unclassified']),
     key: z.string().regex(/^[A-Za-z0-9]{4}$/).optional(),
+    // HID sensors are identified by their fixed Product label instead of an SMC key.
+    name: z.string().regex(/^[A-Za-z0-9 ]{1,48}$/).optional(),
     result: z.enum(['available', 'outOfRange', 'unsupportedFormat', 'readFailed', 'serviceMissing', 'propertyMissing']),
     value: temperature.optional(), code: errorCode.optional(),
-    source: z.enum(['smc', 'embeddedNVMe', 'nvmeSMART', 'smartBattery', 'batteryPack']).optional(),
-    stage: z.enum(['keyInfo', 'readBytes', 'fallback', 'serviceMatch', 'propertyRead', 'decode']).optional(),
+    source: z.enum(['smc', 'embeddedNVMe', 'nvmeSMART', 'smartBattery', 'batteryPack', 'hid']).optional(),
+    stage: z.enum(['keyInfo', 'readBytes', 'fallback', 'serviceMatch', 'propertyRead', 'decode', 'readEvent']).optional(),
     dataType: z.string().regex(/^[0-9a-f]{8}$/).optional(), dataSize: z.number().int().min(0).max(4294967295).optional(),
     rawBytes: z.string().regex(/^(?:[0-9a-f]{2}){0,8}$/).optional(), recognized: z.boolean().optional(),
-  })).max(256),
+  })).max(320),
   helperStateSource: z.enum(['runtime', 'lastRecorded', 'unavailable']).optional(),
   helperLogAvailable: z.boolean().optional(), crashLogAvailable: z.boolean().optional(),
   runtimeContext: z.strictObject({

@@ -41,7 +41,7 @@ it('rejects private extra fields, obsolete policy, excessive probes and bytes', 
   expect((await request('/api/diagnostics', 'POST', { ...body, userName: 'private' })).status).toBe(400);
   expect((await request('/api/diagnostics', 'POST', { ...body, probes: [{ ...body.probes[0], filePath: '/private' }] })).status).toBe(400);
   expect((await request('/api/diagnostics', 'POST', body, credential, 'old')).status).toBe(409);
-  expect((await request('/api/diagnostics', 'POST', { ...body, probes: Array(257).fill(body.probes[0]) })).status).toBe(400);
+  expect((await request('/api/diagnostics', 'POST', { ...body, probes: Array(321).fill(body.probes[0]) })).status).toBe(400);
   expect((await request('/api/diagnostics', 'POST', { ...body, extra: 'x'.repeat(262144) })).status).toBe(413);
 });
 it('withdraws idempotently and blocks late arrivals', async () => {
@@ -147,4 +147,12 @@ it('accepts the running helper build and separates scan from probe truncation', 
   expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'connectionFailed', code: 4097 } })).status).toBe(201);
   expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'reported', build: '/Users/me' } })).status).toBe(400);
   expect((await request('/api/diagnostics', 'POST', { ...fixture(), runningHelper: { status: 'running' } })).status).toBe(400);
+});
+
+it('accepts HID sensor probes by label but rejects arbitrary names', async () => {
+  const hid = { sensor: 'cpu', name: 'pACC MTR Temp Sensor0', result: 'available', value: 41.5, source: 'hid', stage: 'readEvent', recognized: true };
+  const body = { ...fixture(), probes: [...Array(300).fill(fixture().probes[0]), hid] };
+  expect((await request('/api/diagnostics', 'POST', body)).status).toBe(201);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), probes: [{ ...hid, name: '/Users/me' }] })).status).toBe(400);
+  expect((await request('/api/diagnostics', 'POST', { ...fixture(), probes: [{ ...hid, name: 'x'.repeat(49) }] })).status).toBe(400);
 });

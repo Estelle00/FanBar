@@ -16,6 +16,8 @@ struct DiagnosticProbe: Codable, Equatable, Sendable {
     var dataSize: Int?
     var rawBytes: String?
     var recognized: Bool?
+    /// Fixed HID Product label, e.g. "pACC MTR Temp Sensor0"; `key` stays SMC-only.
+    var name: String?
 }
 
 struct DiagnosticReport: Encodable {

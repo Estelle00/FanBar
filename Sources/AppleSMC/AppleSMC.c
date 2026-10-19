@@ -170,22 +170,27 @@ int fanbar_smc_write(uint32_t key, const FanBarSMCValue *value) {
 }
 
 #if defined(__arm64__)
-// Discovering the NAND sensors means creating an event-system client and
-// reading the Product name of every HID service, which is far more work than
-// reading their temperatures. Telemetry asks every two seconds, so discover
-// once and keep the client and the matching services. Called only from the
-// app's main thread, so no locking.
-static IOHIDEventSystemClientRef nand_client = NULL;
-static CFMutableArrayRef nand_services = NULL;
+// Discovering the sensors means creating an event-system client and reading
+// the Product name of every HID service, which is far more work than reading
+// their temperatures. Telemetry asks every two seconds, so discover once and
+// keep the client, the services and their names. Diagnostics collect on a
+// background thread with their own SMC reader, so the shared cache is locked.
+static pthread_mutex_t hid_lock = PTHREAD_MUTEX_INITIALIZER;
+static IOHIDEventSystemClientRef hid_client = NULL;
+static CFMutableArrayRef hid_services = NULL;
+static CFMutableArrayRef hid_names = NULL;
 
-static void fanbar_discard_nand_sensors(void) {
-    if (nand_services != NULL) CFRelease(nand_services);
-    if (nand_client != NULL) CFRelease(nand_client);
-    nand_services = NULL;
-    nand_client = NULL;
+static void fanbar_discard_hid_sensors(void) {
+    if (hid_names != NULL) CFRelease(hid_names);
+    if (hid_services != NULL) CFRelease(hid_services);
+    if (hid_client != NULL) CFRelease(hid_client);
+    hid_names = NULL;
+    hid_services = NULL;
+    hid_client = NULL;
 }
 
-static bool fanbar_discover_nand_sensors(void) {
+static bool fanbar_discover_hid_sensors(void) {
+    // Apple-vendor usage page, temperature-sensor usage.
     int32_t usage_page = 0xff00;
     int32_t usage = 0x0005;
     CFNumberRef usage_page_number = CFNumberCreate(
@@ -233,29 +238,88 @@ static bool fanbar_discover_nand_sensors(void) {
     }
 
     CFMutableArrayRef sensors = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    CFMutableArrayRef names = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
     CFIndex service_count = CFArrayGetCount(services);
-    for (CFIndex index = 0; sensors != NULL && index < service_count; index++) {
+    for (CFIndex index = 0; sensors != NULL && names != NULL && index < service_count; index++) {
         IOHIDServiceClientRef service = (IOHIDServiceClientRef)
             CFArrayGetValueAtIndex(services, index);
         CFTypeRef product = IOHIDServiceClientCopyProperty(service, CFSTR("Product"));
-        bool is_nand_sensor = product != NULL
-            && CFGetTypeID(product) == CFStringGetTypeID()
-            && CFStringHasPrefix((CFStringRef)product, CFSTR("NAND CH"));
+        if (product != NULL && CFGetTypeID(product) == CFStringGetTypeID()) {
+            CFArrayAppendValue(sensors, service);
+            CFArrayAppendValue(names, product);
+        }
         if (product != NULL) CFRelease(product);
-        if (is_nand_sensor) CFArrayAppendValue(sensors, service);
     }
     CFRelease(services);
 
-    if (sensors == NULL || CFArrayGetCount(sensors) == 0) {
+    if (sensors == NULL || names == NULL || CFArrayGetCount(sensors) == 0) {
         if (sensors != NULL) CFRelease(sensors);
+        if (names != NULL) CFRelease(names);
         CFRelease(client);
         return false;
     }
-    nand_client = client;
-    nand_services = sensors;
+    hid_client = client;
+    hid_services = sensors;
+    hid_names = names;
     return true;
 }
+
+// Caller holds hid_lock and has a discovered cache.
+static int fanbar_read_hid_sensors(
+    const char *prefix,
+    FanBarHIDTemperature *sensors,
+    int capacity
+) {
+    CFStringRef prefix_string = prefix == NULL ? NULL
+        : CFStringCreateWithCString(kCFAllocatorDefault, prefix, kCFStringEncodingUTF8);
+    int count = 0;
+    int answered = 0;
+    CFIndex service_count = CFArrayGetCount(hid_services);
+    for (CFIndex index = 0; index < service_count && count < capacity; index++) {
+        CFStringRef name = (CFStringRef)CFArrayGetValueAtIndex(hid_names, index);
+        if (prefix_string != NULL && !CFStringHasPrefix(name, prefix_string)) continue;
+
+        FanBarHIDTemperature *sensor = &sensors[count++];
+        memset(sensor, 0, sizeof(*sensor));
+        CFStringGetCString(name, sensor->name, sizeof(sensor->name), kCFStringEncodingUTF8);
+        IOHIDEventRef event = IOHIDServiceClientCopyEvent(
+            (IOHIDServiceClientRef)CFArrayGetValueAtIndex(hid_services, index),
+            FANBAR_HID_EVENT_TYPE_TEMPERATURE,
+            0,
+            0
+        );
+        if (event == NULL) continue;
+        sensor->celsius = IOHIDEventGetFloatValue(
+            event,
+            FANBAR_HID_EVENT_FIELD_BASE(FANBAR_HID_EVENT_TYPE_TEMPERATURE)
+        );
+        sensor->has_value = 1;
+        answered++;
+        CFRelease(event);
+    }
+    if (prefix_string != NULL) CFRelease(prefix_string);
+    // Matching services that all stopped answering have gone stale (e.g.
+    // after sleep); rediscover on the next call.
+    if (count > 0 && answered == 0) fanbar_discard_hid_sensors();
+    return count;
+}
 #endif
+
+int fanbar_hid_temperatures(const char *prefix, FanBarHIDTemperature *sensors, int capacity) {
+    if (sensors == NULL || capacity <= 0) return -1;
+#if !defined(__arm64__)
+    (void)prefix;
+    return -1;
+#else
+    pthread_mutex_lock(&hid_lock);
+    int count = -1;
+    if (hid_services != NULL || fanbar_discover_hid_sensors()) {
+        count = fanbar_read_hid_sensors(prefix, sensors, capacity);
+    }
+    pthread_mutex_unlock(&hid_lock);
+    return count;
+#endif
+}
 
 int fanbar_embedded_nvme_temperature(double *temperature) {
     if (temperature == NULL) return KERN_INVALID_ARGUMENT;
@@ -265,41 +329,19 @@ int fanbar_embedded_nvme_temperature(double *temperature) {
     // specific to Apple Silicon's embedded storage controller.
     return KERN_FAILURE;
 #else
-    if (nand_services == NULL && !fanbar_discover_nand_sensors()) {
-        return KERN_FAILURE;
-    }
-
+    FanBarHIDTemperature sensors[32];
+    int count = fanbar_hid_temperatures("NAND CH", sensors, 32);
     double total = 0.0;
-    CFIndex count = 0;
-    CFIndex service_count = CFArrayGetCount(nand_services);
-    for (CFIndex index = 0; index < service_count; index++) {
-        IOHIDServiceClientRef service = (IOHIDServiceClientRef)
-            CFArrayGetValueAtIndex(nand_services, index);
-        IOHIDEventRef event = IOHIDServiceClientCopyEvent(
-            service,
-            FANBAR_HID_EVENT_TYPE_TEMPERATURE,
-            0,
-            0
-        );
-        if (event == NULL) continue;
-        double celsius = IOHIDEventGetFloatValue(
-            event,
-            FANBAR_HID_EVENT_FIELD_BASE(FANBAR_HID_EVENT_TYPE_TEMPERATURE)
-        );
-        CFRelease(event);
-        if (celsius >= 10.0 && celsius <= 120.0) {
+    int valid = 0;
+    for (int index = 0; index < count; index++) {
+        double celsius = sensors[index].celsius;
+        if (sensors[index].has_value && celsius >= 10.0 && celsius <= 120.0) {
             total += celsius;
-            count++;
+            valid++;
         }
     }
-
-    if (count == 0) {
-        // The cached services may have gone stale (e.g. after sleep);
-        // rediscover on the next call.
-        fanbar_discard_nand_sensors();
-        return KERN_FAILURE;
-    }
-    *temperature = total / (double)count;
+    if (valid == 0) return KERN_FAILURE;
+    *temperature = total / (double)valid;
     return KERN_SUCCESS;
 #endif
 }

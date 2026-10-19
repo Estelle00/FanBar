@@ -22,6 +22,17 @@ int fanbar_smc_write(uint32_t key, const FanBarSMCValue *value);
 // Apple-vendor HID temperature sensors. Intel builds report unavailable.
 int fanbar_embedded_nvme_temperature(double *temperature);
 
+typedef struct {
+    char name[64];
+    double celsius;
+    int has_value;
+} FanBarHIDTemperature;
+
+// Fills up to `capacity` Apple-vendor HID temperature sensors whose Product
+// name starts with `prefix` (NULL for all), with unfiltered values. Returns
+// the number filled, or -1 when the sensors are unavailable (always on Intel).
+int fanbar_hid_temperatures(const char *prefix, FanBarHIDTemperature *sensors, int capacity);
+
 // Returns the standard NVMe SMART temperature in Celsius when available.
 int fanbar_nvme_temperature(double *temperature);
 
