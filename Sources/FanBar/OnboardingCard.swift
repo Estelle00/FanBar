@@ -191,7 +191,7 @@ struct OnboardingCard: View {
         SettingsChrome.settingsCard {
             VStack(alignment: .leading, spacing: 0) {
                 onboardingFeature(
-                    icon: "gauge.with.dots.needle.67percent",
+                    icon: FanBarSymbols.gauge,
                     title: fanBarText("一眼看风扇是否正常", "See at a glance whether the fans are fine"),
                     detail: fanBarText(
                         "标题直接写出状态和由谁控制；温度过高时会提醒。",

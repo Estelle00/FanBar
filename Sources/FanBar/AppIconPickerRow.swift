@@ -108,7 +108,7 @@ private struct AppIconPreview: View {
                     .interpolation(choice == .pixel ? .none : .high)
                     .scaledToFit()
             } else {
-                Image(systemName: "fan")
+                Image(systemName: FanBarSymbols.fan)
                     .resizable()
                     .scaledToFit()
                     .foregroundColor(.secondary)

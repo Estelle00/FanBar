@@ -566,12 +566,9 @@ struct SpinningFanGlyph: View {
             .accessibilityHidden(true)
     }
 
-    @ViewBuilder private var glyph: some View {
-        if #available(macOS 13.0, *) {
-            Image(systemName: "fanblades")
-        } else {
-            Image(systemName: "fan")
-        }
+    // The old check sent macOS 11-12 to "fan", which only exists from macOS 14.
+    private var glyph: some View {
+        Image(systemName: FanBarSymbols.fanBlades)
     }
 }
 
