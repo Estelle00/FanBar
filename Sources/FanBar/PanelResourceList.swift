@@ -188,12 +188,10 @@ struct PanelResourceList: View {
         let isOpen = expanded == .disk
         let level = diskLevel
         let summary: Text = {
-            let total = Text(fanBarFormat("共 %@", "%@ total", wholeGigabytes(usage.diskTotalBytes)))
+            let total = Text(fanBarFormat("共 %@", "%@ total", wholeGigabytes(diskTotalBytes)))
             switch level {
             case .normal:
-                return total + Text(usage.disks.count > 1
-                    ? fanBarFormat(" · %d 块磁盘", " · %d disks", usage.disks.count)
-                    : "")
+                return total
             case .elevated:
                 return Text(fanBarText("空间偏低", "Space low")).fontWeight(.semibold).foregroundColor(palette.warmInk)
                     + Text(" · ") + total
@@ -202,13 +200,13 @@ struct PanelResourceList: View {
                     + Text(" · ") + total
             }
         }()
-        let used = percent(usage.diskFraction)
+        let used = percent(diskFraction)
         return Button {
             setExpanded(isOpen ? nil : .disk)
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 labelRow(
-                    title: fanBarText("磁盘", "Disk"),
+                    title: diskTitle,
                     meta: fanBarFormat("已用 %@", "%@ used", used),
                     chevron: isOpen ? "chevron.up" : "chevron.down"
                 )
@@ -221,7 +219,7 @@ struct PanelResourceList: View {
                         .foregroundColor(palette.secondaryText)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    CapacityBar(fraction: usage.diskFraction, color: level.color(palette, normal: palette.capacity),
+                    CapacityBar(fraction: diskFraction, color: level.color(palette, normal: palette.capacity),
                                 palette: palette)
                         .frame(height: 6)
                     summary
@@ -237,9 +235,8 @@ struct PanelResourceList: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PanelDimButtonStyle())
-        .focusable(false)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(fanBarText("磁盘", "Disk"))
+        .accessibilityLabel(diskTitle)
         .accessibilityValue([
             fanBarFormat("可用 %@", "%@ free", wholeGigabytes(freeDiskBytes)),
             fanBarFormat("已用 %@", "%@ used", used),
@@ -273,13 +270,25 @@ struct PanelResourceList: View {
         level(resource).color(palette)
     }
 
-    private var freeDiskBytes: UInt64? {
-        guard let used = usage.diskUsedBytes, let total = usage.diskTotalBytes else { return nil }
+    // Every overview value describes the startup volume. Free space on an
+    // external volume cannot make room for system updates or swap on this one.
+    private var startupDisk: DiskVolumeUsage? { usage.disks.first { $0.id == "/" } }
+
+    var diskTitle: String { fanBarText("启动盘", "Startup disk") }
+
+    var diskTotalBytes: UInt64? { startupDisk?.totalBytes }
+
+    var diskFraction: Double? { startupDisk?.fraction }
+
+    var freeDiskBytes: UInt64? {
+        guard let disk = startupDisk else { return nil }
+        let used = disk.usedBytes
+        let total = disk.totalBytes
         return total > used ? total - used : 0
     }
 
-    private var diskLevel: ResourceLevel {
-        ResourceLevel(freeBytes: freeDiskBytes, totalBytes: usage.diskTotalBytes)
+    var diskLevel: ResourceLevel {
+        ResourceLevel(freeBytes: freeDiskBytes, totalBytes: diskTotalBytes)
     }
 
     // MARK: Formatting
@@ -315,7 +324,6 @@ struct PanelResourceList: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PanelDimButtonStyle())
-                .focusable(false)
                 .foregroundColor(palette.secondaryText)
                 .padding(.trailing, -5)
                 .accessibilityLabel(fanBarText("收起磁盘详情", "Hide disk details"))
@@ -372,7 +380,7 @@ struct PanelResourceList: View {
 
 /// How much attention a resource needs. Processors spike briefly and recover, so they warn
 /// later than memory, which only fills up; disks are judged by the space left.
-private enum ResourceLevel {
+enum ResourceLevel: Equatable {
     case normal
     case elevated
     case critical

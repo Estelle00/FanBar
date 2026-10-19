@@ -194,6 +194,9 @@ final class TemperatureLogWriter: @unchecked Sendable {
     /// Closes the file and forgets the session, so the next write starts a new file when the policy asks for one.
     func reset() {
         closeFile()
+        openedBaseURL = nil
+        openedFileName = nil
+        openedColumns = []
         sessionStamp = nil
         setStatus(.idle)
     }
@@ -238,12 +241,15 @@ final class TemperatureLogWriter: @unchecked Sendable {
         try FileManager.default.createDirectory(at: settings.directory, withIntermediateDirectories: true)
         let header = TemperatureLogFormat.header(for: settings)
         var url = baseURL
-        if FileManager.default.fileExists(atPath: url.path), Self.firstLine(of: url) != header {
-            // Changing the visible columns must not append rows under an old header.
-            let name = baseURL.deletingPathExtension().lastPathComponent
-            // A full date-time stamp, so the fixed-name "never" policy cannot collide across days.
+        let name = baseURL.deletingPathExtension().lastPathComponent
+        let stamp = Self.stamp(date, format: "yyyy-MM-dd HH-mm-ss")
+        var collision = 0
+        while FileManager.default.fileExists(atPath: url.path), Self.firstLine(of: url) != header {
+            // Validate every candidate, including same-second fallback files.
+            let suffix = collision == 0 ? "" : " (\(collision))"
             url = baseURL.deletingLastPathComponent()
-                .appendingPathComponent("\(name) \(Self.stamp(date, format: "yyyy-MM-dd HH-mm-ss")).csv")
+                .appendingPathComponent("\(name) \(stamp)\(suffix).csv")
+            collision += 1
         }
         if !FileManager.default.fileExists(atPath: url.path) {
             let bytes = Data(("\u{FEFF}" + header + "\n").utf8)

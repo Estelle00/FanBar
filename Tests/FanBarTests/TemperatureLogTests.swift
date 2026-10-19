@@ -442,3 +442,72 @@ final class TemperatureLogTests: XCTestCase {
                        "intervals outside the offered options are ignored")
     }
 }
+
+extension TemperatureLogTests {
+    func testResetReopensSameFileForEveryPolicy() throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        for policy in TemperatureLogPreferences.NewLogPolicy.allCases {
+            var options = settings(policy: policy)
+            options.directory = directory.appendingPathComponent(policy.rawValue)
+            let writer = TemperatureLogWriter()
+            writer.append(sample(at: start), settings: options)
+            writer.reset()
+            // Even a same-second reset must reopen the handle, including onStartup.
+            writer.append(sample(at: start), settings: options)
+            let files = try FileManager.default.contentsOfDirectory(at: options.directory, includingPropertiesForKeys: nil)
+            let file = try XCTUnwrap(files.first)
+            XCTAssertEqual(writer.status, .recording(fileName: file.lastPathComponent), policy.rawValue)
+            XCTAssertEqual(try lines(of: file).count, 3, policy.rawValue)
+        }
+    }
+
+    func testSameSecondColumnChangesDoNotMixSchemas() throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let writer = TemperatureLogWriter()
+        let options = [settings(), settings(fanSpeeds: false), settings(temperatures: false)]
+        for option in options {
+            writer.append(sample(at: start), settings: option)
+        }
+        // Reopening a compatible fallback should append to it, without another header.
+        writer.reset()
+        writer.append(sample(at: start), settings: options[1])
+
+        let files = try csvFiles()
+        XCTAssertEqual(files.count, 3)
+        var rowCount = 0
+        for file in files {
+            let rows = try lines(of: file)
+            let header = try XCTUnwrap(rows.first)
+            let columnCount = header.split(separator: ",", omittingEmptySubsequences: false).count
+            for row in rows.dropFirst() {
+                XCTAssertEqual(row.split(separator: ",", omittingEmptySubsequences: false).count, columnCount)
+                rowCount += 1
+            }
+        }
+        XCTAssertEqual(rowCount, 4)
+    }
+
+    @MainActor
+    func testRecorderKeepsWritingAfterIntervalChangeAndReenabling() throws {
+        enableLogging()
+        let recorder = TemperatureLogRecorder()
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        recorder.record(thermal: thermal(at: start), fans: [], mode: .automatic)
+        recorder.waitForPendingWrites()
+
+        UserDefaults.standard.set(2, forKey: TemperatureLogPreferences.intervalKey)
+        recorder.record(thermal: thermal(at: start.addingTimeInterval(2)), fans: [], mode: .automatic)
+        recorder.waitForPendingWrites()
+
+        UserDefaults.standard.set(false, forKey: TemperatureLogPreferences.enabledKey)
+        recorder.record(thermal: thermal(at: start.addingTimeInterval(4)), fans: [], mode: .automatic)
+        recorder.waitForPendingWrites()
+        UserDefaults.standard.set(true, forKey: TemperatureLogPreferences.enabledKey)
+        recorder.record(thermal: thermal(at: start.addingTimeInterval(6)), fans: [], mode: .automatic)
+        recorder.waitForPendingWrites()
+
+        let file = try XCTUnwrap(try csvFiles().first)
+        XCTAssertEqual(try lines(of: file).count, 4)
+        XCTAssertEqual(recorder.status, .recording(fileName: file.lastPathComponent))
+    }
+}

@@ -78,9 +78,8 @@ struct PanelPalette {
     }
 }
 
-/// A part whose temperature the panel watches, each with its own limits. One
-/// shared threshold would either nag about a normal CPU or stay silent about
-/// a hot battery.
+/// CPU/GPU share the configured alert threshold with notifications and CSV logs.
+/// Storage and battery retain their lower, part-specific health limits.
 enum ThermalPart: CaseIterable, Equatable {
     case cpu
     case gpu
@@ -89,28 +88,28 @@ enum ThermalPart: CaseIterable, Equatable {
 
     var name: String {
         switch self {
-        case .cpu: "CPU"
+        case .cpu: fanBarText("CPU 平均", "CPU average")
         case .gpu: "GPU"
         case .ssd: "SSD"
         case .battery: fanBarText("电池", "Battery")
         }
     }
 
-    /// CPU uses the hottest core, which is what throttling responds to.
+    /// Heat assessment uses the same average as notifications and the CSV log.
     var keyPath: KeyPath<ThermalReading, Double?> {
         switch self {
-        case .cpu: \.cpuDisplayCelsius
+        case .cpu: \.cpuCelsius
         case .gpu: \.gpuCelsius
         case .ssd: \.ssdCelsius
         case .battery: \.batteryCelsius
         }
     }
 
-    /// Apple silicon and Intel CPUs and GPUs throttle near 100 °C; NVMe drives
-    /// commonly slow down from 70–80 °C; lithium-ion cells age faster above 40 °C.
+    /// Leave a warm band below the configured chip alert, without raising the
+    /// usual 85 °C warm boundary when the user raises the alert threshold.
     var warmThreshold: Double {
         switch self {
-        case .cpu, .gpu: 85
+        case .cpu, .gpu: min(85, hotThreshold - 5)
         case .ssd: 65
         case .battery: 40
         }
@@ -118,7 +117,7 @@ enum ThermalPart: CaseIterable, Equatable {
 
     var hotThreshold: Double {
         switch self {
-        case .cpu, .gpu: 95
+        case .cpu, .gpu: ThermalAlertSettings.thresholdCelsius
         case .ssd: 75
         case .battery: 45
         }
@@ -268,7 +267,6 @@ struct PanelSegmentedControl<ID: Hashable>: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusable(false)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
