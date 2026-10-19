@@ -138,3 +138,12 @@ Helper events now cover the last 24 hours for failures, rejections and lifecycle
 bounded to 64 events. `discovery.truncated` now means only that the SMC key scan stopped early;
 `discovery.probesTruncated` means the scan finished but some unrecognized keys were left out of
 the probe list.
+
+### Diagnostics revision (diagnostics-2026-10-19-v5)
+
+Adds up to 64 Apple Silicon HID temperature-sensor probes (source `hid`, stage `readEvent`) so
+reports can show why SMC CPU/GPU keys are missing on some Macs. Each probe carries the sensor's
+fixed hardware Product label (for example `pACC MTR Temp Sensor0` or `PMU tdie1`, at most 48
+ASCII letters, digits and spaces), its category, outcome and Celsius value. Labels outside that
+character set are dropped on the device. The combined probe cap is now 320. No other HID
+service properties or device inventory are uploaded.

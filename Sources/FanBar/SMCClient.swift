@@ -140,9 +140,21 @@ final class SMCClient: FanReadingSource {
                 "Te05", "Te0S", "Te09", "Te0H",
                 "Tp01", "Tp05", "Tp09", "Tp0D", "Tp0V", "Tp0Y", "Tp0b", "Tp0e"
             ]
+        case let name where name.hasPrefix("Intel"):
+            return intelCoreTemperatureKeys + cpuTemperatureCandidates
         default:
             return cpuTemperatureCandidates
         }
+    }
+
+    /// Intel per-core digital sensors, e.g. TC1C for core 1 on MacBookPro16,3.
+    private static let intelCoreTemperatureKeys = (0..<10).map { "TC\($0)C" }
+
+    /// Per-core sensors measure the dies themselves. When any are readable,
+    /// package and proximity keys (TC0P sits beside the CPU) only dilute them.
+    static func preferredCPUKeys(_ readable: [String]) -> [String] {
+        let cores = readable.filter(intelCoreTemperatureKeys.contains)
+        return cores.isEmpty ? readable : cores
     }
 
     private static let gpuTemperatureCandidates = [
@@ -241,7 +253,8 @@ final class SMCClient: FanReadingSource {
 
     private func temperatures(
         cachedKeys: inout [String]?,
-        candidates: [String]
+        candidates: [String],
+        select: ([String]) -> [String] = { $0 }
     ) -> [Double] {
         if cachedKeys?.isEmpty == true,
            Date().timeIntervalSince(lastKeyProbe) >= Self.emptyProbeRetryInterval {
@@ -250,7 +263,7 @@ final class SMCClient: FanReadingSource {
         if cachedKeys == nil {
             // Keep any key that decodes as a temperature, even if the current
             // value is out of range (an idle GPU can read near 0 °C).
-            cachedKeys = candidates.filter { isTemperatureKey($0) }
+            cachedKeys = select(candidates.filter { isTemperatureKey($0) })
             lastKeyProbe = Date()
         }
         return (cachedKeys ?? []).compactMap(validTemperature)
@@ -333,7 +346,29 @@ final class SMCClient: FanReadingSource {
                 value: code == 0 && value.isFinite ? value : nil, code: code, source: source, stage: "fallback"))
         }
         probes += BatteryTemperatureReader.diagnosticProbes()
+        probes += Self.hidProbes(HIDTemperatureReader.all())
         return probes
+    }
+
+    /// HID sensors are listed by their fixed Product label, bounded to 64.
+    static func hidProbes(_ sensors: [HIDTemperature]?) -> [DiagnosticProbe] {
+        guard let sensors else {
+            return [DiagnosticProbe(sensor: "unclassified", key: nil, result: "serviceMissing", source: "hid", stage: "serviceMatch")]
+        }
+        return sensors.filter { HIDTemperatureSelector.isUploadableName($0.name) }
+            .sorted { $0.name < $1.name }
+            .prefix(64)
+            .map { sensor in
+                let result: String
+                if let celsius = sensor.celsius {
+                    result = (10...120).contains(celsius) ? "available" : "outOfRange"
+                } else { result = "readFailed" }
+                var probe = DiagnosticProbe(sensor: HIDTemperatureSelector.category(of: sensor.name), key: nil, result: result,
+                    value: sensor.celsius, source: "hid", stage: "readEvent",
+                    recognized: HIDTemperatureSelector.isRecognized(sensor.name))
+                probe.name = sensor.name
+                return probe
+            }
     }
 
     private func diagnosticProbe(_ name: String, sensor: String, recognized: Bool) -> DiagnosticProbe {
@@ -368,14 +403,21 @@ final class SMCClient: FanReadingSource {
     }
 
     func thermalReading(at date: Date = Date()) -> ThermalReading {
-        let cpuValues = temperatures(
+        var cpuValues = temperatures(
             cachedKeys: &cpuTemperatureKeys,
-            candidates: cpuCandidates
+            candidates: cpuCandidates,
+            select: Self.preferredCPUKeys
         )
-        let gpuValues = temperatures(
+        var gpuValues = temperatures(
             cachedKeys: &gpuTemperatureKeys,
             candidates: Self.gpuTemperatureCandidates
         )
+        // Some Apple Silicon Macs expose no readable SMC CPU/GPU keys; their
+        // HID sensors still answer. Only read them when SMC came up empty.
+        if cpuValues.isEmpty || gpuValues.isEmpty, let sensors = HIDTemperatureReader.all() {
+            if cpuValues.isEmpty { cpuValues = HIDTemperatureSelector.cpu(sensors) }
+            if gpuValues.isEmpty { gpuValues = HIDTemperatureSelector.gpu(sensors) }
+        }
         let ssdValues = temperatures(
             cachedKeys: &ssdTemperatureKeys,
             candidates: Self.ssdTemperatureCandidates

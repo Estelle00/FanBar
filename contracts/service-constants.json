@@ -6,7 +6,7 @@
     "maximumReportBytes": 16384
   },
   "diagnostics": {
-    "policyVersion": "diagnostics-2026-10-15-v4",
+    "policyVersion": "diagnostics-2026-10-19-v5",
     "retentionDays": 90,
     "maximumBytes": 262144
   }

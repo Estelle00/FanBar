@@ -23,4 +23,22 @@ struct CPUSensorSelectionTests {
         #expect(keys.contains("Tf04"))
         #expect(keys.contains("Tp00"))
     }
+
+    @Test func intelProbesPerCoreKeysFirst() {
+        let keys = SMCClient.cpuTemperatureCandidates(for: "Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz")
+        #expect(Array(keys.prefix(5)) == ["TC0C", "TC1C", "TC2C", "TC3C", "TC4C"])
+        #expect(keys.contains("TC0P"))
+        #expect(!SMCClient.cpuTemperatureCandidates(for: "Apple M1").contains("TC1C"))
+    }
+
+    @Test func perCoreKeysReplacePackageAndProximityKeys() {
+        // MacBookPro16,3 diagnostic: TC0P (42.3 °C) pulled the average below every core.
+        let readable = ["TC1C", "TC2C", "TC3C", "TC4C", "TC0E", "TC0F", "TC0P"]
+        #expect(SMCClient.preferredCPUKeys(readable) == ["TC1C", "TC2C", "TC3C", "TC4C"])
+    }
+
+    @Test func keysWithoutPerCoreSensorsAreKept() {
+        #expect(SMCClient.preferredCPUKeys(["TC0D", "TC0P"]) == ["TC0D", "TC0P"])
+        #expect(SMCClient.preferredCPUKeys(["Tp01", "Tp05"]) == ["Tp01", "Tp05"])
+    }
 }
