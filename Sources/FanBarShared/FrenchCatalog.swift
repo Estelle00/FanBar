@@ -447,7 +447,7 @@ enum FrenchCatalog {
         "That RPM is outside the fans' supported range": "Ce régime est en dehors de la plage prise en charge par les ventilateurs",
         "The fan control service did not respond. Reauthorize it or restart FanBar.": "Le service de contrôle des ventilateurs n’a pas répondu. Autorisez-le à nouveau ou redémarrez FanBar.",
         "The hub turns solid while FanBar controls the fans.": "Le centre devient plein lorsque FanBar contrôle les ventilateurs.",
-        "The icon spins for a few seconds when the mode changes or fan speed shifts noticeably.": "L’icône tourne quelques secondes lors d’un changement de mode ou d’une variation notable de vitesse.",
+        "The icon spins with the fans and coasts to a stop when they halt.": "L’icône tourne avec les ventilateurs et ralentit jusqu’à l’arrêt quand ils s’arrêtent.",
         "The menu panel shows up to two presets. Uncheck one to choose another.": "Le panneau du menu affiche au plus deux profils. Décochez-en un pour en choisir un autre.",
         "This Mac did not return readable fan data.": "Ce Mac n’a renvoyé aucune donnée de ventilateur lisible.",
         "This Mac does not support SMC key %@ (error %d).": "Ce Mac ne prend pas en charge la clé SMC %@ (erreur %d).",

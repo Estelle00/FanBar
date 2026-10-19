@@ -56,8 +56,6 @@ struct PanelPalette {
 
     /// Reclaimable cache: memory macOS can hand back, so it never takes a status color.
     var memoryCache: Color { isDark ? Self.rgb(0x636366) : Self.rgb(0xBCC2CA) }
-    /// Disk space stays neutral until free space runs low.
-    var capacity: Color { isDark ? Self.rgb(0xAEAEB2) : Self.rgb(0x6B7480) }
 
     var glyphGradient: LinearGradient {
         LinearGradient(

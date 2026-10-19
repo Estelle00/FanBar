@@ -386,7 +386,10 @@ final class SystemUsageReader {
     // MARK: - Disks
 
     /// Local, writable, user-visible volumes. Read-only volumes are skipped so a
-    /// mounted installer image does not appear as a disk.
+    /// mounted installer image does not appear as a disk, except the boot volume and
+    /// internal ones: when booted from an external drive, the internal Mac's sealed
+    /// system volume is mounted read-only and its Data volume is hidden, so the
+    /// system volume is the only place the internal disk shows up.
     private static func diskVolumes() -> [DiskVolumeUsage] {
         let keys: [URLResourceKey] = [
             .volumeNameKey,
@@ -405,12 +408,14 @@ final class SystemUsageReader {
         let volumes = urls.compactMap { url -> DiskVolumeUsage? in
             guard let values = try? url.resourceValues(forKeys: Set(keys)),
                   values.volumeIsLocal ?? false,
-                  !(values.volumeIsReadOnly ?? false) || url.path == "/",
+                  !(values.volumeIsReadOnly ?? false) || url.path == "/" || values.volumeIsInternal == true,
                   let total = values.volumeTotalCapacity, total > 0 else {
                 return nil
             }
             // "Important usage" counts purgeable space as available, as Finder does.
-            let available = values.volumeAvailableCapacityForImportantUsage.map { Int($0) }
+            // Read-only volumes report it as 0, which would read as a full disk.
+            let important = values.volumeAvailableCapacityForImportantUsage.map { Int($0) }
+            let available = important.flatMap { $0 > 0 ? $0 : nil }
                 ?? values.volumeAvailableCapacity
                 ?? 0
             return DiskVolumeUsage(
