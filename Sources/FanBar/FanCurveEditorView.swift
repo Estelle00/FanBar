@@ -161,13 +161,14 @@ struct FanCurveEditorView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(fanBarFormat("控制点 %d / %d", "Point %d of %d", index + 1, points.count))
                         .font(.system(size: 12, weight: .semibold))
-                    // Two lines rather than truncating the RPM target mid-word.
                     Text(targetSummary(for: point.fraction))
                         .font(.system(size: 11).monospacedDigit())
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
                 }
+                // Sized to its text so the RPM target is never truncated or wrapped mid-phrase;
+                // the spacer before the +/- buttons absorbs the difference.
+                .fixedSize()
                 .frame(minWidth: 116, alignment: .leading)
 
                 labeledStepper(
@@ -678,7 +679,8 @@ struct FanCurveCanvas: View {
                 .font(.system(size: 10, weight: .medium).monospacedDigit())
                 .foregroundColor(alertPalette.warmInk)
                 .fixedSize()
-                .position(x: plot.maxX - 26, y: plot.maxY - 9)
+                .frame(width: 96, alignment: .trailing)
+                .position(x: plot.maxX - 52, y: plot.maxY - 9)
         }
     }
 
