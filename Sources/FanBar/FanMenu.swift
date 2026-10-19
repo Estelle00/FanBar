@@ -330,14 +330,6 @@ struct FanMenu: View {
         return fanBarFormat("%@ 后恢复", "restores in %@", automaticRestoreValue(at: date))
     }
 
-    @ViewBuilder private var fanGlyph: some View {
-        if #available(macOS 13.0, *) {
-            Image(systemName: "fanblades")
-        } else {
-            Image(systemName: "fan")
-        }
-    }
-
     // MARK: Fans
 
     /// What FanBar is asking this fan to do: nil in Automatic, where macOS
@@ -733,7 +725,7 @@ struct FanMenu: View {
 
     private var unavailableState: some View {
         HStack(spacing: 10) {
-            Image(systemName: "fan.slash")
+            Image(systemName: FanBarSymbols.fanSlash)
                 .font(.system(size: 14))
                 .foregroundColor(palette.secondaryText)
             Text(fanBarText(

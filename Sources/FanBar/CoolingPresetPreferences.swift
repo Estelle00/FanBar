@@ -90,8 +90,8 @@ extension FanCoolingPreset {
     var systemImage: String {
         switch self {
         case .silent: "speaker.slash.fill"
-        case .balanced: "circle.lefthalf.filled"
-        case .performance: "gauge.with.dots.needle.67percent"
+        case .balanced: FanBarSymbols.balanced
+        case .performance: FanBarSymbols.gauge
         case .extreme: "bolt.fill"
         }
     }

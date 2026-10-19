@@ -30,7 +30,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .cooling: "fan"
+        case .cooling: FanBarSymbols.fan
         case .appearance: "paintbrush"
         case .general: "gearshape"
         case .log: "doc.text"
