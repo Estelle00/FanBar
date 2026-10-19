@@ -8,6 +8,7 @@ public enum FanBarLanguage: String, CaseIterable, Identifiable, Codable, Sendabl
     case traditionalChinese
     case japanese
     case russian
+    case french
 
     public static let preferenceKey = "fanbar.language"
     public static let defaultValue = FanBarLanguage.system.rawValue
@@ -22,6 +23,7 @@ public enum FanBarLanguage: String, CaseIterable, Identifiable, Codable, Sendabl
         case .traditionalChinese: "繁體中文"
         case .japanese: "日本語"
         case .russian: "Русский"
+        case .french: "Français"
         }
     }
 
@@ -33,6 +35,7 @@ public enum FanBarLanguage: String, CaseIterable, Identifiable, Codable, Sendabl
         case .traditionalChinese: "zh-Hant"
         case .japanese: "ja"
         case .russian: "ru"
+        case .french: "fr"
         }
     }
 
@@ -48,6 +51,7 @@ public enum FanBarLanguage: String, CaseIterable, Identifiable, Codable, Sendabl
         let languageCode = Locale.current.languageCode?.lowercased() ?? "en"
         if languageCode == "ja" || preferredLanguageCode == "ja" { return .japanese }
         if languageCode == "ru" || preferredLanguageCode == "ru" { return .russian }
+        if languageCode == "fr" || preferredLanguageCode == "fr" { return .french }
         guard languageCode.hasPrefix("zh") else { return .english }
         return prefersTraditionalScript ? .traditionalChinese : .chinese
     }
@@ -95,9 +99,10 @@ private func localized(
     case .english: english
     case .traditionalChinese: TraditionalChineseConverter.shared.convert(chinese)
     // An entry missing from the catalog reads in English rather than as a key;
-    // JapaneseCatalogTests / RussianCatalogTests keep that from shipping.
+    // The catalog tests keep that from shipping.
     case .japanese: JapaneseCatalog.text(for: english) ?? english
     case .russian: RussianCatalog.text(for: english) ?? english
+    case .french: FrenchCatalog.text(for: english) ?? english
     case .chinese, .system: chinese
     }
 }

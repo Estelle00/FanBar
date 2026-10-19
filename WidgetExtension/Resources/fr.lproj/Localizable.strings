@@ -1,0 +1,16 @@
+/* Widget gallery display name shown in the "Add Widget" picker. */
+"widget.displayName" = "FanBar";
+
+/* Widget gallery description shown under the display name in the "Add Widget" picker. */
+"widget.description" = "Consultez la vitesse des ventilateurs et la température du CPU.";
+
+"widget.title" = "Ventilateurs";
+"widget.updated" = "Actualisé";
+"widget.averageRPM" = "Régime moyen";
+"widget.fan" = "Ventilateur %d";
+"widget.more" = "Plus";
+"widget.moreFansAverage" = "%d autres ventilateurs, moyenne de %d tr/min";
+"widget.unavailable" = "Données des ventilateurs indisponibles";
+"widget.mode.automatic" = "Automatique";
+"widget.mode.smart" = "Intelligent";
+"widget.mode.manual" = "Manuel";

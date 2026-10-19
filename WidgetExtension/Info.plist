@@ -13,6 +13,7 @@
         <string>zh-Hant</string>
         <string>ja</string>
         <string>ru</string>
+        <string>fr</string>
     </array>
     <key>CFBundleDisplayName</key>
     <string>FanBar</string>

@@ -69,7 +69,7 @@ The official site publishes a concise [llms.txt](https://getfanbar.com/llms.txt?
 
 ## 📸 Screenshots
 
-English interface in light appearance. Switch to Simplified Chinese, Traditional Chinese, Japanese, or Russian from **Settings → General → Interface language** without restarting.
+English interface in light appearance. Switch to Simplified Chinese, Traditional Chinese, Japanese, Russian, or French from **Settings → General → Interface language** without restarting.
 
 <img src="docs/screenshots/fanbar-menu-light-en.png" alt="FanBar English menu-bar popover" width="456">
 
@@ -97,7 +97,7 @@ General includes local device compatibility checks, control-service status, auto
 - **High-temperature notifications** — Opt in to macOS notifications when CPU or GPU reaches 90°C; each sustained high-temperature episode alerts once and re-arms after cooling down.
 - **Safe fallback** — Targets are clamped to each fan's reported hardware range. On quit, disconnect, or service failure, FanBar attempts to restore macOS automatic control.
 - **Native authorization flow** — First-run guidance explains why the control service is needed and opens the correct macOS settings page.
-- **Five languages** — English, 简体中文, 繁體中文, 日本語, and Русский, or follow the system language.
+- **Six languages** — English, 简体中文, 繁體中文, 日本語, Русский, and Français, or follow the system language.
 
 ## ⬇️ Download
 
@@ -162,12 +162,13 @@ On macOS 14 or later, open the Notification Center widget editor and add **FanBa
 
 Open **Settings → General → Interface language** and choose:
 
-- **System** — follow the Mac's current language (Simplified or Traditional Chinese, Japanese, Russian, otherwise English)
+- **System** — follow the Mac's current language (Simplified or Traditional Chinese, Japanese, Russian, French, otherwise English)
 - **English**
 - **简体中文**
 - **繁體中文**
 - **日本語**
 - **Русский**
+- **Français**
 
 The setting is shared by the menu-bar popover, settings window, onboarding flow, status messages, helper errors, and the desktop widget.
 
