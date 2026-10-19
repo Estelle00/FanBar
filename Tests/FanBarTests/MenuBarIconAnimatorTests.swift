@@ -4,12 +4,10 @@ import XCTest
 
 @MainActor
 final class MenuBarIconAnimatorTests: XCTestCase {
-    private func makeAnimator() throws -> (MenuBarIconAnimator, NSButton) {
-        try XCTSkipIf(
-            NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
-            "Reduce Motion keeps the icon still"
-        )
-        return (MenuBarIconAnimator(), NSButton())
+    /// Reduce Motion is fixed off so the host's accessibility settings,
+    /// such as a CI runner's, cannot skip these tests.
+    private func makeAnimator(reduceMotion: Bool = false) -> (MenuBarIconAnimator, NSButton) {
+        (MenuBarIconAnimator(reduceMotion: { reduceMotion }), NSButton())
     }
 
     private func runMainLoop(for seconds: TimeInterval) {
@@ -18,8 +16,8 @@ final class MenuBarIconAnimatorTests: XCTestCase {
 
     /// Regression: a steady reading used to spin only for a short burst and
     /// then leave the icon still while the fans kept running.
-    func testSteadyRunningFansKeepSpinningPastBurst() throws {
-        let (animator, button) = try makeAnimator()
+    func testSteadyRunningFansKeepSpinningPastBurst() {
+        let (animator, button) = makeAnimator()
         let wait = MenuBarIconAnimator.burstDuration + 1.5
         var elapsed = 0.0
         while elapsed < wait {
@@ -31,21 +29,21 @@ final class MenuBarIconAnimatorTests: XCTestCase {
         animator.stop()
     }
 
-    func testFirstRunningReadingStartsSpinning() throws {
-        let (animator, button) = try makeAnimator()
+    func testFirstRunningReadingStartsSpinning() {
+        let (animator, button) = makeAnimator()
         animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
         XCTAssertTrue(animator.isAnimating)
         animator.stop()
     }
 
-    func testStoppedFansStayStill() throws {
-        let (animator, button) = try makeAnimator()
+    func testStoppedFansStayStill() {
+        let (animator, button) = makeAnimator()
         animator.update(rpm: 0, on: button, style: .defaultStyle, isManual: false)
         XCTAssertFalse(animator.isAnimating)
     }
 
-    func testStoppingFansCoastToRestAndRunningFansResume() throws {
-        let (animator, button) = try makeAnimator()
+    func testStoppingFansCoastToRestAndRunningFansResume() {
+        let (animator, button) = makeAnimator()
         animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
         animator.update(rpm: 0, on: button, style: .defaultStyle, isManual: false)
         runMainLoop(for: 2)
@@ -54,5 +52,24 @@ final class MenuBarIconAnimatorTests: XCTestCase {
         animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
         XCTAssertTrue(animator.isAnimating)
         animator.stop()
+    }
+
+    func testReduceMotionKeepsRunningFansStill() {
+        let (animator, button) = makeAnimator(reduceMotion: true)
+        animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
+        XCTAssertFalse(animator.isAnimating)
+        animator.playSwitchBurst()
+        XCTAssertFalse(animator.isAnimating)
+    }
+
+    /// A switch spins the icon even with the fans stopped, then it coasts
+    /// to rest once the burst ends.
+    func testSwitchBurstWithStoppedFansCoastsToRest() {
+        let (animator, button) = makeAnimator()
+        animator.update(rpm: 0, on: button, style: .defaultStyle, isManual: false)
+        animator.playSwitchBurst()
+        XCTAssertTrue(animator.isAnimating)
+        runMainLoop(for: MenuBarIconAnimator.burstDuration + 1.5)
+        XCTAssertFalse(animator.isAnimating)
     }
 }

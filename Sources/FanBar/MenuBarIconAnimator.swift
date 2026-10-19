@@ -66,8 +66,16 @@ final class MenuBarIconAnimator {
         phase != .idle
     }
 
+    private let reduceMotionSetting: () -> Bool
+
     private var reduceMotion: Bool {
-        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        reduceMotionSetting()
+    }
+
+    /// `reduceMotion` reads the system setting; tests pass a fixed value so
+    /// the host's accessibility settings cannot skip them.
+    init(reduceMotion: @escaping () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }) {
+        reduceMotionSetting = reduceMotion
     }
 
     /// Follows the live fan reading: spins while the fans run, coasts to a
