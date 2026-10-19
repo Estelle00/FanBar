@@ -51,6 +51,13 @@ struct PanelFanReadout: View {
         return min(1, max(0, Double(fan.currentRPM - fan.minimumRPM) / span))
     }
 
+    /// The meter runs from 0 to the maximum, so an idle fan at its floor still
+    /// reads as turning instead of an empty bar.
+    private func shareOfMaximum(_ rpm: Int) -> Double {
+        guard fan.maximumRPM > 0 else { return 0 }
+        return min(1, max(0, Double(rpm) / Double(fan.maximumRPM)))
+    }
+
     var body: some View {
         let palette = PanelPalette(colorScheme: scheme)
         let band = FanSpeedBand(rpm: fan.currentRPM, fraction: fraction)
@@ -81,8 +88,9 @@ struct PanelFanReadout: View {
             }
 
             FanRangeMeter(
-                fraction: fraction,
-                color: band == .high ? palette.warm : band == .medium ? palette.secondaryText : palette.tertiaryText,
+                fraction: shareOfMaximum(fan.currentRPM),
+                floor: shareOfMaximum(fan.minimumRPM),
+                color: band == .high ? palette.warm : palette.accent,
                 palette: palette
             )
             .frame(height: 4)
@@ -113,9 +121,11 @@ struct PanelFanReadout: View {
     }
 }
 
-/// A filled bar with no knob, so it never reads as a slider.
+/// A filled bar with no knob, so it never reads as a slider. A hairline marks
+/// the fan's minimum, the speed it idles at under macOS control.
 private struct FanRangeMeter: View {
     let fraction: Double
+    let floor: Double
     let color: Color
     let palette: PanelPalette
 
@@ -124,6 +134,11 @@ private struct FanRangeMeter: View {
             ZStack(alignment: .leading) {
                 palette.well
                 color.frame(width: proxy.size.width * CGFloat(fraction))
+                if floor > 0, floor < 1 {
+                    palette.tertiaryText
+                        .frame(width: 1)
+                        .offset(x: proxy.size.width * CGFloat(floor))
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
         }

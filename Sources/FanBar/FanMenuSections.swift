@@ -552,8 +552,10 @@ struct SpinningFanGlyph: View {
     }
 
     var body: some View {
+        // Fit the symbol to the caller's frame: at a fixed point size it is wider than
+        // the frame and its overflow gets clipped by the fan row's scroll view.
         glyph
-            .font(.system(size: 13))
+            .padding(1)
             .rotationEffect(.degrees(isSpinning ? 360 : 0))
             .animation(
                 isSpinning ? .linear(duration: period).repeatForever(autoreverses: false) : .default,
@@ -567,6 +569,8 @@ struct SpinningFanGlyph: View {
     // The old check sent macOS 11-12 to "fan", which only exists from macOS 14.
     private var glyph: some View {
         Image(systemName: FanBarSymbols.fanBlades)
+            .resizable()
+            .scaledToFit()
     }
 }
 
