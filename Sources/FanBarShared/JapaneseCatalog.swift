@@ -459,7 +459,7 @@ enum JapaneseCatalog {
         "That RPM is outside the fans' supported range": "その回転数はファンの対応範囲外です",
         "The fan control service did not respond. Reauthorize it or restart FanBar.": "ファン制御サービスが応答しません。再度承認するか、FanBar を再起動してください。",
         "The hub turns solid while FanBar controls the fans.": "FanBar がファンを制御している間、アイコンの中心が塗りつぶされます。",
-        "The icon spins for a few seconds when the mode changes or fan speed shifts noticeably.": "モードを切り替えたときやファンの回転数が大きく変わったときに、アイコンが数秒間回転します。",
+        "The icon spins with the fans and coasts to a stop when they halt.": "ファンの回転に合わせてアイコンが回り、ファンが止まるとゆっくり停止します。",
         "The menu panel shows up to two presets. Uncheck one to choose another.": "メニューパネルに表示できるプリセットは 2 つまでです。別のものを選ぶには、どれか 1 つのチェックを外してください。",
         "This Mac did not return readable fan data.": "この Mac から読み取れるファンのデータが返されませんでした。",
         "This Mac does not support SMC key %@ (error %d).": "この Mac は SMC キー %@ に対応していません（エラー %d）。",

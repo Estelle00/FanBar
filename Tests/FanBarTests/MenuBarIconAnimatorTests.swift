@@ -1,45 +1,58 @@
+import AppKit
 import XCTest
 @testable import FanBar
 
-final class SpinTriggerTests: XCTestCase {
-    func testFirstReadingOnlySetsBaseline() {
-        var trigger = SpinTrigger()
-        XCTAssertFalse(trigger.registerReading(1_850))
-        XCTAssertEqual(trigger.referenceRPM, 1_850)
+@MainActor
+final class MenuBarIconAnimatorTests: XCTestCase {
+    private func makeAnimator() throws -> (MenuBarIconAnimator, NSButton) {
+        try XCTSkipIf(
+            NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
+            "Reduce Motion keeps the icon still"
+        )
+        return (MenuBarIconAnimator(), NSButton())
     }
 
-    func testSmallChangesDoNotSpin() {
-        var trigger = SpinTrigger()
-        _ = trigger.registerReading(1_850)
-        // 15% of 1,850 is about 278 RPM, above the 250 RPM floor.
-        XCTAssertFalse(trigger.registerReading(2_100))
-        XCTAssertFalse(trigger.registerReading(1_600))
-        XCTAssertEqual(trigger.referenceRPM, 1_850)
+    private func runMainLoop(for seconds: TimeInterval) {
+        RunLoop.main.run(until: Date().addingTimeInterval(seconds))
     }
 
-    func testNotableChangeSpinsAndMovesBaseline() {
-        var trigger = SpinTrigger()
-        _ = trigger.registerReading(1_850)
-        XCTAssertTrue(trigger.registerReading(2_400))
-        XCTAssertEqual(trigger.referenceRPM, 2_400)
-        // The same reading again is no longer news.
-        XCTAssertFalse(trigger.registerReading(2_400))
+    /// Regression: a steady reading used to spin only for a short burst and
+    /// then leave the icon still while the fans kept running.
+    func testSteadyRunningFansKeepSpinningPastBurst() throws {
+        let (animator, button) = try makeAnimator()
+        let wait = MenuBarIconAnimator.burstDuration + 1.5
+        var elapsed = 0.0
+        while elapsed < wait {
+            animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
+            runMainLoop(for: 0.5)
+            elapsed += 0.5
+        }
+        XCTAssertTrue(animator.isAnimating)
+        animator.stop()
     }
 
-    func testFansStartingFromRestSpin() {
-        var trigger = SpinTrigger()
-        _ = trigger.registerReading(0)
-        // A stopped fan uses the 250 RPM floor, not 15% of zero.
-        XCTAssertFalse(trigger.registerReading(200))
-        XCTAssertTrue(trigger.registerReading(1_200))
+    func testFirstRunningReadingStartsSpinning() throws {
+        let (animator, button) = try makeAnimator()
+        animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
+        XCTAssertTrue(animator.isAnimating)
+        animator.stop()
     }
 
-    func testSlowDriftTriggersOnceItAddsUp() {
-        var trigger = SpinTrigger()
-        _ = trigger.registerReading(2_000)
-        XCTAssertFalse(trigger.registerReading(2_150))
-        XCTAssertFalse(trigger.registerReading(2_250))
-        // 2,000 × 15% = 300 RPM from the baseline.
-        XCTAssertTrue(trigger.registerReading(2_300))
+    func testStoppedFansStayStill() throws {
+        let (animator, button) = try makeAnimator()
+        animator.update(rpm: 0, on: button, style: .defaultStyle, isManual: false)
+        XCTAssertFalse(animator.isAnimating)
+    }
+
+    func testStoppingFansCoastToRestAndRunningFansResume() throws {
+        let (animator, button) = try makeAnimator()
+        animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
+        animator.update(rpm: 0, on: button, style: .defaultStyle, isManual: false)
+        runMainLoop(for: 2)
+        XCTAssertFalse(animator.isAnimating)
+
+        animator.update(rpm: 1_850, on: button, style: .defaultStyle, isManual: false)
+        XCTAssertTrue(animator.isAnimating)
+        animator.stop()
     }
 }

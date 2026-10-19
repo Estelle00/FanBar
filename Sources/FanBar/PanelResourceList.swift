@@ -219,7 +219,7 @@ struct PanelResourceList: View {
                         .foregroundColor(palette.secondaryText)
                 }
                 VStack(alignment: .leading, spacing: 6) {
-                    CapacityBar(fraction: diskFraction, color: level.color(palette, normal: palette.capacity),
+                    CapacityBar(fraction: diskFraction, color: level.color(palette),
                                 palette: palette)
                         .frame(height: 6)
                     summary
@@ -347,7 +347,7 @@ struct PanelResourceList: View {
                             .fixedSize()
                     }
                     .font(.system(size: 12).monospacedDigit())
-                    CapacityBar(fraction: disk.fraction, color: level.color(palette, normal: palette.capacity),
+                    CapacityBar(fraction: disk.fraction, color: level.color(palette),
                                 palette: palette)
                         .frame(height: 6)
                 }
@@ -419,10 +419,10 @@ enum ResourceLevel: Equatable {
         }
     }
 
-    /// Green, orange, red: the same steps as temperature. Capacity passes its own neutral.
-    func color(_ palette: PanelPalette, normal: Color? = nil) -> Color {
+    /// Green, orange, red: the same steps as temperature, for load and disk space alike.
+    func color(_ palette: PanelPalette) -> Color {
         switch self {
-        case .normal: normal ?? palette.accent
+        case .normal: palette.accent
         case .elevated: palette.warm
         case .critical: palette.hot
         }

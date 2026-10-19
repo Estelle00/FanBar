@@ -170,8 +170,8 @@ struct FanBarSettingsView: View {
                 SettingsRowText(
                     title: fanBarText("菜单栏图标动画", "Menu bar icon animation"),
                     detail: fanBarText(
-                        "切换模式或风扇转速明显变化时，图标旋转几秒后静止。",
-                        "The icon spins for a few seconds when the mode changes or fan speed shifts noticeably."
+                        "风扇运转时图标旋转并跟随实际转速，停转后缓缓静止。",
+                        "The icon spins with the fans and coasts to a stop when they halt."
                     )
                 )
             }
