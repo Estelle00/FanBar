@@ -225,6 +225,14 @@ enum PanelHeaderStatus {
         return [parts.dropLast().joined(separator: separator), parts[parts.count - 1]]
     }
 
+    /// Whether the trailing control still fits after the last line. An alert title is a single part
+    /// that cannot break, so in manual mode the restore countdown moves to a line of its own instead.
+    static func trailingFits(after lines: [String], weight: NSFont.Weight, trailingWidth: CGFloat,
+                             fitting width: CGFloat) -> Bool {
+        guard trailingWidth > 0, let last = lines.last else { return true }
+        return measure(last, weight: weight) + indicatorSpacing + trailingWidth <= width
+    }
+
     static func measure(_ text: String, weight: NSFont.Weight = .regular, monospacedDigits: Bool = false) -> CGFloat {
         let font = monospacedDigits
             ? NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: weight)

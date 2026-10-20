@@ -413,7 +413,7 @@ enum FrenchCatalog {
         "Temperature window": "Période affichée",
         "%@ is running warm": "%@ chauffe",
         "macOS has sped up the fans": "macOS a accéléré les ventilateurs",
-        "%@ is very hot": "%@ est très chaud",
+        "%@ is very hot": "%@ en surchauffe",
         "Attention · %@": "Attention · %@",
         "Battery": "Batterie",
         "10m": "10 min",

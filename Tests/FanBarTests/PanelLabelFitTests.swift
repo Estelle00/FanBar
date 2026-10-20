@@ -61,6 +61,57 @@ final class PanelLabelFitTests: XCTestCase {
         }
     }
 
+    /// Every warm and hot title, for every part, in Automatic and in manual mode where the restore
+    /// countdown follows it: at most two lines, none wider than the room beside the settings button.
+    @MainActor
+    func testAlertStatusFitsTwoLinesInEveryLanguageAndMode() {
+        let modes: [FanController.Mode] = [.automatic, .fixed(3_000)]
+        for language in languages {
+            use(language)
+            for part in ThermalPart.allCases {
+                for celsius in [part.warmThreshold, part.hotThreshold + 30] {
+                    let focus = ThermalFocus(part: part, celsius: celsius)
+                    XCTAssertTrue(focus.isAlert)
+                    let width = PanelHeaderStatus.textWidth(indicatorWidth: focus.level == .hot ? 12 : 6)
+                    for mode in modes {
+                        let trailing = mode == .automatic ? 0 : FanMenu.restoreMenuWidth
+                        let parts = FanMenu.alertStatusParts(focus, mode: mode)
+                        let lines = PanelHeaderStatus.lines(parts, weight: .semibold, trailingWidth: trailing,
+                                                            fitting: width)
+                        let inline = PanelHeaderStatus.trailingFits(after: lines, weight: .semibold,
+                                                                    trailingWidth: trailing, fitting: width)
+                        let context = "\(language) \(part) \(focus.level) \(mode): \(lines)"
+                        XCTAssertLessThanOrEqual(lines.count + (inline ? 0 : 1), 2, context)
+                        for (index, line) in lines.enumerated() {
+                            let after = inline && trailing > 0 && index == lines.count - 1 ? trailing + 6 : 0
+                            XCTAssertLessThanOrEqual(PanelHeaderStatus.measure(line, weight: .semibold) + after,
+                                                     width, "\(context) truncates \"\(line)\"")
+                        }
+                        XCTAssertLessThanOrEqual(trailing, width, context)
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testRestoreCountdownTakesItsOwnLineOnlyAfterAnUnbreakableAlert() {
+        use(.english)
+        let width = PanelHeaderStatus.textWidth(indicatorWidth: 6)
+        let trailing = FanMenu.restoreMenuWidth
+        let alert = PanelHeaderStatus.lines(FanMenu.alertStatusParts(ThermalFocus(part: .cpu, celsius: ThermalPart.cpu.warmThreshold),
+                                                                     mode: .fixed(3_000)),
+                                            weight: .semibold, trailingWidth: trailing, fitting: width)
+        XCTAssertEqual(alert, ["CPU average is running warm"])
+        XCTAssertFalse(PanelHeaderStatus.trailingFits(after: alert, weight: .semibold,
+                                                      trailingWidth: trailing, fitting: width))
+        let calm = PanelHeaderStatus.lines(FanMenu.calmStatusParts(isManual: true, focus: nil),
+                                           weight: .regular, trailingWidth: trailing, fitting: width)
+        XCTAssertTrue(PanelHeaderStatus.trailingFits(after: calm, weight: .regular,
+                                                     trailingWidth: trailing, fitting: width))
+        XCTAssertTrue(PanelHeaderStatus.trailingFits(after: alert, weight: .semibold, trailingWidth: 0, fitting: 1))
+    }
+
     @MainActor
     func testHotChipAlertPutsMacOSResponseOnItsOwnPart() {
         use(.english)

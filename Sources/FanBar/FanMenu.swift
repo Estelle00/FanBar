@@ -267,11 +267,12 @@ struct FanMenu: View {
             ? focus.map { Self.alertStatusParts($0, mode: controller.mode) } ?? []
             : Self.calmStatusParts(isManual: isManual, focus: focus)
         let indicatorWidth: CGFloat = level == .hot ? Self.hotIndicatorWidth : Self.calmIndicatorWidth
-        let lines = PanelHeaderStatus.lines(
-            parts,
-            weight: isAlert ? .semibold : .regular,
-            trailingWidth: isManual ? Self.restoreMenuWidth : 0,
-            fitting: PanelHeaderStatus.textWidth(indicatorWidth: indicatorWidth)
+        let weight: NSFont.Weight = isAlert ? .semibold : .regular
+        let trailingWidth = isManual ? Self.restoreMenuWidth : 0
+        let width = PanelHeaderStatus.textWidth(indicatorWidth: indicatorWidth)
+        let lines = PanelHeaderStatus.lines(parts, weight: weight, trailingWidth: trailingWidth, fitting: width)
+        let restoreInline = PanelHeaderStatus.trailingFits(
+            after: lines, weight: weight, trailingWidth: trailingWidth, fitting: width
         )
         return HStack(alignment: .top, spacing: PanelHeaderStatus.indicatorSpacing) {
             Group {
@@ -296,10 +297,13 @@ struct FanMenu: View {
                             .fontWeight(isAlert ? .semibold : .regular)
                             .foregroundColor(isAlert ? (level == .hot ? palette.hot : palette.warmInk) : palette.secondaryText)
                             .lineLimit(1)
-                        if isManual, index == lines.count - 1 {
-                            restoreMenu
+                        if isManual, restoreInline, index == lines.count - 1 {
+                            restoreMenu(inline: true)
                         }
                     }
+                }
+                if isManual, !restoreInline {
+                    restoreMenu(inline: false)
                 }
             }
             .accessibilityElement(children: .combine)
@@ -329,7 +333,8 @@ struct FanMenu: View {
         return parts
     }
 
-    private var restoreMenu: some View {
+    /// Inline it follows the status after " · "; on its own line it starts like a sentence.
+    private func restoreMenu(inline: Bool) -> some View {
         CountdownTimerView { date in
             Menu {
                 ForEach(FanController.AutomaticRestoreDuration.allCases) { duration in
@@ -344,7 +349,7 @@ struct FanMenu: View {
                     }
                 }
             } label: {
-                Text("· \(restoreSummary(at: date))")
+                Text(inline ? "· \(restoreSummary(at: date))" : Self.sentenceCase(restoreSummary(at: date)))
                     .font(.system(size: 11).monospacedDigit())
                     .foregroundColor(palette.secondaryText)
             }
@@ -354,6 +359,10 @@ struct FanMenu: View {
             .accessibilityLabel(fanBarText("自动恢复", "Automatic restore"))
             .accessibilityValue(automaticRestoreAccessibilityValue(at: date))
         }
+    }
+
+    private static func sentenceCase(_ text: String) -> String {
+        text.prefix(1).uppercased() + text.dropFirst()
     }
 
     private func restoreSummary(at date: Date) -> String {
