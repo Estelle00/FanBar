@@ -63,6 +63,19 @@ FanBar は macOS 11 Big Sur 以降に対応し、Apple Silicon Mac と、AppleSM
   </tr>
 </table>
 
+ファンが2基ある Mac では、各ファンの回転数・状態・範囲が横に並んで表示されます。下の画像は「バランス」で動作中の MacBook Pro（M2 Max）です。
+
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-ja.png" alt="FanBar 日本語メニューバーパネル（ファン2基の MacBook Pro） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-ja.png" alt="FanBar 日本語メニューバーパネル（ファン2基の MacBook Pro） (ダーク)" width="100%"></td>
+  </tr>
+</table>
+
 「冷却」タブでは、パネルの各プリセットに専用の温度→回転数カーブを編集できます。
 
 <table>

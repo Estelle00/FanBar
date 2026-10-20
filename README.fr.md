@@ -83,6 +83,19 @@ Interface française en apparence claire et sombre. Passez à l’anglais, au ch
   </tr>
 </table>
 
+Sur un Mac à deux ventilateurs, le panneau les affiche côte à côte, chacun avec sa vitesse, son état et sa plage. Cette capture vient d’un MacBook Pro (M2 Max) en profil Équilibré.
+
+<table>
+  <tr>
+    <th>Clair</th>
+    <th>Sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-fr.png" alt="Fenêtre de FanBar dans la barre des menus, MacBook Pro à deux ventilateurs (Clair)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-fr.png" alt="Fenêtre de FanBar dans la barre des menus, MacBook Pro à deux ventilateurs (Sombre)" width="100%"></td>
+  </tr>
+</table>
+
 Refroidissement associe à chaque profil du panneau sa propre courbe température → vitesse modifiable.
 
 <table>

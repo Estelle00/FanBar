@@ -83,6 +83,19 @@ FanBar — бесплатное нативное приложение для с�
   </tr>
 </table>
 
+На Mac с двумя вентиляторами панель показывает их рядом, у каждого своя скорость, состояние и диапазон. Снимок сделан на MacBook Pro (M2 Max) в профиле «Баланс».
+
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-ru.png" alt="Панель FanBar в строке меню на русском, MacBook Pro с двумя вентиляторами (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-ru.png" alt="Панель FanBar в строке меню на русском, MacBook Pro с двумя вентиляторами (Тёмное)" width="100%"></td>
+  </tr>
+</table>
+
 В разделе «Охлаждение» у каждого пресета панели своя редактируемая кривая «температура → обороты».
 
 <table>

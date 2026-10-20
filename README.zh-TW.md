@@ -63,6 +63,19 @@ FanBar 支援 macOS 11 Big Sur 及更新版本，適用於 Apple Silicon 與仍�
   </tr>
 </table>
 
+在有兩個風扇的 Mac 上，面板會並排顯示每個風扇各自的轉速、狀態與範圍。下圖來自一台使用「均衡」預設的 MacBook Pro（M2 Max）。
+
+<table>
+  <tr>
+    <th>淺色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-zh-TW.png" alt="FanBar 繁體中文選單列面板，雙風扇 MacBook Pro (淺色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-zh-TW.png" alt="FanBar 繁體中文選單列面板，雙風扇 MacBook Pro (深色)" width="100%"></td>
+  </tr>
+</table>
+
 「散熱」頁面為每個面板預設提供獨立的溫度→轉速曲線，可直接拖移控制點編輯。
 
 <table>

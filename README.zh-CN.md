@@ -81,6 +81,19 @@ FanBar 是一款免费开源的原生 macOS 菜单栏应用，用于查看 CPU/G
   </tr>
 </table>
 
+在有两个风扇的 Mac 上，面板会并排显示每个风扇各自的转速、状态和范围。下图来自一台运行「均衡」预设的 MacBook Pro（M2 Max）。
+
+<table>
+  <tr>
+    <th>浅色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-zh-CN.png" alt="FanBar 简体中文菜单栏面板，双风扇 MacBook Pro (浅色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-zh-CN.png" alt="FanBar 简体中文菜单栏面板，双风扇 MacBook Pro (深色)" width="100%"></td>
+  </tr>
+</table>
+
 「散热」页为每个面板预设提供独立的温度→转速曲线，可直接拖动控制点编辑。
 
 <table>

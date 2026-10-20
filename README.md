@@ -83,6 +83,19 @@ English interface in light and dark appearance. Switch to Simplified Chinese, Tr
   </tr>
 </table>
 
+On a Mac with two fans, each fan gets its own speed, status and range side by side. This capture is from a MacBook Pro (M2 Max) running Balanced.
+
+<table>
+  <tr>
+    <th>Light</th>
+    <th>Dark</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-en.png" alt="FanBar English menu-bar popover on a two-fan MacBook Pro (Light)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-en.png" alt="FanBar English menu-bar popover on a two-fan MacBook Pro (Dark)" width="100%"></td>
+  </tr>
+</table>
+
 Cooling gives each panel preset its own editable temperature→RPM curve.
 
 <table>
