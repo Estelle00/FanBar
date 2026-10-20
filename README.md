@@ -81,20 +81,21 @@ Appearance chooses the menu bar icon and what the status item shows, previewed l
 
 <img src="docs/screenshots/fanbar-settings-appearance-light-en.png" alt="FanBar English appearance settings" width="640">
 
-General includes local device compatibility checks, control-service status, automatic restore, notifications, language, login, and updates. Longer settings panes scroll.
+General includes local device compatibility checks, control-service status, automatic restore, notifications, language, login, and updates. Log records temperatures and fan speeds to CSV. Longer settings panes scroll.
 
 <img src="docs/screenshots/fanbar-settings-general-light-en.png" alt="FanBar English general settings" width="640">
 
 ## ✨ Highlights
 
 - **At-a-glance status** — Show the menu-bar icon, CPU temperature, average fan RPM, or both — side by side or stacked to save menu bar width.
-- **Six menu bar icons** — Choose Swirl, Ringed, Bold, Propeller, Guard, or Outline; all are optically matched to system icons, and the hub turns solid while FanBar controls the fans.
+- **Six menu bar icons** — Choose Swirl, Ringed, Bold, Propeller, Guard, or Outline; all are optically matched to system icons, and the hub turns solid while FanBar controls the fans. The icon spins with the fans and coasts to a stop when they halt; turn this off in **Settings → Appearance** to keep it still and save a little CPU.
 - **Desktop widget** — On macOS 14 or later, add FanBar to the desktop to see average RPM, per-fan speeds, CPU temperature, and control mode. WidgetKit refreshes are system-scheduled and are not second-by-second.
-- **Live visualization** — Monitor CPU/GPU temperatures plus SSD and battery temperatures when the Mac exposes them, with a rolling ten-minute chart and airflow motion that follows actual RPM.
+- **Live visualization** — Each fan leads with its RPM and speed band on a 0-to-max meter. A compact grid shows CPU, GPU, memory, and disk load, colored green, orange, or red by level, with disk judged by free space. Monitor CPU/GPU temperatures plus SSD and battery temperatures when the Mac exposes them, with a rolling ten-minute chart.
 - **Multiple cooling modes** — Restore macOS automatic control, set a target RPM, or choose the Silent, Balanced, Performance, or Extreme panel preset.
 - **Smart temperature curves** — Each panel preset has its own editable curve that smoothly adjusts fan output from chip temperature.
 - **Selectable temperature source** — Use CPU, GPU, or SSD temperature for curve control; unavailable sensors trigger the existing safe fallback.
-- **High-temperature notifications** — Opt in to macOS notifications when CPU or GPU reaches 90°C; each sustained high-temperature episode alerts once and re-arms after cooling down.
+- **High-temperature notifications** — Opt in to macOS notifications when CPU or GPU reaches a threshold you set (60–105°C, 90°C by default); each sustained high-temperature episode alerts once and re-arms after cooling down. Pick an alert sound that plays even when notification sounds are off or a Focus is on. While hot, the panel offers a one-click switch to maximum cooling.
+- **CSV log** — Record CPU, GPU, SSD, and battery temperatures, fan speeds, and the control mode every 2–60 seconds to CSV files in `~/Library/Application Support/FanBar/Logs`, starting a new file on launch, at midnight, or never.
 - **Safe fallback** — Targets are clamped to each fan's reported hardware range. On quit, disconnect, or service failure, FanBar attempts to restore macOS automatic control.
 - **Native authorization flow** — First-run guidance explains why the control service is needed and opens the correct macOS settings page.
 - **Six languages** — English, 简体中文, 繁體中文, 日本語, Русский, and Français, or follow the system language.
@@ -215,7 +216,7 @@ FANBAR_SIGN_IDENTITY=- FANBAR_DMG_OUTPUT=dist/FanBar-x86_64.dmg zsh scripts/buil
 Verify a DMG's signature, architecture, and installation structure with:
 
 ```sh
-zsh scripts/test-dmg.sh dist/FanBar-0.4.3.dmg
+zsh scripts/test-dmg.sh dist/FanBar-0.6.3.dmg
 ```
 
 ## 🏗️ Architecture
@@ -273,8 +274,8 @@ while using the local release command.
 When CI publishing is enabled, push a tag matching the app version:
 
 ```sh
-git tag -a v0.4.3 -m "FanBar 0.4.3"
-git push origin v0.4.3
+git tag -a v0.6.3 -m "FanBar 0.6.3"
+git push origin v0.6.3
 ```
 
 ### Update the Homebrew cask
@@ -284,7 +285,7 @@ universal DMG, then submit the resulting cask change in a PR:
 
 ```sh
 python3 scripts/update-homebrew-cask.py          # Latest stable release
-# Or: python3 scripts/update-homebrew-cask.py v0.4.14
+# Or: python3 scripts/update-homebrew-cask.py v0.6.3
 ```
 
 The script requires Python 3 and an authenticated `gh` CLI. It rejects drafts,
