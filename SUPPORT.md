@@ -1,6 +1,6 @@
 # Getting help with FanBar
 
-Start with the [English README](README.md), [简体中文](README.zh-CN.md), [繁體中文](README.zh-TW.md), or [日本語](README.ja.md). Downloads are published on [GitHub Releases](https://github.com/helson-lin/FanBar/releases/latest), and the official product site is [getfanbar.com](https://getfanbar.com).
+Start with the [English README](README.md), [简体中文](README.zh-CN.md), [繁體中文](README.zh-TW.md), [日本語](README.ja.md), [Русский](README.ru.md), or [Français](README.fr.md). Downloads are published on [GitHub Releases](https://github.com/helson-lin/FanBar/releases/latest), and the official product site is [getfanbar.com](https://getfanbar.com).
 
 ## Questions, bugs, and suggestions
 
