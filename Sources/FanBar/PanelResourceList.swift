@@ -502,9 +502,12 @@ private struct CapacityBar: View {
     }
 }
 
-/// Per-core load bars in performance and efficiency groups, each labelled under its own bars.
+/// Per-core load bars in performance and efficiency groups, labelled under their own bars.
 /// Every bar takes the overall CPU color: efficiency cores often run full, which is not an alarm.
-private struct CoreGroups: View {
+/// A group's bars can be narrower than its label (4 P-cores beside 6 E-cores, or 2 E-cores
+/// beside 8 P-cores), so the labels share one row instead of each column's width: the first
+/// starts at the leading edge and the last ends at the trailing edge, under its own bars.
+struct CoreGroups: View {
     let fractions: [Double]
     let kinds: [CPUCoreKind]
     let coreCount: Int?
@@ -513,14 +516,15 @@ private struct CoreGroups: View {
     let palette: PanelPalette
 
     private static let groupGap: CGFloat = 6
+    static let labelFontSize: CGFloat = 11
 
-    private struct CoreGroup: Identifiable {
+    struct CoreGroup: Identifiable {
         var id: String { title }
         var title: String
         var loads: [Double]
     }
 
-    private var groups: [CoreGroup] {
+    var groups: [CoreGroup] {
         let placeholderCount = coreCount ?? (kinds.isEmpty ? ProcessInfo.processInfo.activeProcessorCount : kinds.count)
         let loads = fractions.isEmpty ? Array(repeating: 0, count: placeholderCount) : fractions
         guard kinds.count == loads.count, Set(kinds.map { $0 == .performance }).count > 1 else {
@@ -529,8 +533,8 @@ private struct CoreGroups: View {
         let performance = zip(kinds, loads).filter { $0.0 == .performance }.map(\.1)
         let efficiency = zip(kinds, loads).filter { $0.0 == .efficiency }.map(\.1)
         return [
-            CoreGroup(title: fanBarFormat("性能核 ×%d", "Performance ×%d", performance.count), loads: performance),
-            CoreGroup(title: fanBarFormat("能效核 ×%d", "Efficiency ×%d", efficiency.count), loads: efficiency)
+            CoreGroup(title: fanBarFormat("性能核 ×%d", "P-cores ×%d", performance.count), loads: performance),
+            CoreGroup(title: fanBarFormat("能效核 ×%d", "E-cores ×%d", efficiency.count), loads: efficiency)
         ]
     }
 
@@ -539,11 +543,11 @@ private struct CoreGroups: View {
         let total = max(groups.reduce(0) { $0 + $1.loads.count }, 1)
         // Mac Pro and Ultra chips have 24+ cores; tighter gaps keep each bar readable.
         let barSpacing: CGFloat = total > 16 ? 1 : 2
-        GeometryReader { proxy in
-            let available = proxy.size.width - CGFloat(groups.count - 1) * Self.groupGap
-            HStack(alignment: .top, spacing: Self.groupGap) {
-                ForEach(groups) { group in
-                    VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { proxy in
+                let available = proxy.size.width - CGFloat(groups.count - 1) * Self.groupGap
+                HStack(alignment: .top, spacing: Self.groupGap) {
+                    ForEach(groups) { group in
                         HStack(spacing: barSpacing) {
                             ForEach(Array(group.loads.enumerated()), id: \.offset) { _, load in
                                 ZStack(alignment: .bottom) {
@@ -555,17 +559,22 @@ private struct CoreGroups: View {
                                 .frame(height: barHeight)
                             }
                         }
-                        Text(group.title)
-                            .font(.system(size: 11))
-                            .foregroundColor(palette.secondaryText)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                        .frame(width: available * CGFloat(group.loads.count) / CGFloat(total))
                     }
-                    .frame(width: available * CGFloat(group.loads.count) / CGFloat(total), alignment: .leading)
                 }
             }
+            .frame(height: barHeight)
+            HStack(spacing: Self.groupGap) {
+                ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                    if index > 0 { Spacer(minLength: 0) }
+                    Text(group.title)
+                        .font(.system(size: Self.labelFontSize))
+                        .foregroundColor(palette.secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            .frame(height: 14)
         }
-        .frame(height: barHeight + 6 + 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(fanBarText("每核 CPU 使用率", "CPU usage per core"))
         .accessibilityValue(fractions.map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: ", "))

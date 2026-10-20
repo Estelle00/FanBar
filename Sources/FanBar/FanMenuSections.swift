@@ -93,6 +93,12 @@ enum ThermalPart: CaseIterable, Equatable {
         }
     }
 
+    /// The header's calm line has room for a temperature but not a qualifier, so it reads
+    /// "CPU 65°" (the average); the chart legend carries the qualified "CPU max" / "CPU avg".
+    var headerName: String {
+        self == .cpu ? "CPU" : name
+    }
+
     /// Heat assessment uses the same average as notifications and the CSV log.
     var keyPath: KeyPath<ThermalReading, Double?> {
         switch self {
@@ -188,6 +194,42 @@ struct ThermalFocus: Equatable {
         let age = latest.sampledAt.timeIntervalSince(past.sampledAt)
         guard age >= 60 else { return nil }
         return (celsius - pastValue, Int((age / 60).rounded()))
+    }
+}
+
+/// Lays out the header's status line in the width left beside the app icon and settings button.
+/// Parts are joined with " · " on one line; when that does not fit, the line breaks before the
+/// last part, so no language truncates the temperature, the controller or the restore countdown.
+@MainActor
+enum PanelHeaderStatus {
+    static let fontSize: CGFloat = 11
+    static let indicatorSpacing: CGFloat = 6
+    static let separator = " · "
+
+    /// Room for the status text beside the 32pt icon, the gaps, and the settings button
+    /// (whose hover well hangs 6pt past the content edge), less the status indicator.
+    static func textWidth(indicatorWidth: CGFloat) -> CGFloat {
+        let content = FanMenu.panelWidth - FanMenu.padding * 2
+        let beside = content - FanMenu.headerIconSize - FanMenu.headerSpacing * 3
+            - FanMenu.headerSpacerMinimum - FanMenu.settingsButtonSize + FanMenu.settingsButtonOverhang
+        return beside - indicatorWidth - indicatorSpacing
+    }
+
+    /// One line when the joined parts and the trailing control fit, else two.
+    static func lines(
+        _ parts: [String], weight: NSFont.Weight, trailingWidth: CGFloat, fitting width: CGFloat
+    ) -> [String] {
+        let joined = parts.joined(separator: separator)
+        let trailing = trailingWidth > 0 ? trailingWidth + indicatorSpacing : 0
+        guard parts.count > 1, measure(joined, weight: weight) + trailing > width else { return [joined] }
+        return [parts.dropLast().joined(separator: separator), parts[parts.count - 1]]
+    }
+
+    static func measure(_ text: String, weight: NSFont.Weight = .regular, monospacedDigits: Bool = false) -> CGFloat {
+        let font = monospacedDigits
+            ? NSFont.monospacedDigitSystemFont(ofSize: fontSize, weight: weight)
+            : NSFont.systemFont(ofSize: fontSize, weight: weight)
+        return ceil((text as NSString).size(withAttributes: [.font: font]).width)
     }
 }
 
