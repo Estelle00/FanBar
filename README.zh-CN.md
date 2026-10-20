@@ -68,21 +68,57 @@ FanBar 是一款免费开源的原生 macOS 菜单栏应用，用于查看 CPU/G
 
 ## 📸 截图
 
-以下为浅色外观下的简体中文界面。可在 **设置 → 通用 → 界面语言** 中切换到英文、繁体中文、日语、俄语或法语，无需重启。
+以下为浅色与深色外观下的简体中文界面。可在 **设置 → 通用 → 界面语言** 中切换到英文、繁体中文、日语、俄语或法语，无需重启。
 
-<img src="docs/screenshots/fanbar-menu-light-zh-CN.png" alt="FanBar 简体中文菜单栏面板" width="456">
+<table>
+  <tr>
+    <th>浅色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-zh-CN.png" alt="FanBar 简体中文菜单栏面板 (浅色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-zh-CN.png" alt="FanBar 简体中文菜单栏面板 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「散热」页为每个面板预设提供独立的温度→转速曲线，可直接拖动控制点编辑。
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-zh-CN.png" alt="FanBar 简体中文散热设置" width="640">
+<table>
+  <tr>
+    <th>浅色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-zh-CN.png" alt="FanBar 简体中文散热设置 (浅色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-zh-CN.png" alt="FanBar 简体中文散热设置 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「外观」页可选择菜单栏图标与显示内容，并通过模拟菜单栏实时预览。
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-zh-CN.png" alt="FanBar 简体中文外观设置" width="640">
+<table>
+  <tr>
+    <th>浅色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-zh-CN.png" alt="FanBar 简体中文外观设置 (浅色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-zh-CN.png" alt="FanBar 简体中文外观设置 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「通用」页包含本机兼容性检查、控制服务状态、自动恢复、通知、语言、登录启动与更新。「日志」页可把温度和风扇转速记录为 CSV。较长的设置页面可向下滚动。
 
-<img src="docs/screenshots/fanbar-settings-general-light-zh-CN.png" alt="FanBar 简体中文通用设置" width="640">
+<table>
+  <tr>
+    <th>浅色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-zh-CN.png" alt="FanBar 简体中文通用设置 (浅色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-zh-CN.png" alt="FanBar 简体中文通用设置 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ 亮点
 

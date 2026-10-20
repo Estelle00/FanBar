@@ -70,21 +70,57 @@ The official site publishes a concise [llms.txt](https://getfanbar.com/llms.txt?
 
 ## 📸 Screenshots
 
-English interface in light appearance. Switch to Simplified Chinese, Traditional Chinese, Japanese, Russian, or French from **Settings → General → Interface language** without restarting.
+English interface in light and dark appearance. Switch to Simplified Chinese, Traditional Chinese, Japanese, Russian, or French from **Settings → General → Interface language** without restarting.
 
-<img src="docs/screenshots/fanbar-menu-light-en.png" alt="FanBar English menu-bar popover" width="456">
+<table>
+  <tr>
+    <th>Light</th>
+    <th>Dark</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-en.png" alt="FanBar English menu-bar popover (Light)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-en.png" alt="FanBar English menu-bar popover (Dark)" width="100%"></td>
+  </tr>
+</table>
 
 Cooling gives each panel preset its own editable temperature→RPM curve.
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-en.png" alt="FanBar English cooling settings" width="640">
+<table>
+  <tr>
+    <th>Light</th>
+    <th>Dark</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-en.png" alt="FanBar English cooling settings (Light)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-en.png" alt="FanBar English cooling settings (Dark)" width="100%"></td>
+  </tr>
+</table>
 
 Appearance chooses the menu bar icon and what the status item shows, previewed live in a simulated menu bar.
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-en.png" alt="FanBar English appearance settings" width="640">
+<table>
+  <tr>
+    <th>Light</th>
+    <th>Dark</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-en.png" alt="FanBar English appearance settings (Light)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-en.png" alt="FanBar English appearance settings (Dark)" width="100%"></td>
+  </tr>
+</table>
 
 General includes local device compatibility checks, control-service status, automatic restore, notifications, language, login, and updates. Log records temperatures and fan speeds to CSV. Longer settings panes scroll.
 
-<img src="docs/screenshots/fanbar-settings-general-light-en.png" alt="FanBar English general settings" width="640">
+<table>
+  <tr>
+    <th>Light</th>
+    <th>Dark</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-en.png" alt="FanBar English general settings (Light)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-en.png" alt="FanBar English general settings (Dark)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ Highlights
 

@@ -50,21 +50,57 @@ FanBar 支援 macOS 11 Big Sur 及更新版本，適用於 Apple Silicon 與仍�
 
 ## 📸 截圖
 
-以下為淺色外觀下的繁體中文介面。可在 **設定 → 一般 → 介面語言** 中切換為英文、簡體中文、日文、俄文或法文，無需重新啟動。
+以下為淺色與深色外觀下的繁體中文介面。可在 **設定 → 一般 → 介面語言** 中切換為英文、簡體中文、日文、俄文或法文，無需重新啟動。
 
-<img src="docs/screenshots/fanbar-menu-light-zh-TW.png" alt="FanBar 繁體中文選單列面板" width="456">
+<table>
+  <tr>
+    <th>淺色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-zh-TW.png" alt="FanBar 繁體中文選單列面板 (淺色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-zh-TW.png" alt="FanBar 繁體中文選單列面板 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「散熱」頁面為每個面板預設提供獨立的溫度→轉速曲線，可直接拖移控制點編輯。
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-zh-TW.png" alt="FanBar 繁體中文散熱設定" width="640">
+<table>
+  <tr>
+    <th>淺色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-zh-TW.png" alt="FanBar 繁體中文散熱設定 (淺色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-zh-TW.png" alt="FanBar 繁體中文散熱設定 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「外觀」頁面可選擇選單列圖像與顯示內容，並透過模擬選單列即時預覽。
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-zh-TW.png" alt="FanBar 繁體中文外觀設定" width="640">
+<table>
+  <tr>
+    <th>淺色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-zh-TW.png" alt="FanBar 繁體中文外觀設定 (淺色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-zh-TW.png" alt="FanBar 繁體中文外觀設定 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 「一般」頁面包含本機相容性檢查、控制服務狀態、自動恢復、通知、語言、登入啟動與更新。「日誌」頁面可將溫度與風扇轉速記錄為 CSV。較長的設定頁面可向下捲動。
 
-<img src="docs/screenshots/fanbar-settings-general-light-zh-TW.png" alt="FanBar 繁體中文一般設定" width="640">
+<table>
+  <tr>
+    <th>淺色</th>
+    <th>深色</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-zh-TW.png" alt="FanBar 繁體中文一般設定 (淺色)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-zh-TW.png" alt="FanBar 繁體中文一般設定 (深色)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ 亮點
 

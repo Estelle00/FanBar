@@ -70,21 +70,57 @@ Le site officiel publie un fichier [llms.txt](https://getfanbar.com/llms.txt?utm
 
 ## 📸 Captures d’écran
 
-Les captures ci-dessous montrent l’interface anglaise en apparence claire ; l’interface est aussi disponible en français. Changez de langue dans **Réglages → Général → Langue de l’interface**, sans redémarrer.
+Interface française en apparence claire et sombre. Passez à l’anglais, au chinois simplifié ou traditionnel, au japonais ou au russe dans **Réglages → Général → Langue de l’interface**, sans redémarrer.
 
-<img src="docs/screenshots/fanbar-menu-light-en.png" alt="Fenêtre de FanBar dans la barre des menus (interface anglaise)" width="456">
+<table>
+  <tr>
+    <th>Clair</th>
+    <th>Sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-fr.png" alt="Fenêtre de FanBar dans la barre des menus (Clair)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-fr.png" alt="Fenêtre de FanBar dans la barre des menus (Sombre)" width="100%"></td>
+  </tr>
+</table>
 
 Refroidissement associe à chaque profil du panneau sa propre courbe température → vitesse modifiable.
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-en.png" alt="Réglages de refroidissement de FanBar (interface anglaise)" width="640">
+<table>
+  <tr>
+    <th>Clair</th>
+    <th>Sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-fr.png" alt="Réglages de refroidissement de FanBar (Clair)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-fr.png" alt="Réglages de refroidissement de FanBar (Sombre)" width="100%"></td>
+  </tr>
+</table>
 
 Apparence permet de choisir l’icône de la barre des menus et ce qu’affiche l’élément d’état, avec un aperçu en direct dans une barre des menus simulée.
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-en.png" alt="Réglages d’apparence de FanBar (interface anglaise)" width="640">
+<table>
+  <tr>
+    <th>Clair</th>
+    <th>Sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-fr.png" alt="Réglages d’apparence de FanBar (Clair)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-fr.png" alt="Réglages d’apparence de FanBar (Sombre)" width="100%"></td>
+  </tr>
+</table>
 
 Général regroupe la vérification locale de compatibilité, l’état du service de contrôle, le retour automatique, les notifications, la langue, l’ouverture à la connexion et les mises à jour. Journal enregistre les températures et la vitesse des ventilateurs au format CSV. Les pages de réglages longues défilent.
 
-<img src="docs/screenshots/fanbar-settings-general-light-en.png" alt="Réglages généraux de FanBar (interface anglaise)" width="640">
+<table>
+  <tr>
+    <th>Clair</th>
+    <th>Sombre</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-fr.png" alt="Réglages généraux de FanBar (Clair)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-fr.png" alt="Réglages généraux de FanBar (Sombre)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ Points forts
 
