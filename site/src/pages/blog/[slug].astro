@@ -1,0 +1,101 @@
+---
+import { getCollection, render } from "astro:content";
+import { ArrowRight } from "lucide-astro";
+import Footer from "@/components/Footer.astro";
+import Nav from "@/components/Nav.astro";
+import SectionLabel from "@/components/SectionLabel.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { formatPostDate, inlineCodeHtml, postStructuredData, postUrl } from "@/lib/blog";
+import { getDictionary } from "@/lib/i18n";
+import { releases } from "@/lib/links";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const locale = "en" as const;
+const dict = getDictionary(locale);
+const related = (await getCollection("blog"))
+  .filter((other) => other.id !== post.id)
+  .sort((a, b) => b.data.publishedOn.localeCompare(a.data.publishedOn));
+---
+
+<BaseLayout
+  locale={locale}
+  dict={dict}
+  seo={{
+    title: post.data.title,
+    description: post.data.description,
+    canonical: postUrl(post.id),
+    alternates: [{ lang: "en", href: postUrl(post.id) }, { lang: "x-default", href: postUrl(post.id) }],
+    keywords: post.data.keywords,
+    structuredData: postStructuredData(post),
+    preloadHero: false,
+    ogType: "article",
+    publishedTime: post.data.publishedOn,
+    modifiedTime: post.data.updatedOn,
+  }}
+>
+  <Nav locale={locale} dict={dict} />
+
+  <main>
+    <article class="mx-auto max-w-[44rem] px-6 pt-14 pb-24 sm:px-8 md:pt-20">
+      <nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+        <ol class="flex flex-wrap items-center gap-2">
+          <li><a href="/" class="transition-colors hover:text-foreground">FanBar</a></li>
+          <li aria-hidden="true">/</li>
+          <li><a href="/blog" class="transition-colors hover:text-foreground">Blog</a></li>
+        </ol>
+      </nav>
+
+      <header class="mt-10">
+        <h1 class="font-display text-[2.4rem] leading-[1.12] tracking-[-0.02em] sm:text-5xl">{post.data.title}</h1>
+        <p class="mt-5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          FanBar team · <time datetime={post.data.updatedOn}>{formatPostDate(post.data.updatedOn)}</time>
+        </p>
+      </header>
+
+      <aside class="mt-10 rounded-xl border border-accent/30 bg-accent/[0.04] p-6">
+        <p class="font-mono text-xs uppercase tracking-[0.12em] text-accent">Short answer</p>
+        <p class="article-body mt-3" set:html={inlineCodeHtml(post.data.answer)} />
+      </aside>
+
+      <div class="article-body mt-12">
+        <Content />
+      </div>
+
+      <div class="mt-16 rounded-xl border border-border bg-card p-7">
+        <h2 class="text-lg font-semibold">See your Mac's temperatures and fans</h2>
+        <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+          FanBar is a free, open-source menu-bar app for CPU, GPU, SSD, and battery temperatures, with optional fan control inside each fan's hardware limits.
+        </p>
+        <a href={releases} target="_blank" rel="noopener noreferrer" class="mt-5 inline-flex h-11 items-center gap-2 rounded-[10px] bg-accent px-5 text-sm font-medium text-white hover:bg-[#0043d6]">
+          Download FanBar<ArrowRight class="h-4 w-4" aria-hidden="true" />
+        </a>
+      </div>
+    </article>
+
+    {related.length > 0 && (
+      <section class="border-t border-border bg-card">
+        <div class="mx-auto max-w-[44rem] px-6 py-14 sm:px-8">
+          <SectionLabel>Keep reading</SectionLabel>
+          <ul class="mt-6 divide-y divide-border">
+            {related.map((other) => (
+              <li>
+                <a href={`/blog/${other.id}`} class="group flex min-h-11 items-center justify-between gap-4 py-4">
+                  <span class="text-[15px] font-medium group-hover:text-accent">{other.data.title}</span>
+                  <ArrowRight class="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-accent" aria-hidden="true" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    )}
+  </main>
+
+  <Footer locale={locale} dict={dict} />
+</BaseLayout>

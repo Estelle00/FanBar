@@ -1,0 +1,75 @@
+---
+import { ChevronDown, Download } from "lucide-astro";
+import type { Locale } from "@/lib/i18n";
+import { downloadArchitectures, downloadCopy, downloads } from "@/lib/downloads";
+import DownloadLink from "./DownloadLink.astro";
+
+interface Props {
+  locale: Locale;
+  location: string;
+  compact?: boolean;
+  class?: string;
+}
+
+const { locale, location, compact = false, class: linkClass } = Astro.props;
+const copy = downloadCopy[locale];
+---
+
+<div class:list={[
+  "relative inline-flex items-stretch rounded-[10px] bg-accent text-white",
+  !compact && "min-w-60 max-w-full",
+]}>
+  <DownloadLink locale={locale} location={location} class:list={[linkClass, "flex-1 justify-center !rounded-r-none"]}>
+    <slot />
+  </DownloadLink>
+  <details data-download-picker class="flex">
+    <summary
+      aria-label={copy.choose}
+      title={copy.choose}
+      class:list={[
+        "flex min-h-11 cursor-pointer list-none items-center justify-center gap-1.5 rounded-r-[10px] border-l border-white/30 px-3 text-sm transition-colors hover:bg-[#0043d6] [&::-webkit-details-marker]:hidden",
+        !compact && "sm:px-3.5",
+      ]}
+    >
+      {!compact && <span class="hidden lg:inline">{copy.choose}</span>}
+      <ChevronDown class="h-3.5 w-3.5" aria-hidden="true" />
+    </summary>
+    <ul class:list={[
+      "absolute top-full z-50 mt-2 w-60 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-lg",
+      compact ? "right-0" : "left-0",
+    ]}>
+      {downloadArchitectures.map((architecture) => (
+        <li>
+          <DownloadLink
+            locale={locale}
+            location={location}
+            architecture={architecture}
+            class="flex min-h-12 items-center justify-between gap-4 rounded-lg px-3 py-2.5 hover:bg-muted focus-visible:bg-muted"
+          >
+            <span>
+              <span class="block text-sm font-medium">{copy[architecture]}</span>
+              <span class="mt-0.5 block font-mono text-xs text-muted-foreground">.dmg · {(downloads[architecture].size / 1_000_000).toFixed(1)} MB</span>
+            </span>
+            <Download class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          </DownloadLink>
+        </li>
+      ))}
+    </ul>
+  </details>
+</div>
+
+<script>
+  for (const picker of document.querySelectorAll<HTMLDetailsElement>("[data-download-picker]")) {
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!picker.contains(target) || (target instanceof Element && target.closest("a"))) picker.open = false;
+    });
+    picker.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && picker.open) {
+        picker.open = false;
+        picker.querySelector("summary")?.focus();
+      }
+    });
+  }
+</script>

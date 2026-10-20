@@ -1,0 +1,515 @@
+{
+  "repository": "helson-lin/FanBar",
+  "releases": [
+    {
+      "tag": "v0.6.3",
+      "version": "0.6.3",
+      "name": "FanBar 0.6.3",
+      "publishedAt": "2026-10-19T14:41:53Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.6.3",
+      "body": "### 新功能 / New Features\n\n- **重新设计的菜单面板** — 标题直接说明风扇状态和当前由谁控制；每个风扇先显示转速，并标出转速区间（已停转 / 低速 / 中速 / 高速），转速条从 0 到最大值、标出最低值。资源区的颜色只表示程度（绿、橙、红，并配文字），磁盘按剩余空间判断；温度曲线按数据自动调整范围。过热时会出现一键切换到最大散热的提示。引导页和设置页也随之更新 (#93, #98)\n  **Redesigned menu panel** — the header states the fans' condition and who controls them; each fan leads with its speed and names the speed band (stopped / low / medium / high) on a 0-to-max meter that marks the minimum. In the resource grid, color only means level (green, orange, red, with words), disk is judged by free space, and the temperature chart fits its range to the data. An overheat banner offers a one-click switch to maximum cooling. Onboarding and Settings follow the new design (#93, #98)\n\n- **温度与风扇转速 CSV 日志** — 设置中新增「日志」，可按设定间隔（默认 10 秒）把 CPU、GPU、SSD、电池温度、风扇转速和控制模式写入 `~/Library/Application Support/FanBar/Logs` 下的 CSV 文件，可选择在启动时、每天零点或从不新建文件\n  **CSV log of temperatures and fan speeds** — a new Log tab in Settings appends CPU, GPU, SSD and battery temperatures, fan speeds and the control mode to a CSV file in `~/Library/Application Support/FanBar/Logs` at a chosen interval (default 10 s). A new file can start on launch, at midnight, or never\n\n- **高温提醒提示音** — 可为高温提醒选择系统提示音、通知默认声音或静音，并可试听。选择具体声音后，即使关闭了通知声音或开启了专注模式也会播放；温度在阈值附近反复波动时，2 分钟内只响一次 (#99)\n  **High-temperature alert sound** — choose a system sound, the notification default, or none for high-temperature alerts, and preview it. A chosen sound plays even when notification sounds are off or a Focus is on, and a temperature hovering at the threshold sounds at most once every 2 minutes (#99)\n\n- **菜单栏图标跟随风扇转动** — 风扇运转时，菜单栏图标会持续旋转并跟随实际转速，风扇停转后缓缓静止。可在设置 → 外观中关闭\n  **Menu bar icon spins with the fans** — while the fans run, the menu bar icon keeps turning at a speed that follows them, and coasts to a stop when they halt. It can be turned off in Settings → Appearance\n\n- **法语界面** — 新增法语 (#96)\n  **French** — FanBar is now available in French (#96)\n\n### 修复 / Fixes\n\n- **CPU / GPU 温度更准确** — Intel Mac 改用各核心温度传感器，不再混入接近传感器而偏低；在读不到 SMC 温度的 Apple Silicon Mac（例如 macOS 27 上的部分 M1 机型）上，改从 HID 传感器读取 CPU 和 GPU 温度 (#97)\n  **More accurate CPU / GPU temperatures** — Intel Macs now use per-core sensors instead of mixing in a proximity sensor that read low; Apple Silicon Macs where no SMC temperature is readable (such as some M1 models on macOS 27) now read CPU and GPU temperatures from HID sensors (#97)\n\n- **macOS 11–13 上缺失的图标** — 风扇、模式和引导页中依赖新版 SF Symbols 的图标在旧系统上显示为空白，现已改用旧系统也有的图标 (#94)\n  **Missing icons on macOS 11–13** — fan, mode and onboarding icons that rely on newer SF Symbols rendered as blanks on older systems; they now fall back to symbols those systems have (#94)\n\n- **macOS 11 上的安装包可正常运行** — 安装包内置了 Swift 并发运行库，避免在 macOS 11 上启动后崩溃\n  **Packaged builds work on macOS 11** — the app now bundles the Swift concurrency runtime, so it no longer crashes shortly after launch on macOS 11\n\n- **从外置磁盘启动时显示内置磁盘** — 从外置磁盘启动时，内置磁盘以只读方式挂载，之前不会出现在磁盘列表中，或被显示为已满；现在会显示其实际用量\n  **Internal disk shown when booted from an external drive** — the internal disk, mounted read-only in that case, was missing from the disk list or shown as full; it now shows its actual usage\n\n### 注意 / Notes\n\n- 菜单栏图标常转会使 FanBar 的 CPU 占用略有增加（在风扇常转的 Mac mini 上约 3%）。不需要时可在设置 → 外观 → 菜单栏图标动画中关闭\n  Keeping the menu bar icon spinning uses a little more CPU (about 3% on a Mac mini, whose fan always runs). Turn it off in Settings → Appearance → Menu bar icon animation if you prefer a still icon\n\n- 升级后 FanBar 会自动重新注册风扇控制服务。如果系统提示，请在「系统设置 → 通用 → 登录项与扩展」中重新允许 FanBar\n  After updating, FanBar re-registers its fan-control service automatically. If macOS asks, allow FanBar again in System Settings → General → Login Items & Extensions\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.6.3-arm64.dmg`\n- Intel → `FanBar-v0.6.3-x86_64.dmg`\n- Universal → `FanBar-0.6.3.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.6.2...v0.6.3",
+      "assets": [
+        {
+          "name": "FanBar-0.6.3.dmg",
+          "size": 17198909,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.3/FanBar-0.6.3.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.3-arm64.dmg",
+          "size": 14854832,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.3/FanBar-v0.6.3-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.3-x86_64.dmg",
+          "size": 14915072,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.3/FanBar-v0.6.3-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.6.2",
+      "version": "0.6.2",
+      "name": "FanBar 0.6.2",
+      "publishedAt": "2026-10-17T04:19:56Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.6.2",
+      "body": "### 修复 / Fixes\n\n- **打开「本机能力与兼容性」不再闪退** — 使用 Apple Silicon 或 Intel 专用安装包（`-arm64.dmg` / `-x86_64.dmg`）时，打开设置 → 通用 → 本机能力与兼容性会立即闪退。原因是单架构安装包在错误的位置查找内置的机型与兼容性数据，现已修复；通用安装包不受影响 (#86)\n  **Opening Device Compatibility no longer crashes** — with the Apple Silicon or Intel installers (`-arm64.dmg` / `-x86_64.dmg`), opening Settings → General → Device Compatibility quit FanBar immediately. Those builds looked for the bundled model and compatibility data in the wrong place; this is fixed. The universal installer was not affected (#86)\n\n- **异常的风扇读数不再导致退出** — 硬件返回无效的风扇转速（如 NaN 或超出范围的数值）时，FanBar 和风扇控制服务会将其视为读取失败，而不是退出\n  **Invalid fan readings no longer cause a quit** — when the hardware reports an invalid fan speed (such as NaN or an out-of-range value), FanBar and its fan-control service now treat it as a failed read instead of quitting\n\n### 注意 / Notes\n\n- 升级后 FanBar 会自动重新注册风扇控制服务。如果系统提示，请在「系统设置 → 通用 → 登录项与扩展」中重新允许 FanBar\n  After updating, FanBar re-registers its fan-control service automatically. If macOS asks, allow FanBar again in System Settings → General → Login Items & Extensions\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.6.2-arm64.dmg`\n- Intel → `FanBar-v0.6.2-x86_64.dmg`\n- Universal → `FanBar-0.6.2.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.6.1...v0.6.2",
+      "assets": [
+        {
+          "name": "FanBar-0.6.2.dmg",
+          "size": 7956265,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.2/FanBar-0.6.2.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.2-arm64.dmg",
+          "size": 5565148,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.2/FanBar-v0.6.2-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.2-x86_64.dmg",
+          "size": 5656497,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.2/FanBar-v0.6.2-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.6.1",
+      "version": "0.6.1",
+      "name": "FanBar 0.6.1",
+      "publishedAt": "2026-10-16T08:52:33Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.6.1",
+      "body": "### 新功能 / New Features\n\n- **自定义散热预设** — 除了四个内置预设，现在可以新建最多六个自定义预设，各自拥有名称、图标和温度曲线。可以从任意预设的曲线开始调整，也可以复制、重命名、更换图标、删除，并像内置预设一样放进菜单面板作为快捷按钮。删除正在使用的预设时会切换到「均衡」并继续按曲线控制 (#80)\n  **Custom cooling presets** — alongside the four built-in presets you can now create up to six of your own, each with a name, icon and temperature curve. Start from any preset's curve, then duplicate, rename, change the icon, delete, or pin it to the menu panel like a built-in preset. Deleting the preset in use switches to Balanced and keeps curve control running (#80)\n\n- **俄语界面** — 设置 → 通用 → 界面语言 新增「Русский」；选择「System」且 Mac 使用俄语时也会自动切换。菜单面板、设置窗口、状态与错误提示以及桌面小组件都已翻译 (#83)\n  **Russian interface** — Settings → General → Interface language now offers «Русский», and System picks it when the Mac uses Russian. The menu panel, settings window, status and error messages, and the desktop widget are translated (#83)\n\n### 修复 / Fixes\n\n- **英文菜单面板的模式按钮不再被截断** — 「控制模式」按钮按文字长度分配宽度，自动模式按钮显示为「Auto」，「Balanced」「Performance」等标签可以完整显示 (#83)\n  **Mode buttons in the English menu panel no longer truncate** — the Control mode buttons now size to their labels and the automatic button reads \"Auto\", so labels such as \"Balanced\" and \"Performance\" show in full (#83)\n\n### 注意 / Notes\n\n- 升级后 FanBar 会自动重新注册风扇控制服务。如果系统提示，请在「系统设置 → 通用 → 登录项与扩展」中重新允许 FanBar\n  After updating, FanBar re-registers its fan-control service automatically. If macOS asks, allow FanBar again in System Settings → General → Login Items & Extensions\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.6.1-arm64.dmg`\n- Intel → `FanBar-v0.6.1-x86_64.dmg`\n- Universal → `FanBar-0.6.1.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.6.0...v0.6.1",
+      "assets": [
+        {
+          "name": "FanBar-0.6.1.dmg",
+          "size": 7952837,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.1/FanBar-0.6.1.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.1-arm64.dmg",
+          "size": 5561340,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.1/FanBar-v0.6.1-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.1-x86_64.dmg",
+          "size": 5656172,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.1/FanBar-v0.6.1-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.6.0",
+      "version": "0.6.0",
+      "name": "FanBar 0.6.0",
+      "publishedAt": "2026-10-16T01:55:51Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.6.0",
+      "body": "### 新功能 / New Features\n\n- **设备兼容性检测** — 设置中新增「设备兼容性」，在可调整大小的独立窗口中分组显示本机的传感器读取与风扇控制能力，并区分「读不到数据」「控制请求已被接受」和「已亲自确认可用」。显示可识别的 Mac 型号名称；没有内置电池的 Mac 会把电池温度标为「不适用」，而不是「未检测到」(#71, #73)\n  **Device compatibility check** — a new Device Compatibility section in Settings opens a resizable window that groups this Mac's sensor readings and fan-control capabilities, and keeps \"no data\", \"control request accepted\" and \"confirmed working by hand\" apart. Mac models are shown by name, and Macs without a built-in battery show battery temperature as not applicable instead of not detected (#71, #73)\n\n- **控制能力测试** — 一键测试手动转速与智能温控：短暂提高转速，读回确认后恢复 macOS 自动控制；关闭窗口或取消时同样会恢复。测试只从系统自动控制开始，结果按版本保存在本机 (#71, #74)\n  **Control test** — test fixed speed and smart cooling in one step: fans are briefly sped up, the mode is read back, and macOS automatic control is restored, also when you close the window or cancel. The test only starts from automatic control, and results are kept on this Mac per version (#71, #74)\n\n- **兼容性报告（可选）** — 可以把检测结果匿名提交到 report.getfanbar.com，帮助其他用户了解各机型的支持情况。报告只包含机型、芯片、版本和各项能力状态，不含序列号、用户名或温度记录；可选择是否公开，90 天后自动过期，并可随时用本机保存的凭证撤回 (#71, #74)\n  **Compatibility reports (optional)** — you can submit the results anonymously to report.getfanbar.com to show which models work. Reports contain only the model, chip, versions and capability states, never serial numbers, user names or temperature history. You choose whether a report is public; it expires after 90 days and can be withdrawn at any time with the credential kept on this Mac (#71, #74)\n\n- **诊断日志** — 遇到温度缺失、授权或控制失败时，可以上传仅维护者可见的诊断日志，或只导出到本地。日志包含传感器格式与原始数值、最近 24 小时的启动/授权/连接/控制事件、脱敏的崩溃摘要，以及正在运行的风扇控制服务版本，能识别升级后仍在运行的旧服务。FanBar 无法打开时，可运行随附的 `FanBar-Diagnostics.command` 导出 (#71, #75)\n  **Diagnostic logs** — when temperatures are missing or approval or control fails, you can upload diagnostics that only maintainers can see, or just export them locally. They include sensor formats and raw values, launch, approval, connection and control events from the last 24 hours, sanitized crash summaries, and the build of the running fan-control service, so an old service still running after an update is identified. If FanBar won't open, run the included `FanBar-Diagnostics.command` to export them (#71, #75)\n\n### 修复 / Fixes\n\n- **没有报告风扇的 Mac** — 菜单不再显示空的风扇面板和模式按钮，而是说明控制能力尚未验证 (#71)\n  **Macs that report no fans** — the menu no longer shows an empty fan panel and mode buttons, and explains that control is not verified (#71)\n\n- **偶发的温控超时不再覆盖测试结果** — 睡眠唤醒等情况下的一次智能温控写入超时，不会再把已通过的控制测试改为「失败」 (#73)\n  **Occasional cooling timeouts no longer overwrite test results** — a single smart-cooling write timing out, for example around sleep, no longer turns a passed control test into a failure (#73)\n\n- **取消控制测试** — 现在显示「已取消」，不再显示为测试失败 (#74)\n  **Cancelling the control test** — now reported as cancelled rather than as a failure (#74)\n\n### 注意 / Notes\n\n- 升级后 FanBar 会自动重新注册风扇控制服务。如果系统提示，请在「系统设置 → 通用 → 登录项与扩展」中重新允许 FanBar\n  After updating, FanBar re-registers its fan-control service automatically. If macOS asks, allow FanBar again in System Settings → General → Login Items & Extensions\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.6.0-arm64.dmg`\n- Intel → `FanBar-v0.6.0-x86_64.dmg`\n- Universal → `FanBar-0.6.0.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.5.1...v0.6.0",
+      "assets": [
+        {
+          "name": "FanBar-0.6.0.dmg",
+          "size": 7574652,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.0/FanBar-0.6.0.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.0-arm64.dmg",
+          "size": 5389017,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.0/FanBar-v0.6.0-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.6.0-x86_64.dmg",
+          "size": 5478760,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.6.0/FanBar-v0.6.0-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.5.1",
+      "version": "0.5.1",
+      "name": "FanBar 0.5.1",
+      "publishedAt": "2026-10-09T09:57:20Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.5.1",
+      "body": "### 修复 / Fixes\n\n- **上下排列显示时 CPU 占用过高** — 菜单栏使用「温度在上、转速在下」显示方式时，即使关闭所有动画，FanBar 也会持续重绘状态栏，CPU 占用高达 40–60%。现在该模式下的 CPU 占用降至约 2% (#64)\n  **High CPU with the stacked readout** — with the stacked temperature/fan-speed menu bar mode, FanBar redrew its status item nonstop and used 40–60% CPU even with every animation turned off. That mode now idles at about 2% CPU (#64)\n\n### 优化 / Improvements\n\n- **更低的内存占用** — 菜单面板改为首次打开时才创建，关闭一分钟后释放；设置窗口关闭后释放；App 内使用的自定义图标改用合适尺寸。启动后空闲内存从约 61 MB 降至约 27 MB (#64)\n  **Lower memory use** — the menu panel is now built on first open and released a minute after it closes, the Settings window is released when closed, and the in-app copy of a custom app icon is sized for where it is drawn. Idle memory after launch drops from about 61 MB to about 27 MB (#64)\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.5.1-arm64.dmg`\n- Intel → `FanBar-v0.5.1-x86_64.dmg`\n- Universal → `FanBar-0.5.1.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.5.0...v0.5.1",
+      "assets": [
+        {
+          "name": "FanBar-0.5.1.dmg",
+          "size": 5770935,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.1/FanBar-0.5.1.dmg"
+        },
+        {
+          "name": "FanBar-v0.5.1-arm64.dmg",
+          "size": 4511239,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.1/FanBar-v0.5.1-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.5.1-x86_64.dmg",
+          "size": 4564577,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.1/FanBar-v0.5.1-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.5.0",
+      "version": "0.5.0",
+      "name": "FanBar 0.5.0",
+      "publishedAt": "2026-10-09T08:11:24Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.5.0",
+      "body": "### 功能 / Features\n\n- **可选菜单栏图标** — 新增六款菜单栏风扇图标（漩涡、圆环、粗体、螺旋桨、护罩、线框），在「设置 → 外观」中选择，默认为漩涡。各款图标已做视觉对齐，大小和粗细看起来一致；手动控制时中心变为实心，不只靠颜色区分 (#58)\n  **Selectable menu bar icons** — six drawn fan glyphs (Swirl, Ringed, Bold, Propeller, Guard, Outline), chosen in Settings → Appearance; Swirl is the default. Glyphs are optically aligned so they read the same size and weight, and manual control shows a solid hub rather than relying on tint alone (#58)\n- **温度与转速叠放显示** — 新增「温度在上、转速在下」的菜单栏显示方式，状态栏占用宽度减半 (#57, #58)\n  **Stacked temperature and fan speed** — a new menu bar mode stacks the two readings, halving the status item's width (#57, #58)\n- **繁體中文與日本語** — 新增繁体中文和日语界面，小组件同步支持；「跟随系统」会为 zh-Hant / TW / HK / MO 选择繁体中文，为 ja 选择日语 (#58)\n  **Traditional Chinese and Japanese** — new interface languages, including the widget; the System language option picks Traditional Chinese for Hant/TW/HK/MO and Japanese for ja (#58)\n- **可选 App 图标** — 设置中新增 App 图标选择器，分为材质和风格两组 (#56)\n  **Alternative app icons** — an icon picker in Settings with Materials and Styles groups (#56)\n- **设置面板重组** — 「菜单栏」面板更名为「外观」；告警温度改为内联步进器；版本、手动检查和自动检查合并为一行；登录时启动移入设置；菜单预设改用系统复选框，并改进键盘与 VoiceOver 操作 (#56)\n  **Reorganized Settings** — the Menu Bar pane is now Appearance; the alert temperature uses an inline stepper; version, manual check and auto-check share one row; Launch at Login moves into Settings; menu presets use system checkboxes, with better keyboard and VoiceOver access (#56)\n- **菜单栏预览与选项样式** — 「外观」中的菜单栏卡片重新显示模拟菜单栏的预览条，会跟随所选图标和上下排列模式；显示方式改为高亮当前选项，不再在每项之间加分隔线 (#62)\n  **Menu bar preview and choice styling** — the Menu Bar card in Appearance shows the mock menu bar preview again, following the chosen icon and the stacked mode; display modes now highlight the current choice instead of dividing every option (#62)\n\n### 修复 / Fixes\n\n- **菜单栏图标变形** — 修正菜单栏风扇图标比例，旋转时在非 Retina 屏幕上也不再被裁切 (#51, #55)\n  **Menu bar icon distortion** — fixed the fan icon's proportions; rotation no longer clips on non-Retina displays (#51, #55)\n- **后台项目图标显示异常** — 修复「允许在后台」列表中 FanBar 小图标显示异常的问题（如 Mac mini 2014）(#50, #54)\n  **Background item icon** — fixed FanBar's small icon rendering incorrectly in the Allow in the Background list, e.g. on a Mac mini 2014 (#50, #54)\n\n### 致谢 / Thanks\n\n感谢 bilibili 用户 TRAVIS 和小红书用户 Taolela 反馈问题，感谢 @MrChenSH 提出上下排版建议。\nThanks to TRAVIS (bilibili) and Taolela (Xiaohongshu) for reporting issues, and to @MrChenSH for suggesting the stacked layout.\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.5.0-arm64.dmg`\n- Intel → `FanBar-v0.5.0-x86_64.dmg`\n- Universal → `FanBar-0.5.0.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.16...v0.5.0",
+      "assets": [
+        {
+          "name": "FanBar-0.5.0.dmg",
+          "size": 5760718,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.0/FanBar-0.5.0.dmg"
+        },
+        {
+          "name": "FanBar-v0.5.0-arm64.dmg",
+          "size": 4504259,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.0/FanBar-v0.5.0-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.5.0-x86_64.dmg",
+          "size": 4559835,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.5.0/FanBar-v0.5.0-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.16",
+      "version": "0.4.16",
+      "name": "FanBar 0.4.16",
+      "publishedAt": "2026-10-05T03:33:14Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.16",
+      "body": "### 功能 / Features\n\n- **温控曲线锚点可拖过相邻锚点** — 在曲线图上拖动锚点不再被前后锚点挡住，松手后曲线按温度自动重排，该锚点保持选中且转速不变；落在已有锚点的温度上时会自动错开一格 (#47)\n  **Curve anchors can be dragged past their neighbors** — dragging an anchor on the curve is no longer blocked by adjacent anchors; the curve re-sorts by temperature, the anchor stays selected and keeps its speed, and landing on an occupied temperature shifts it by one degree (#47)\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.16-arm64.dmg`\n- Intel → `FanBar-v0.4.16-x86_64.dmg`\n- Universal → `FanBar-0.4.16.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.15...v0.4.16",
+      "assets": [
+        {
+          "name": "FanBar-0.4.16.dmg",
+          "size": 4745578,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.16/FanBar-0.4.16.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.16-arm64.dmg",
+          "size": 3585151,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.16/FanBar-v0.4.16-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.16-x86_64.dmg",
+          "size": 3634046,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.16/FanBar-v0.4.16-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.15",
+      "version": "0.4.15",
+      "name": "FanBar 0.4.15",
+      "publishedAt": "2026-10-05T02:55:00Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.15",
+      "body": "### 修复 / Fixes\n\n- **兼容旧款 Intel Mac（如 Mac mini 2014）** — 没有 `F0Md`/`F0md` 模式键的机型不再报 `SMC operation F0Md failed (65668)`，改用 `FS! ` 位掩码切换手动模式；两者都没有时给出明确提示 (#40)\n  **Older Intel Macs (e.g. Mac mini 2014) now work** — Macs without an `F0Md`/`F0md` mode key no longer fail with `SMC operation F0Md failed (65668)`; manual mode uses the `FS! ` bitmask instead, and a clear message is shown when neither exists (#40)\n- **睡眠唤醒后保持手动风扇模式，恢复 GPU 温度读取** — 睡眠期间暂停自动恢复计时；XPC 超时后重新应用当前模式；自动恢复设为\"从不\"时不再 30 分钟后回到系统模式 (#41)\n  **Manual fan mode survives sleep/wake, and GPU temperature reads again** — the auto-restore timer pauses during sleep, the current mode is re-applied after an XPC timeout, and \"Never\" no longer reverts after 30 minutes (#41)\n\n### 安全 / Security\n\n- **加固特权辅助程序** — 通过审计令牌（audit token）而非进程 ID 验证 XPC 调用方，并拒绝非有限值和负数转速 (#42)\n  **Hardened the privileged helper** — XPC callers are verified by audit token instead of PID, and non-finite or negative RPM values are rejected (#42)\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.15-arm64.dmg`\n- Intel → `FanBar-v0.4.15-x86_64.dmg`\n- Universal → `FanBar-0.4.15.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.14...v0.4.15",
+      "assets": [
+        {
+          "name": "FanBar-0.4.15.dmg",
+          "size": 4739157,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.15/FanBar-0.4.15.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.15-arm64.dmg",
+          "size": 3583150,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.15/FanBar-v0.4.15-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.15-x86_64.dmg",
+          "size": 3630394,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.15/FanBar-v0.4.15-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.14",
+      "version": "0.4.14",
+      "name": "FanBar 0.4.14",
+      "publishedAt": "2026-09-27T07:17:43Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.14",
+      "body": "### 修复 / Fixes\n\n- **停转的风扇不再显示转动** — 风扇转速为 0 时，主界面的风扇图形保持静止，周围的气流线条也会隐藏；桌面小组件同样不再显示气流 (#34)\n  **Stopped fans no longer look like they're spinning** — at 0 RPM the panel's fan graphic stays still and its airflow streaks are hidden; the desktop widget no longer shows airflow either (#34)\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.14-arm64.dmg`\n- Intel → `FanBar-v0.4.14-x86_64.dmg`\n- Universal → `FanBar-0.4.14.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.13...v0.4.14",
+      "assets": [
+        {
+          "name": "FanBar-0.4.14.dmg",
+          "size": 4725753,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.14/FanBar-0.4.14.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.14-arm64.dmg",
+          "size": 3574746,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.14/FanBar-v0.4.14-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.14-x86_64.dmg",
+          "size": 3619360,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.14/FanBar-v0.4.14-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.13",
+      "version": "0.4.13",
+      "name": "FanBar 0.4.13",
+      "publishedAt": "2026-09-27T06:44:00Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.13",
+      "body": "### 新增 / New\n\n- **自动恢复默认时长** — 设置 → 通用 → 风扇控制 新增\"自动恢复系统控制\"，可设为 15 分钟、30 分钟、1 小时或不自动恢复，每次切换到手动模式时按此计时。主界面中的修改只对当次生效，恢复系统控制后回到默认值 (#32)\n  **Default automatic-restore duration** — Settings → General → Fan Control adds \"Restore automatic control\" (15 minutes, 30 minutes, 1 hour or never), used each time you switch to a manual mode. Changes in the menu apply to that session only and reset once control returns to macOS (#32)\n- **可关闭主界面动画** — 设置 → 菜单栏 → 动画 新增\"主界面动画\"开关，关闭后风扇图形静止、模式切换无过渡，转速仍实时更新，可进一步降低 CPU 占用 (#32)\n  **Panel animation can be turned off** — Settings → Menu Bar → Animation adds a \"Panel animation\" switch. When off, the fans stop spinning and mode changes don't animate while readings still update live, further lowering CPU use (#32)\n\n### 改进 / Improvements\n\n- **控制模式切换更顺滑** — 选中背景在模式之间平滑滑动；从\"系统\"切换到其他模式时控制条不再抖动；各模式按钮文字大小保持一致 (#32)\n  **Smoother control mode switching** — the selection glides between modes, the strip no longer jolts when leaving Automatic, and all mode labels share one size (#32)\n- **固定转速选中态** — \"固定\"选择器中当前转速（含自定义转速）以与控制条相同的背景高亮显示 (#32)\n  **Fixed RPM selection** — the current RPM in the Fixed picker, including a custom value, is highlighted with the same background as the control strip (#32)\n- **重新整理设置窗口** — 通用页合并为\"风扇控制\"、\"通知\"、\"FanBar\"三组；控制服务正常时收起为一行状态；统一行高、控件对齐与标题层级；\"检查更新…\"移至版本号旁 (#32)\n  **Reorganized settings** — General is regrouped into Fan Control, Notifications and FanBar; a healthy control service collapses to a single status row; rows, controls and headers share one rhythm; \"Check for Updates…\" moves beside the version (#32)\n- \"硬件安全限制\"更名为\"自动恢复系统控制\"，更准确地描述其作用\n  \"Hardware safety limits\" is renamed \"Restore automatic control\" to better describe what it does\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.13-arm64.dmg`\n- Intel → `FanBar-v0.4.13-x86_64.dmg`\n- Universal → `FanBar-0.4.13.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.12...v0.4.13",
+      "assets": [
+        {
+          "name": "FanBar-0.4.13.dmg",
+          "size": 4725054,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.13/FanBar-0.4.13.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.13-arm64.dmg",
+          "size": 3574383,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.13/FanBar-v0.4.13-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.13-x86_64.dmg",
+          "size": 3618766,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.13/FanBar-v0.4.13-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.12",
+      "version": "0.4.12",
+      "name": "FanBar 0.4.12",
+      "publishedAt": "2026-09-26T13:38:19Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.12",
+      "body": "### 新增 / New\n\n- **自定义固定转速** — \"固定\"菜单新增\"自定义转速…\"，可以用滑块快速调整，或直接输入精确值（例如 3000 RPM）。可输入范围按本机风扇的硬件上下限计算并始终显示，超出范围时无法应用。最近一次使用的自定义转速会出现在菜单中，超出本机硬件范围的预设档位不再显示 (#26)\n  **Custom fixed RPM** — the Fixed menu adds \"Custom RPM…\", with a slider for quick changes and a field for an exact value (e.g. 3000 RPM). The allowed range comes from this Mac's fan hardware limits and is always shown; values outside it can't be applied. The last custom value is listed in the menu, and presets outside the hardware range are hidden (#26)\n- **可调整的高温提醒温度** — 设置 → 通知 新增\"提醒温度\"，可在 60–105°C 之间设置，默认 90°C。设置项默认收起，点击展开滑块；松开滑块后才生效，拖动过程中不会误发通知\n  **Adjustable high-temperature alert** — Settings → Notifications adds \"Alert temperature\", configurable from 60–105°C (default 90°C). The row is collapsed by default and expands to a slider when clicked; the value applies when you release the slider, so dragging never triggers a stray notification\n\n### 改进 / Improvements\n\n- **大幅降低后台资源占用** — 菜单栏面板关闭时风扇动画完全暂停；菜单栏转动图标只在画面真正变化时重绘；系统服务状态不再每 2 秒查询；SSD 温度传感器在首次发现后复用。本地实测面板关闭时 CPU 占用从约 20% 降至约 3%（关闭菜单栏转动图标时）(#26)\n  **Much lower background resource use** — fan animations fully pause while the menu bar panel is closed; the spinning menu bar icon only redraws when its image actually changes; system service status is no longer queried every 2 seconds; and the SSD temperature sensors are reused after the first discovery. In local measurement, CPU use with the panel closed dropped from about 20% to about 3% (with the spinning icon turned off) (#26)\n- **菜单栏项目更紧凑** — 显示温度或转速时，菜单栏项目的宽度按实际读数计算，不再在图标和文字两侧留出多余空白\n  **A tighter menu bar item** — when showing temperature or fan speed, the item's width is sized to the actual reading, removing the extra space around the icon and text\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.12-arm64.dmg`\n- Intel → `FanBar-v0.4.12-x86_64.dmg`\n- Universal → `FanBar-0.4.12.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.11...v0.4.12",
+      "assets": [
+        {
+          "name": "FanBar-0.4.12.dmg",
+          "size": 4642527,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.12/FanBar-0.4.12.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.12-arm64.dmg",
+          "size": 3530375,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.12/FanBar-v0.4.12-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.12-x86_64.dmg",
+          "size": 3579676,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.12/FanBar-v0.4.12-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.11",
+      "version": "0.4.11",
+      "name": "FanBar 0.4.11",
+      "publishedAt": "2026-09-22T03:42:51Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.11",
+      "body": "### 新增 / New\n\n- **设置窗口重新设计** — 原生偏好设置样式工具栏（散热 · 菜单栏 · 通用），散热预设改为卡片式选择，曲线卡片带温度来源、当前温度标记与目标转速、控制点检查器；高级选项（降温缓冲、每步最大变化）默认折叠\n  **Redesigned the settings window** — a native preference-style toolbar (Cooling · Menu Bar · General), card-based preset selection, and one curve card with its temperature source, a live marker showing the target RPM, and a control-point inspector; advanced options (cooling buffer, max step) stay collapsed by default\n- **首次启动引导新增控制服务授权提示** — 未授权时会提示\"按需调整散热需要一次性授权\"，并直接提供启用入口，不再让新用户第一次尝试调节转速时静默失败\n  **The first-run onboarding now surfaces the control-service permission** — when it hasn't been granted yet, a notice explains that adjusting cooling needs one-time permission and offers to enable it directly, instead of silently no-oping the first time a new user tries\n\n### 修复 / Fixes\n\n- **修复温度曲线横轴跨整点丢失小时** — 时间格式从 `mm:ss` 改为 `HH:mm:ss`\n  **Fix the temperature chart's x-axis losing the hour across an hour boundary** — the time format changed from `mm:ss` to `HH:mm:ss`\n- **修复锁屏、休眠或重启造成的采样空洞被连成一条直线**，且平滑窗口会把断档两侧的读数混在一起；现在断档处正确断线，平滑也不会跨越断档。同时把最近十分钟的温度历史写入本地，重新打开 App 后曲线不再从空白开始\n  **Fix a straight line being drawn across sampling gaps** left by sleep, a locked screen, or a relaunch, and the smoothing window blending readings from either side of the gap; the trace now breaks at the gap and smoothing stops at the boundary too. The last ten minutes of history are also persisted locally, so the chart no longer starts blank after relaunching\n- **修复设置窗口切换 Tab 时的界面抖动** — 内容滚动条强制使用悬浮样式，不再因为\"是否需要滚动\"而改变内容区宽度\n  **Fix the settings window's content visibly shifting when switching tabs** — its scroller is now forced to overlay style, so the content lane's width no longer depends on whether that tab happens to need scrolling\n\n### 致谢 / Thanks\n\n- 感谢 **Hisn0w** 提交温度曲线修复\n  Thanks to **Hisn0w** for contributing the temperature chart fix\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.11-arm64.dmg`\n- Intel → `FanBar-v0.4.11-x86_64.dmg`\n- Universal → `FanBar-0.4.11.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.10...v0.4.11",
+      "assets": [
+        {
+          "name": "FanBar-0.4.11.dmg",
+          "size": 4538605,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.11/FanBar-0.4.11.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.11-arm64.dmg",
+          "size": 3495841,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.11/FanBar-v0.4.11-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.11-x86_64.dmg",
+          "size": 3541001,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.11/FanBar-v0.4.11-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.10",
+      "version": "0.4.10",
+      "name": "FanBar 0.4.10",
+      "publishedAt": "2026-09-17T14:51:34Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.10",
+      "body": "### 修复 / Fixes\n\n- **修复启动后点击菜单栏图标会弹出空白的“FanBar 设置”窗口** — 在较新的 macOS 上，系统会在启动时打开一个空的设置占位窗口，点击菜单栏图标时它会随面板一起出现。现在占位窗口不会再显示；在 FanBar 运行时再次打开 App 或按 ⌘, 会直接打开真正的设置窗口\n  **Fix a blank \"FanBar Settings\" window appearing after clicking the menu bar icon** — On recent macOS releases, an empty placeholder settings window opened at launch and came forward with the menu panel. The placeholder no longer appears, and reopening FanBar while it runs or pressing ⌘, opens the real settings window\n\n### 致谢 / Thanks\n\n- 感谢 **倾藏** 反馈问题\n  Thanks to **倾藏** for reporting the issue\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.10-arm64.dmg`\n- Intel → `FanBar-v0.4.10-x86_64.dmg`\n- Universal → `FanBar-0.4.10.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.9...v0.4.10",
+      "assets": [
+        {
+          "name": "FanBar-0.4.10.dmg",
+          "size": 5118899,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.10/FanBar-0.4.10.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.10-arm64.dmg",
+          "size": 4145843,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.10/FanBar-v0.4.10-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.10-x86_64.dmg",
+          "size": 4189863,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.10/FanBar-v0.4.10-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.9",
+      "version": "0.4.9",
+      "name": "FanBar 0.4.9",
+      "publishedAt": "2026-09-17T13:27:51Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.9",
+      "body": "### 修复 / Fixes\n\n- **修复开启温控或固定转速时提示“控制服务未响应”、风扇冲高后又归零** — 部分 Mac 需要先解锁风扇手动模式，耗时可能超过 3 秒；此前 App 等待 3 秒即判定失败并断开连接，控制服务随之把风扇恢复为系统自动控制，导致每次切换都失败。现在等待时间按风扇数量和解锁所需的最长时间计算，退出 FanBar 也不再被缓慢的回复拖住\n  **Fix \"control service did not respond\" and fans spinning up then dropping back to 0** — Some Macs must unlock manual fan mode first, which can take longer than 3 seconds. FanBar gave up after 3 seconds and dropped the connection, which made the control service restore automatic fan control, so every switch failed. The wait now scales with the fan count and the longest unlock time, and quitting FanBar no longer waits on a slow reply\n- **控制服务新增诊断日志** — 记录每次风扇操作的耗时、真实错误和解锁时间，排查问题时可运行 `log show --predicate 'subsystem == \"local.fanbar.helper\"' --last 30m` 查看\n  **Diagnostic logging for the control service** — Each fan operation's duration, underlying error, and unlock time are logged; view them with `log show --predicate 'subsystem == \"local.fanbar.helper\"' --last 30m`\n- **修复控制模式错误提示与按钮文字重叠** — 错误提示显示时隐藏下方按钮，较长的提示不再溢出到相邻区域，完整内容可通过悬停或 VoiceOver 查看\n  **Fix the control-mode error overlapping its buttons** — The buttons are hidden while the error is shown, long messages no longer overflow into neighboring sections, and the full text is available on hover and to VoiceOver\n- **修复 macOS 26 及更新版本上设置窗口顶部标签图标拥挤** — 标签宽度改为跟随系统的原生尺寸\n  **Fix crowded settings tab icons on macOS 26 and later** — Tab segments now use the system's native sizing\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-v0.4.9-arm64.dmg`\n- Intel → `FanBar-v0.4.9-x86_64.dmg`\n- Universal → `FanBar-0.4.9.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.8...v0.4.9",
+      "assets": [
+        {
+          "name": "FanBar-0.4.9.dmg",
+          "size": 5115916,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.9/FanBar-0.4.9.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.9-arm64.dmg",
+          "size": 4138218,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.9/FanBar-v0.4.9-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.9-x86_64.dmg",
+          "size": 4185051,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.9/FanBar-v0.4.9-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.8",
+      "version": "0.4.8",
+      "name": "FanBar 0.4.8",
+      "publishedAt": "2026-09-17T11:42:05Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.8",
+      "body": "### 修复 / Fixes\n\n- **修复开机登录启动时菜单栏图标偶发崩溃** — 当 FanBar 作为登录项被 launchd 在系统刚启动、WindowServer 连接尚未就绪时直接拉起，SwiftUI `App.init()` 阶段过早创建 `NSStatusItem` 会撞上 AppKit/SkyLight 的连接断言并直接 abort，表现为“一开机就崩溃、图标不出现”；现已将状态栏图标的创建延迟到 `applicationDidFinishLaunching`，此时 AppKit 已保证完成自身启动流程\n  **Fix intermittent crash on launch-at-login** — When launchd started FanBar as a login item before the WindowServer connection was ready, creating an `NSStatusItem` too early inside SwiftUI's `App.init()` hit an AppKit/SkyLight connection assertion and aborted, showing up as \"crashes on launch, icon never appears\"; status-item creation now waits for `applicationDidFinishLaunching`, which AppKit only calls once its own startup sequence has finished\n\n### 安装 / Install\n\n> 手动覆盖安装，需要手动在‘通用’-‘登录项与扩展’-‘后台App活动’，关闭再开启一次fanbar.\n> 建议在线升级\n> To perform a manual override installation, you need to manually close and then re-enable Fanbar under \"General\" - \"Login Items & Extensions\" - \"Background App Activity.\"\nRecommended for online upgrades\n\n<img width=\"460\" height=\"444\" alt=\"Screendrop_2026-09-17-19-48-51\" src=\"https://github.com/user-attachments/assets/e652f815-18bf-446e-82ec-c7881ebb7ae7\" />\n\n\n- Apple Silicon → `FanBar-0.4.8-arm64.dmg`\n- Intel → `FanBar-0.4.8-x86_64.dmg`\n- Universal → `FanBar-0.4.8.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.7...v0.4.8",
+      "assets": [
+        {
+          "name": "FanBar-0.4.8.dmg",
+          "size": 5087247,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.8/FanBar-0.4.8.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.8-arm64.dmg",
+          "size": 4129970,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.8/FanBar-v0.4.8-arm64.dmg"
+        },
+        {
+          "name": "FanBar-v0.4.8-x86_64.dmg",
+          "size": 4166093,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.8/FanBar-v0.4.8-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.7",
+      "version": "0.4.7",
+      "name": "FanBar 0.4.7",
+      "publishedAt": "2026-09-14T04:26:00Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.7",
+      "body": "## What's Changed\n* [codex] Add macOS desktop widget by @helson-lin in https://github.com/helson-lin/FanBar/pull/9\n\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.5...v0.4.7",
+      "assets": [
+        {
+          "name": "FanBar-0.4.7-arm64.dmg",
+          "size": 4103151,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.7/FanBar-0.4.7-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.7-x86_64.dmg",
+          "size": 4157854,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.7/FanBar-0.4.7-x86_64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.7.dmg",
+          "size": 5062305,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.7/FanBar-0.4.7.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.4",
+      "version": "0.4.4",
+      "name": "FanBar 0.4.4",
+      "publishedAt": "2026-08-21T09:39:13Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.4",
+      "body": "### 修复 / Fixes\n\n- **修复 Helper 退出时崩溃** — Helper 在收到 SIGTERM/SIGINT（关机、休眠、重装、App 退出）时因 Swift 并发隔离断言触发 SIGTRAP，导致无法恢复风扇自动控制；现已显式标记信号处理闭包为 `@Sendable`，退出路径稳定执行恢复逻辑\n  **Fix helper crash on exit** — The helper trapped with SIGTRAP on SIGTERM/SIGINT (shutdown, sleep, reinstall, app quit) due to a Swift concurrency isolation assertion, skipping fan restore; the signal handler closures are now explicitly `@Sendable` so the shutdown path reliably restores automatic control\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-0.4.4-arm64.dmg`\n- Intel → `FanBar-0.4.4-x86_64.dmg`\n- Universal → `FanBar-0.4.4.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.3...v0.4.4",
+      "assets": [
+        {
+          "name": "FanBar-0.4.4-arm64.dmg",
+          "size": 3939880,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.4/FanBar-0.4.4-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.4-x86_64.dmg",
+          "size": 3990391,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.4/FanBar-0.4.4-x86_64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.4.dmg",
+          "size": 4728640,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.4/FanBar-0.4.4.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.3",
+      "version": "0.4.3",
+      "name": "FanBar 0.4.3",
+      "publishedAt": "2026-08-19T10:13:35Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.3",
+      "body": "### 新增 / New\n\n- **可编辑智能温控曲线** — 设置页以散热曲线为第一路径：平滑曲线、可拖锚点、可选 CPU / GPU / SSD 温度来源，温度低于第一拐点时可 0% 停转\n  **Editable smart cooling curves** — Settings opens on Cooling first: a smooth curve, draggable anchors, CPU / GPU / SSD sources, and 0% idle below the first knee\n- **曲线与面板预设一一对应** — 静音 / 均衡 / 性能 / 极速各自保存一条曲线；菜单栏选择预设即套用对应曲线\n  **One curve per panel preset** — Silent, Balanced, Performance, and Extreme each store their own curve; choosing a preset in the menu applies that slot\n\n### 改进 / Improvements\n\n- **高级项默认折叠** — 锚点表、降温磁滞、每步限速放在「高级」里，主路径只保留曲线、预设和温度来源\n  **Advanced controls stay folded** — Anchor table, hysteresis, and per-step limits live under Advanced so the curve stays primary\n- **设置窗口适配屏幕** — 高度限制在可见屏幕内，内容可滚动，避免矮屏被裁切\n  **Settings window fits the display** — Height is clamped to the visible screen and tall content scrolls instead of clipping\n- **架构安装包** — 同时提供 Apple Silicon、Intel 与 Universal DMG；Sparkle 在线更新仍使用 Universal\n  **Architecture-specific installers** — Apple Silicon, Intel, and Universal DMGs; Sparkle updates still use the Universal image\n\n### 修复 / Fixes\n\n- **硬件写入失败不切换预设** — 只有 Helper 真正应用成功后才提交可见预设和曲线，避免界面声称已进入未生效的模式\n  **Failed hardware apply does not switch presets** — The visible preset and curve commit only after the helper write succeeds\n- **降温磁滞按输出保持** — 相同较低温度的连续采样会继续稳住转速，降温过程中不会把风扇往上调\n  **Falling hysteresis holds across equal samples** — Repeated cooler readings keep RPM; output never rises while cooling\n- **忽略过期 Helper 连接回调** — 旧 XPC 连接的 invalidation 不会清掉已经建好的新连接\n  **Stale helper invalidations are ignored** — An older connection cannot clear its replacement\n\n### 安装 / Install\n\n- Apple Silicon → `FanBar-0.4.3-arm64.dmg`\n- Intel → `FanBar-0.4.3-x86_64.dmg`\n- Universal → `FanBar-0.4.3.dmg`\n- 校验和见对应的 `.sha256` 文件 / SHA256 checksums in corresponding `.sha256` files\n\n**Full Changelog**: https://github.com/helson-lin/FanBar/compare/v0.4.2...v0.4.3",
+      "assets": [
+        {
+          "name": "FanBar-0.4.3-arm64.dmg",
+          "size": 3940197,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.3/FanBar-0.4.3-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.3-x86_64.dmg",
+          "size": 3990418,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.3/FanBar-0.4.3-x86_64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.3.dmg",
+          "size": 4728984,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.3/FanBar-0.4.3.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.2",
+      "version": "0.4.2",
+      "name": "FanBar 0.4.2",
+      "publishedAt": "2026-08-08T06:38:55Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.2",
+      "body": "### 新增 / New\n\n- **菜单栏图标跟随风扇运转动画** — 风扇运转时图标持续旋转，转速跟随实际 RPM；风扇停转后惯性缓停；切换模式失败时图标闪烁提示\n  **Menu bar icon follows fan activity** — spins with live RPM, coasts to a stop when idle, blinks on switch failure\n- **设置页 Tab 导航** — 拆分为「菜单栏」「散热」「通用」三个标签页，NSToolbar 原生分段控件切换，窗口高度随 Tab 自动调节\n  **Settings tab navigation** — three native toolbar tabs (Menu Bar / Cooling / General), window height adapts per tab\n- **设置页分组卡片** — macOS 原生分组样式，卡片承载控件、说明文本移至页脚，去除冗余页内标题\n  **Grouped settings cards** — native macOS grouped style with card containers, section footers for explanatory text\n\n### 改进 / Improvements\n\n- **菜单栏图标放大** — 12pt → 14pt，旋转与静态帧共用同一渲染路径，消除切换时的大小跳变\n  **Larger menu bar icon** — 12pt → 14pt; rotation and static frames share the same render path, no size jump on transition\n\n### 修复 / Fixes\n\n- **XPC 返回过早结束动画** — 图标改为由风扇实时 RPM 持续驱动，而非依赖 XPC 调用时长\n  **Animation ended too early** — now continuously driven by live fan RPM instead of XPC call duration\n\n### 安装 / Install\n\n- Apple Silicon → \\`FanBar-0.4.2-arm64.dmg\\`\n- Intel → \\`FanBar-0.4.2-x86_64.dmg\\`\n- SHA256 checksums in corresponding \\`.sha256\\` files",
+      "assets": [
+        {
+          "name": "FanBar-0.4.2-arm64.dmg",
+          "size": 2752851,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.2/FanBar-0.4.2-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.2-x86_64.dmg",
+          "size": 2806330,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.2/FanBar-0.4.2-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.1",
+      "version": "0.4.1",
+      "name": "FanBar 0.4.1",
+      "publishedAt": "2026-08-05T02:59:53Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.1",
+      "body": "FanBar 0.4.1\n\n- macOS 11 and later\n- Apple Silicon arm64 and Intel x86_64 builds\n- Improved English control-mode layout\n- Fan speed, temperature charts, smart cooling, and automatic restore\n\nDownload the build that matches your Mac, and use the accompanying SHA-256 file to verify the download.",
+      "assets": [
+        {
+          "name": "FanBar-0.4.1-arm64.dmg",
+          "size": 2694950,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.1/FanBar-0.4.1-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.1-x86_64.dmg",
+          "size": 2740984,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.1/FanBar-0.4.1-x86_64.dmg"
+        }
+      ]
+    },
+    {
+      "tag": "v0.4.0",
+      "version": "0.4.0",
+      "name": "FanBar 0.4.0",
+      "publishedAt": "2026-08-04T15:47:33Z",
+      "url": "https://github.com/helson-lin/FanBar/releases/tag/v0.4.0",
+      "body": "Signed Developer ID builds for Apple Silicon and Intel Macs. Includes English and Simplified Chinese UI, refreshed screenshots, and settings language refresh fixes.",
+      "assets": [
+        {
+          "name": "FanBar-0.4.0-arm64.dmg",
+          "size": 2656303,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.0/FanBar-0.4.0-arm64.dmg"
+        },
+        {
+          "name": "FanBar-0.4.0-x86_64.dmg",
+          "size": 2706735,
+          "url": "https://github.com/helson-lin/FanBar/releases/download/v0.4.0/FanBar-0.4.0-x86_64.dmg"
+        }
+      ]
+    }
+  ]
+}

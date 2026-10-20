@@ -1,0 +1,69 @@
+---
+import { Check, ChevronDown, Globe } from "lucide-astro";
+import { languageNames, locales, type Dictionary, type Locale } from "@/lib/i18n";
+import { HTML_LANG } from "@/lib/seo";
+import { localizedPath } from "@/lib/routes";
+
+interface Props {
+  locale: Locale;
+  dict: Dictionary;
+}
+
+const { locale, dict } = Astro.props;
+---
+
+<details class="language-menu relative">
+  <summary
+    aria-label={`${dict.a11y.languageMenu}: ${languageNames[locale]}`}
+    class="flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[10px] px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden"
+  >
+    <Globe class="h-4 w-4" aria-hidden="true" />
+    <span class="hidden sm:inline lg:hidden xl:inline">{languageNames[locale]}</span>
+    <ChevronDown class="language-menu-chevron hidden h-3.5 w-3.5 transition-transform duration-150 sm:block lg:hidden xl:block" aria-hidden="true" />
+  </summary>
+
+  <ul class="absolute right-0 z-50 mt-2 min-w-44 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+    {locales.map((target) => (
+      <li>
+        <a
+          href={localizedPath(Astro.url.pathname, target)}
+          hreflang={HTML_LANG[target]}
+          lang={HTML_LANG[target]}
+          data-track-event={target !== locale ? "change-language" : undefined}
+          data-track-location="nav"
+          data-track-locale={locale}
+          data-track-language={target}
+          aria-current={target === locale ? "true" : undefined}
+          class:list={[
+            "flex min-h-11 items-center justify-between gap-6 rounded-lg px-3 text-sm transition-colors hover:bg-muted",
+            target === locale ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
+          ]}
+        >
+          {languageNames[target]}
+          {target === locale && <Check class="h-4 w-4 text-accent" aria-hidden="true" />}
+        </a>
+      </li>
+    ))}
+  </ul>
+</details>
+
+<style>
+  .language-menu[open] .language-menu-chevron {
+    transform: rotate(180deg);
+  }
+</style>
+
+<script>
+  // <details> stays open until toggled; close it on an outside click or Escape.
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>(".language-menu")) {
+    document.addEventListener("click", (event) => {
+      if (menu.open && !menu.contains(event.target as Node)) menu.open = false;
+    });
+    menu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menu.open) {
+        menu.open = false;
+        menu.querySelector("summary")?.focus();
+      }
+    });
+  }
+</script>

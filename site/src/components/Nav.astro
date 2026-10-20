@@ -1,0 +1,69 @@
+---
+import type { Dictionary, Locale } from "@/lib/i18n";
+import DownloadPicker from "./DownloadPicker.astro";
+import { comparisonPath, homePath } from "@/lib/routes";
+import { releasesPath } from "@/lib/releases";
+import LanguageMenu from "./LanguageMenu.astro";
+
+interface Props {
+  locale: Locale;
+  dict: Dictionary;
+}
+
+const { locale, dict } = Astro.props;
+const notesHref = releasesPath(locale === "zh" ? "zh" : "en");
+const links = [
+  { href: "#highlights", label: dict.nav.highlights },
+  { href: "#screenshots", label: dict.nav.screenshots },
+  { href: "#how", label: dict.nav.howItWorks },
+  { href: "#faq", label: dict.nav.faq },
+  { href: comparisonPath(locale), label: dict.nav.compare },
+  { href: notesHref, label: dict.nav.releases },
+];
+const homeHref = homePath(locale);
+---
+
+<header class="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm">
+  <nav
+    aria-label={dict.a11y.mainNav}
+    class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:gap-6 sm:px-8"
+  >
+    <a href={homeHref} class="flex shrink-0 items-center gap-2.5">
+      <img
+        src="/fanbar-icon-64.webp"
+        alt="FanBar icon"
+        width="26"
+        height="26"
+        class="rounded-[7px]"
+      />
+      <span class="text-[16px] font-semibold tracking-[-0.01em]">FanBar</span>
+    </a>
+
+    <div class="hidden min-w-0 flex-wrap items-center justify-center gap-x-4 gap-y-1 lg:flex xl:gap-x-6">
+      {links.map((link) => (
+        <a
+          href={link.href.startsWith("#") && Astro.url.pathname.replace(/\/$/, "") !== homeHref.replace(/\/$/, "") ? `${homeHref}${link.href}` : link.href}
+          aria-current={Astro.url.pathname === link.href ? "page" : undefined}
+          data-track-event={link.href === notesHref ? "view-release-notes" : undefined}
+          data-track-location={link.href === notesHref ? "nav" : undefined}
+          data-track-locale={link.href === notesHref ? locale : undefined}
+          class="whitespace-nowrap text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
+      <LanguageMenu locale={locale} dict={dict} />
+      <DownloadPicker
+        locale={locale}
+        location="nav"
+        compact
+        class="inline-flex h-11 items-center rounded-[10px] bg-accent px-[18px] text-sm font-medium text-accent-foreground transition-[color,background-color,border-color,scale] duration-150 ease-out hover:bg-[#0043d6] active:scale-[0.98]"
+      >
+        {dict.nav.download}
+      </DownloadPicker>
+    </div>
+  </nav>
+</header>

@@ -1,0 +1,41 @@
+---
+// Keep preview/dev traffic out of production statistics.
+---
+
+{import.meta.env.PROD && (
+  <script
+    is:inline
+    defer
+    src="https://ana.jarin.me/script.js"
+    data-website-id="04bae651-5cb8-4c70-ae32-187b40a58955"
+    data-domains="getfanbar.com,www.getfanbar.com"
+  ></script>
+)}
+
+<script>
+  type Tracker = {
+    track: (event: string, properties: Record<string, string>) => Promise<unknown> | void;
+  };
+
+  document.addEventListener("click", (event) => {
+    if (event.defaultPrevented || !(event.target instanceof Element)) return;
+    const element = event.target.closest<HTMLElement>("[data-track-event]");
+    const name = element?.dataset.trackEvent;
+    if (!element || !name) return;
+
+    const tracker = (window as Window & { umami?: Tracker }).umami;
+    if (!tracker) return;
+    const properties: Record<string, string> = {};
+    for (const key of ["location", "locale", "architecture", "version", "language"] as const) {
+      const value = element.getAttribute(`data-track-${key}`);
+      if (value) properties[key] = value;
+    }
+    // Native links must keep working if analytics is blocked, slow, or fails.
+    // Do not await tracking or prevent the browser's download/navigation.
+    try {
+      void Promise.resolve(tracker.track(name, properties)).catch(() => {});
+    } catch {
+      // Analytics is optional; a synchronous tracker failure must not affect links.
+    }
+  });
+</script>

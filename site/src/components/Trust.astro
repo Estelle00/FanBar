@@ -1,0 +1,36 @@
+---
+import { ArrowRight, Check } from "lucide-astro";
+import SectionLabel from "./SectionLabel.astro";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { safetyPath } from "@/lib/routes";
+
+interface Props {
+  locale: Locale;
+  dict: Dictionary;
+}
+
+const { locale, dict } = Astro.props;
+---
+
+<section class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+  <div class="grid gap-14 md:grid-cols-[1.2fr_0.8fr]">
+    <div class="reveal">
+      <SectionLabel>{dict.trust.badge}</SectionLabel>
+      <h2 class="mt-4 font-display text-[1.875rem] leading-[1.25]">{dict.trust.heading}</h2>
+      <p class="mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground">{dict.trust.body}</p>
+      <a href={safetyPath(locale)} class="group mt-6 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent">
+        <span class="underline decoration-accent/30 underline-offset-4 group-hover:decoration-accent">{dict.trust.cta}</span>
+        <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+      </a>
+    </div>
+
+    <ul class="reveal reveal-stagger flex flex-col justify-center gap-5">
+      {dict.trust.points.map((point) => (
+        <li class="flex items-start gap-3">
+          <Check class="mt-0.5 h-[18px] w-[18px] shrink-0 text-accent" stroke-width={2} aria-hidden="true" />
+          <span class="text-sm leading-relaxed">{point}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>

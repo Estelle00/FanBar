@@ -1,0 +1,239 @@
+---
+import { ArrowRight, CheckCircle2, ExternalLink, MinusCircle, XCircle } from "lucide-astro";
+import Footer from "@/components/Footer.astro";
+import Nav from "@/components/Nav.astro";
+import SectionLabel from "@/components/SectionLabel.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDictionary } from "@/lib/i18n";
+import { releases } from "@/lib/links";
+import {
+  capabilityLabels,
+  capabilityOrder,
+  describeStatus,
+  modelPages,
+  modelStructuredData,
+  type ModelPage,
+  type Tone,
+} from "@/lib/compatibilityModels";
+import { safetyPath } from "@/lib/routes";
+
+export function getStaticPaths() {
+  return modelPages.map((page) => ({ params: { slug: page.slug }, props: { page } }));
+}
+
+interface Props {
+  page: ModelPage;
+}
+
+const { page } = Astro.props;
+const locale = "en" as const;
+const dict = getDictionary(locale);
+
+const toneIcon: Record<Tone, typeof CheckCircle2> = {
+  positive: CheckCircle2,
+  neutral: MinusCircle,
+  negative: XCircle,
+};
+const toneClass: Record<Tone, string> = {
+  positive: "text-accent",
+  neutral: "text-muted-foreground",
+  negative: "text-foreground",
+};
+const levelIcon = page.level === "Developer verified" || page.level === "Confirmed by users" ? CheckCircle2 : MinusCircle;
+const LevelIcon = levelIcon;
+
+const formatDate = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+const others = modelPages.filter((other) => other.slug !== page.slug);
+---
+
+<BaseLayout
+  locale={locale}
+  dict={dict}
+  seo={{
+    title: `Does FanBar Work on the ${page.name}? Fan Control Compatibility`,
+    description: `${page.summary} See per-sensor results, tested macOS and FanBar versions, and how to add your own report.`,
+    canonical: page.url,
+    alternates: [{ lang: "en", href: page.url }, { lang: "x-default", href: page.url }],
+    keywords: [
+      `${page.name} fan control`,
+      `${page.name} fan speed`,
+      `${page.name} temperature monitor`,
+      `FanBar ${page.identifier}`,
+    ],
+    structuredData: modelStructuredData(page),
+    preloadHero: false,
+    modifiedTime: page.updatedOn,
+  }}
+>
+  <Nav locale={locale} dict={dict} />
+
+  <main>
+    <article>
+      <header class="mx-auto max-w-5xl px-6 pt-14 pb-14 sm:px-8 md:pt-20">
+        <nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+          <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="/" class="transition-colors hover:text-foreground">FanBar</a></li>
+            <li aria-hidden="true">/</li>
+            <li><a href="/compatibility" class="transition-colors hover:text-foreground">Compatibility</a></li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" class="text-foreground">{page.name}</li>
+          </ol>
+        </nav>
+
+        <div class="mt-10 max-w-3xl">
+          <SectionLabel>Model report</SectionLabel>
+          <h1 class="mt-6 font-display text-[2.4rem] leading-[1.1] tracking-[-0.02em] sm:text-5xl">
+            Does FanBar work on the <span class="gradient-text">{page.name}</span>?
+          </h1>
+
+          <div class="mt-7 flex items-start gap-3 rounded-xl border border-border bg-card p-5">
+            <LevelIcon class:list={["mt-0.5 h-5 w-5 shrink-0", page.level === "Confirmed by users" || page.level === "Developer verified" ? "text-accent" : "text-muted-foreground"]} aria-hidden="true" />
+            <div>
+              <p class="text-[15px] font-semibold">{page.level}</p>
+              <p class="mt-1 text-[15px] leading-relaxed text-muted-foreground">{page.summary}</p>
+            </div>
+          </div>
+
+          <dl class="mt-6 flex flex-wrap gap-x-8 gap-y-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <div class="flex gap-2"><dt>Model identifier</dt><dd class="text-foreground">{page.identifier}</dd></div>
+            <div class="flex gap-2"><dt>Last evidence</dt><dd class="text-foreground"><time datetime={page.updatedOn}>{formatDate(page.updatedOn)}</time></dd></div>
+          </dl>
+        </div>
+      </header>
+
+      {page.groups.length > 0 && (
+        <section class="border-y border-border bg-card">
+          <div class="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+            <SectionLabel>In-app check</SectionLabel>
+            <h2 class="mt-4 font-display text-3xl tracking-[-0.01em]">What each feature did on this Mac</h2>
+            <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">
+              Results from FanBar's built-in compatibility check, submitted by a user and approved for publication.
+              Reports are grouped by the exact macOS, FanBar, and helper versions that were tested.
+            </p>
+
+            {page.groups.map((group) => {
+              const byCapability = new Map(group.community.map((row) => [row.capability, row]));
+              const reports = Math.max(...group.community.map((row) => row.count));
+              return (
+                <div class="mt-10 overflow-hidden rounded-xl border border-border bg-background">
+                  <p class="border-b border-border bg-muted/60 px-5 py-3 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    macOS {group.macOSVersion} · FanBar {group.appVersion} · helper {group.helperVersion} · {reports} {reports === 1 ? "report" : "reports"} · {formatDate(group.updatedOn)}
+                  </p>
+                  <table class="w-full border-collapse text-left text-sm">
+                    <caption class="sr-only">FanBar feature results on {page.name}, macOS {group.macOSVersion}</caption>
+                    <tbody>
+                      {capabilityOrder.map((capability) => {
+                        const row = byCapability.get(capability);
+                        const status = row ? describeStatus(row) : { label: "Not reported", tone: "neutral" as Tone };
+                        const Icon = toneIcon[status.tone];
+                        return (
+                          <tr class="border-b border-border last:border-b-0">
+                            <th scope="row" class="w-1/2 px-5 py-4 font-medium">{capabilityLabels[capability]}</th>
+                            <td class="px-5 py-4 text-muted-foreground">
+                              <span class="inline-flex items-start gap-2">
+                                <Icon class:list={["mt-0.5 h-4 w-4 shrink-0", toneClass[status.tone]]} aria-hidden="true" />
+                                {status.label}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {group.developerVerifications.length > 0 && (
+                    <ul class="border-t border-border px-5 py-4 text-sm text-muted-foreground">
+                      {group.developerVerifications.map((v) => (
+                        <li>
+                          Maintainer verified {capabilityLabels[v.capability].toLowerCase()} on {formatDate(v.verified_on)}.{" "}
+                          {v.source_url && <a href={v.source_url} class="text-accent hover:underline" target="_blank" rel="noopener noreferrer">Source</a>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {page.issues.length > 0 && (
+        <section class="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+          <SectionLabel>Linked reports</SectionLabel>
+          <h2 class="mt-4 font-display text-3xl tracking-[-0.01em]">Reports from GitHub issues</h2>
+          <div class="mt-8 grid gap-5 md:grid-cols-2">
+            {page.issues.map((issue) => (
+              <div class="rounded-xl border border-border bg-card p-6">
+                <p class="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  {issue.status} · {issue.date}
+                </p>
+                <p class="mt-3 text-sm font-semibold">
+                  {issue.device} · {issue.chip} · {issue.macOS} · FanBar {issue.version}
+                </p>
+                <p class="mt-3 text-sm leading-relaxed text-muted-foreground">{issue.evidence}</p>
+                <p class="mt-2 text-sm leading-relaxed text-muted-foreground"><span class="font-medium text-foreground">Limits:</span> {issue.limits}</p>
+                <a href={issue.source} target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent hover:underline">
+                  Read the issue<ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section class="border-t border-border">
+        <div class="mx-auto grid max-w-5xl gap-12 px-6 py-16 sm:px-8 md:grid-cols-2">
+          <div>
+            <SectionLabel>How to read this</SectionLabel>
+            <ul class="mt-6 space-y-4 text-sm leading-relaxed text-muted-foreground">
+              <li><span class="font-medium text-foreground">Results are version-specific.</span> A macOS or FanBar update can change behavior, so each result names the versions it covers.</li>
+              <li><span class="font-medium text-foreground">"Request accepted" is not the same as "worked".</span> Only a reporter's hands-on confirmation, or a maintainer verification, counts as confirmed control.</li>
+              <li><span class="font-medium text-foreground">Monitoring never needs the helper.</span> Even where control is untested, temperatures and fan speeds can be read without approving anything.</li>
+              <li>
+                <span class="font-medium text-foreground">Limits always apply.</span> Targets stay inside each fan's reported range —{" "}
+                <a href={safetyPath(locale)} class="text-accent underline decoration-accent/30 underline-offset-4 hover:decoration-accent">see what the helper can and can't do</a>.
+              </li>
+            </ul>
+          </div>
+
+          <div class="rounded-xl border border-accent/30 bg-accent/[0.04] p-7">
+            <h2 class="text-lg font-semibold">Have a {page.name}? Add your result</h2>
+            <ol class="mt-5 list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted-foreground">
+              <li>Install FanBar and open <span class="text-foreground">Settings → General → Device Compatibility</span>.</li>
+              <li>Run the check. It works locally; nothing is uploaded automatically.</li>
+              <li>Review the report and choose to send it. Serial numbers and other unique identifiers are never included.</li>
+            </ol>
+            <a href={releases} target="_blank" rel="noopener noreferrer" class="mt-6 inline-flex h-11 items-center gap-2 rounded-[10px] bg-accent px-5 text-sm font-medium text-white hover:bg-[#0043d6]">
+              Download FanBar<ArrowRight class="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {others.length > 0 && (
+        <section class="border-t border-border bg-card">
+          <div class="mx-auto max-w-5xl px-6 py-14 sm:px-8">
+            <h2 class="text-base font-semibold">Other Macs with reports</h2>
+            <ul class="mt-5 flex flex-wrap gap-3">
+              {others.map((other) => (
+                <li>
+                  <a href={`/compatibility/${other.slug}`} class="inline-flex min-h-11 items-center rounded-[10px] border border-border bg-background px-4 text-sm hover:border-foreground">
+                    {other.name}
+                  </a>
+                </li>
+              ))}
+              <li>
+                <a href="/compatibility" class="inline-flex min-h-11 items-center gap-1.5 rounded-[10px] px-2 text-sm font-medium text-accent hover:underline">
+                  All compatibility evidence<ArrowRight class="h-4 w-4" aria-hidden="true" />
+                </a>
+              </li>
+            </ul>
+          </div>
+        </section>
+      )}
+    </article>
+  </main>
+
+  <Footer locale={locale} dict={dict} />
+</BaseLayout>

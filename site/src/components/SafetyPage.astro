@@ -1,0 +1,279 @@
+---
+import { ArrowRight, Check, ChevronRight, ExternalLink, X } from "lucide-astro";
+import Footer from "@/components/Footer.astro";
+import Nav from "@/components/Nav.astro";
+import SectionLabel from "@/components/SectionLabel.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDictionary, type FullLocale } from "@/lib/i18n";
+import { github, releases } from "@/lib/links";
+import { homePath } from "@/lib/routes";
+import {
+  safetyCopy,
+  safetyMarkdownUrls,
+  safetySources,
+  safetyStructuredData,
+  safetyUpdated,
+  safetyUrls,
+} from "@/lib/safety";
+
+interface Props {
+  locale: FullLocale;
+}
+
+const { locale } = Astro.props;
+const dict = getDictionary(locale);
+const copy = safetyCopy[locale];
+---
+
+<BaseLayout
+  locale={locale}
+  dict={dict}
+  seo={{
+    title: copy.title,
+    description: copy.description,
+    ogDescription: copy.ogDescription,
+    canonical: safetyUrls[locale],
+    markdownUrl: safetyMarkdownUrls[locale],
+    alternates: [
+      { lang: "en", href: safetyUrls.en },
+      { lang: "zh-Hans", href: safetyUrls.zh },
+      { lang: "x-default", href: safetyUrls.en },
+    ],
+    keywords: copy.keywords,
+    structuredData: safetyStructuredData(locale),
+    preloadHero: false,
+    ogType: "article",
+    publishedTime: safetyUpdated,
+    modifiedTime: safetyUpdated,
+  }}
+>
+  <Nav locale={locale} dict={dict} />
+
+  <main>
+    <article>
+      <header class="mx-auto max-w-5xl px-6 pt-14 pb-16 sm:px-8 md:pt-20 md:pb-20">
+        <nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+          <ol class="flex flex-wrap items-center gap-2">
+            <li><a href={homePath(locale)} class="transition-colors hover:text-foreground">FanBar</a></li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" class="text-foreground">{copy.breadcrumb}</li>
+          </ol>
+        </nav>
+
+        <div class="mt-10 max-w-4xl">
+          <SectionLabel>{copy.label}</SectionLabel>
+          <h1 class="mt-6 font-display text-[2.65rem] leading-[1.08] tracking-[-0.02em] sm:text-5xl md:text-[3.5rem]">
+            {copy.headingLead}{" "}
+            <span class="gradient-text">{copy.headingHighlight}</span>
+          </h1>
+          <p class="mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground">{copy.lede}</p>
+
+          <div class="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            <span>{copy.updatedLabel} <time datetime={safetyUpdated}>{copy.updatedText}</time></span>
+            <span aria-hidden="true">·</span>
+            <a href="#verify" class="underline decoration-border underline-offset-4 hover:text-foreground">{copy.verifyLink}</a>
+          </div>
+        </div>
+
+        <aside class="mt-10 max-w-3xl rounded-xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
+          {copy.disclosure}
+        </aside>
+      </header>
+
+      <section class="border-y border-border bg-card">
+        <div class="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+          <SectionLabel>{copy.shortAnswers.label}</SectionLabel>
+          <h2 class="mt-4 font-display text-3xl tracking-[-0.01em]">{copy.shortAnswers.heading}</h2>
+
+          <div class="mt-9 grid gap-4 sm:grid-cols-2">
+            {copy.shortAnswers.items.map((item) => (
+              <a
+                href={item.href}
+                class="group flex items-start justify-between gap-4 rounded-xl border border-border bg-background p-6 transition-colors hover:border-accent/40"
+              >
+                <div>
+                  <h3 class="text-base font-semibold">{item.question}</h3>
+                  <p class="mt-2 text-[15px] leading-relaxed text-muted-foreground">{item.answer}</p>
+                </div>
+                <ChevronRight class="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent" aria-hidden="true" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="fans" class="mx-auto max-w-5xl scroll-mt-24 px-6 py-24 sm:px-8">
+        <SectionLabel>{copy.fans.label}</SectionLabel>
+        <h2 class="mt-4 max-w-3xl font-display text-3xl tracking-[-0.01em] md:text-4xl">{copy.fans.heading}</h2>
+        <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{copy.fans.intro}</p>
+
+        <div class="mt-12 grid gap-x-12 gap-y-9 md:grid-cols-2">
+          {copy.fans.points.map((point) => (
+            <div class="border-t border-border pt-5">
+              <h3 class="text-base font-semibold">{point.title}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{point.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-14 rounded-xl border border-accent/30 bg-accent/[0.04] p-7">
+          <h3 class="text-base font-semibold">{copy.fans.restoreHeading}</h3>
+          <ul class="mt-5 grid gap-4 md:grid-cols-2">
+            {copy.fans.restoreItems.map((item) => (
+              <li class="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+                <Check class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />{item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p class="mt-7 max-w-3xl text-sm leading-relaxed text-muted-foreground">{copy.fans.advice}</p>
+      </section>
+
+      <section id="helper" class="scroll-mt-24 border-y border-border bg-card">
+        <div class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+          <SectionLabel>{copy.helper.label}</SectionLabel>
+          <h2 class="mt-4 max-w-3xl font-display text-3xl tracking-[-0.01em] md:text-4xl">{copy.helper.heading}</h2>
+          <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{copy.helper.intro}</p>
+
+          <figure class="mt-10">
+            <ol class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              {copy.helper.chain.map((node, index) => (
+                <li class="flex flex-col items-start gap-2 sm:contents">
+                  {index > 0 && <ArrowRight class="ml-5 h-4 w-4 shrink-0 rotate-90 text-muted-foreground sm:ml-0 sm:rotate-0" aria-hidden="true" />}
+                  <span
+                    class:list={[
+                      "inline-flex min-h-11 items-center rounded-[10px] border px-4 font-mono text-[13px]",
+                      index === 2 ? "border-accent/40 bg-accent/[0.06] text-accent" : "border-border bg-background",
+                    ]}
+                  >
+                    {node}
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <figcaption class="mt-4 text-sm text-muted-foreground">{copy.helper.chainCaption}</figcaption>
+          </figure>
+
+          <div class="mt-12 grid gap-5 md:grid-cols-2">
+            <div class="rounded-xl border border-border bg-background p-7">
+              <h3 class="text-lg font-semibold">{copy.helper.canHeading}</h3>
+              <ul class="mt-5 space-y-4">
+                {copy.helper.can.map((item) => (
+                  <li class="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+                    <Check class="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div class="rounded-xl border border-border bg-background p-7">
+              <h3 class="text-lg font-semibold">{copy.helper.cannotHeading}</h3>
+              <ul class="mt-5 space-y-4">
+                {copy.helper.cannot.map((item) => (
+                  <li class="flex items-start gap-3 text-sm leading-relaxed text-muted-foreground">
+                    <X class="mt-0.5 h-4 w-4 shrink-0 text-foreground" aria-hidden="true" />{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <a
+            href={safetySources.helperService}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-8 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-accent hover:underline"
+          >
+            {copy.helper.sourceLabel}<ExternalLink class="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+      </section>
+
+      <section id="verify" class="mx-auto max-w-5xl scroll-mt-24 px-6 py-24 sm:px-8">
+        <SectionLabel>{copy.verify.label}</SectionLabel>
+        <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">{copy.verify.heading}</h2>
+        <p class="mt-4 max-w-2xl text-[15px] leading-relaxed text-muted-foreground">{copy.verify.intro}</p>
+
+        <ol class="mt-12 space-y-10">
+          {copy.verify.steps.map((step) => (
+            <li class="grid gap-5 border-t border-border pt-6 md:grid-cols-[0.8fr_1.2fr]">
+              <div>
+                <h3 class="text-base font-semibold">{step.title}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
+              </div>
+              <div class="min-w-0">
+                {step.command && (
+                  <pre class="overflow-x-auto rounded-xl bg-foreground p-5 font-mono text-[13px] leading-relaxed text-white"><code><span class="select-none text-white/40">$ </span>{step.command}{step.output && <span class="block pt-3 text-white/60">{step.output}</span>}</code></pre>
+                )}
+                {step.links && (
+                  <ul class="flex flex-wrap gap-3">
+                    {step.links.map((link) => (
+                      <li>
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="inline-flex h-11 items-center gap-2 rounded-[10px] border border-border px-4 font-mono text-[13px] hover:border-foreground"
+                        >
+                          {link.label}<ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section id="off" class="scroll-mt-24 border-y border-border bg-card">
+        <div class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+          <SectionLabel>{copy.off.label}</SectionLabel>
+          <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">{copy.off.heading}</h2>
+
+          <div class="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-3">
+            {copy.off.items.map((item) => (
+              <div class="min-w-0 border-t border-border pt-5">
+                <h3 class="text-base font-semibold">{item.title}</h3>
+                <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                {item.command && (
+                  <pre class="mt-4 whitespace-pre-wrap rounded-lg bg-muted px-4 py-3 font-mono text-[12px] leading-relaxed"><code>{item.command}</code></pre>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="mx-auto max-w-5xl scroll-mt-24 px-6 py-24 sm:px-8">
+        <SectionLabel>{copy.faqLabel}</SectionLabel>
+        <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">{copy.faqHeading}</h2>
+
+        <div class="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-2">
+          {copy.faq.map((item) => (
+            <section class="border-t border-border pt-5">
+              <h3 class="text-base font-semibold">{item.question}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      <section class="relative overflow-hidden bg-foreground text-white">
+        <div class="dots-bg absolute inset-0 opacity-40" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-2xl px-6 py-20 text-center sm:px-8">
+          <SectionLabel tone="dark" center>{copy.cta.label}</SectionLabel>
+          <h2 class="mt-5 font-display text-4xl leading-tight">{copy.cta.heading}</h2>
+          <p class="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-white/60">{copy.cta.body}</p>
+          <div class="mt-8 flex flex-wrap justify-center gap-3">
+            <a href={releases} target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center rounded-[10px] bg-accent px-6 text-[15px] font-medium text-white hover:bg-[#0043d6]">{copy.cta.primary}</a>
+            <a href={github} target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center rounded-[10px] border border-white/30 px-6 text-[15px] font-medium text-white hover:border-white">{copy.cta.secondary}</a>
+          </div>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <Footer locale={locale} dict={dict} />
+</BaseLayout>

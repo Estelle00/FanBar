@@ -1,0 +1,144 @@
+---
+import { render } from "astro:content";
+import { ArrowLeft, ArrowRight, Download, ExternalLink } from "lucide-astro";
+import Footer from "@/components/Footer.astro";
+import Nav from "@/components/Nav.astro";
+import SectionLabel from "@/components/SectionLabel.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDictionary } from "@/lib/i18n";
+import { releaseDescription } from "@/lib/releaseNotes";
+import {
+  assetLabel,
+  formatReleaseDate,
+  formatSize,
+  releaseCopy,
+  releasePath,
+  releasesPath,
+  releaseStructuredData,
+  type ReleaseEntry,
+} from "@/lib/releases";
+import { homePath } from "@/lib/routes";
+import { downloadArchitecture } from "@/lib/downloads";
+import { siteUrl } from "@/lib/seo";
+
+interface Props {
+  entry: ReleaseEntry;
+  newer?: ReleaseEntry;
+  older?: ReleaseEntry;
+  isLatest: boolean;
+}
+
+const { entry, newer, older, isLatest } = Astro.props;
+const { locale, version, publishedAt, assets, translated } = entry.data;
+const dict = getDictionary(locale);
+const copy = releaseCopy[locale];
+const { Content } = await render(entry);
+const description = releaseDescription(locale, version, entry.body ?? "");
+const url = `${siteUrl}${releasePath(locale, version)}`;
+const order = ["Apple Silicon", "Intel", "Universal"];
+const downloads = [...assets].sort((a, b) => order.indexOf(assetLabel(a.name)) - order.indexOf(assetLabel(b.name)));
+---
+
+<BaseLayout
+  locale={locale}
+  dict={dict}
+  seo={{
+    title: locale === "zh" ? `FanBar ${version} 更新说明` : `FanBar ${version} Release Notes`,
+    description,
+    canonical: url,
+    alternates: [
+      { lang: "en", href: `${siteUrl}${releasePath("en", version)}` },
+      { lang: "zh-Hans", href: `${siteUrl}${releasePath("zh", version)}` },
+      { lang: "x-default", href: `${siteUrl}${releasePath("en", version)}` },
+    ],
+    keywords: [`FanBar ${version}`, locale === "zh" ? "FanBar 更新" : "FanBar release notes"],
+    structuredData: releaseStructuredData(entry, description),
+    preloadHero: false,
+    ogType: "article",
+    publishedTime: publishedAt,
+    modifiedTime: publishedAt,
+  }}
+>
+  <Nav locale={locale} dict={dict} />
+
+  <main>
+    <article class="mx-auto max-w-[44rem] px-6 pt-14 pb-20 sm:px-8 md:pt-20">
+      <nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+        <ol class="flex flex-wrap items-center gap-2">
+          <li><a href={homePath(locale)} class="transition-colors hover:text-foreground">FanBar</a></li>
+          <li aria-hidden="true">/</li>
+          <li><a href={releasesPath(locale)} class="transition-colors hover:text-foreground">{copy.breadcrumb}</a></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" class="text-foreground">{version}</li>
+        </ol>
+      </nav>
+
+      <header class="mt-10">
+        <div class="flex flex-wrap items-center gap-3">
+          <SectionLabel>{copy.label}</SectionLabel>
+          {isLatest && (
+            <span class="inline-flex items-center rounded-full bg-accent px-3 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-white">{copy.latest}</span>
+          )}
+        </div>
+        <h1 class="mt-6 font-display text-[2.6rem] leading-[1.1] tracking-[-0.02em] sm:text-5xl">FanBar {version}</h1>
+        <p class="mt-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+          <time datetime={publishedAt}>{formatReleaseDate(publishedAt, locale)}</time>
+        </p>
+      </header>
+
+      {!translated && copy.untranslated && (
+        <p class="mt-8 rounded-xl border border-border bg-card px-5 py-4 text-sm text-muted-foreground">{copy.untranslated}</p>
+      )}
+
+      <div class="article-body mt-10">
+        <Content />
+      </div>
+
+      {downloads.length > 0 && (
+        <section class="mt-14 rounded-xl border border-border bg-card p-6 sm:p-7" aria-labelledby="downloads">
+          <h2 id="downloads" class="text-lg font-semibold">{copy.downloads}</h2>
+          <ul class="mt-4 divide-y divide-border">
+            {downloads.map((asset) => (
+              <li>
+                <a href={asset.url} download={asset.name} data-track-event="download-dmg" data-track-location="release-note" data-track-locale={locale} data-track-architecture={downloadArchitecture(asset.name)} data-track-version={version} class="group flex min-h-12 items-center justify-between gap-4 py-3">
+                  <span class="min-w-0">
+                    <span class="block text-[15px] font-medium group-hover:text-accent">{assetLabel(asset.name)}</span>
+                    <span class="block break-words font-mono text-xs text-muted-foreground">{asset.name} · {formatSize(asset.size)}</span>
+                  </span>
+                  <Download class="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-accent" aria-hidden="true" />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p class="mt-4 text-sm leading-relaxed text-muted-foreground">{copy.downloadsNote}</p>
+          <p class="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {copy.updating} <code class="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground">brew upgrade --cask helson-lin/fanbar/fanbar</code>
+          </p>
+          <a href={entry.data.url} target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent hover:underline">
+            {copy.viewOnGitHub}<ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        </section>
+      )}
+
+      <nav aria-label={copy.allReleases} class="mt-12 grid gap-3 sm:grid-cols-2">
+        {newer ? (
+          <a href={releasePath(locale, newer.data.version)} class="group flex min-h-16 flex-col justify-center rounded-xl border border-border px-5 py-3 hover:border-foreground">
+            <span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><ArrowLeft class="h-3.5 w-3.5" aria-hidden="true" />{copy.olderNewer.newer}</span>
+            <span class="mt-1 text-[15px] font-medium">FanBar {newer.data.version}</span>
+          </a>
+        ) : <span class="hidden sm:block" />}
+        {older && (
+          <a href={releasePath(locale, older.data.version)} class="group flex min-h-16 flex-col items-end justify-center rounded-xl border border-border px-5 py-3 text-right hover:border-foreground">
+            <span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">{copy.olderNewer.older}<ArrowRight class="h-3.5 w-3.5" aria-hidden="true" /></span>
+            <span class="mt-1 text-[15px] font-medium">FanBar {older.data.version}</span>
+          </a>
+        )}
+      </nav>
+      <a href={releasesPath(locale)} class="mt-6 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent hover:underline">
+        {copy.allReleases}<ArrowRight class="h-4 w-4" aria-hidden="true" />
+      </a>
+    </article>
+  </main>
+
+  <Footer locale={locale} dict={dict} />
+</BaseLayout>

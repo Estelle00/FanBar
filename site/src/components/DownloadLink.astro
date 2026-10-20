@@ -1,0 +1,27 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import type { Locale } from "@/lib/i18n";
+import { downloads, type DownloadArchitecture } from "@/lib/downloads";
+
+interface Props extends Omit<HTMLAttributes<"a">, "href" | "target" | "download"> {
+  locale: Locale;
+  location: string;
+  architecture?: DownloadArchitecture;
+}
+
+const { locale, location, architecture = "universal", ...attributes } = Astro.props;
+const asset = downloads[architecture];
+---
+
+<a
+  {...attributes}
+  href={asset.url}
+  download={asset.name}
+  data-track-event="download-dmg"
+  data-track-location={location}
+  data-track-locale={locale}
+  data-track-architecture={architecture}
+  data-track-version={asset.version}
+>
+  <slot />
+</a>

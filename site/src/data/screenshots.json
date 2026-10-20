@@ -1,0 +1,75 @@
+{
+  "repository": "helson-lin/FanBar",
+  "ref": "e1fb03f4013dcbbe26177527f5eae627ba5d1393",
+  "images": {
+    "en": {
+      "popover": {
+        "src": "/screenshots/fanbar-menu-light-en-main-e1fb03f.webp",
+        "width": 912,
+        "height": 1358,
+        "sourcePath": "docs/screenshots/fanbar-menu-light-en.png",
+        "sourceSha": "9c976299860ea06807cf99fe9189e20c84d76fa4"
+      },
+      "cooling": {
+        "src": "/screenshots/fanbar-settings-cooling-light-en-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-cooling-light-en.png",
+        "sourceSha": "cb2067fcf68f222d21bf008abf1a5f03943fe366"
+      },
+      "menubar": {
+        "src": "/screenshots/fanbar-settings-appearance-light-en-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-appearance-light-en.png",
+        "sourceSha": "2a4a7e7bb0c3efaf39287c6237d60d16f301434d"
+      }
+    },
+    "zh": {
+      "popover": {
+        "src": "/screenshots/fanbar-menu-light-zh-CN-main-e1fb03f.webp",
+        "width": 912,
+        "height": 1360,
+        "sourcePath": "docs/screenshots/fanbar-menu-light-zh-CN.png",
+        "sourceSha": "485125dc7fe23b4fd0c09783da983d738dbdaa1c"
+      },
+      "cooling": {
+        "src": "/screenshots/fanbar-settings-cooling-light-zh-CN-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-cooling-light-zh-CN.png",
+        "sourceSha": "87b7546d6136120fde9baa0b8a46f66dda09286a"
+      },
+      "menubar": {
+        "src": "/screenshots/fanbar-settings-appearance-light-zh-CN-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-appearance-light-zh-CN.png",
+        "sourceSha": "18fc7d8c63c8f066ece3ca01bdd97219e780cebb"
+      }
+    },
+    "ru": {
+      "popover": {
+        "src": "/screenshots/fanbar-menu-light-ru-main-e1fb03f.webp",
+        "width": 912,
+        "height": 1358,
+        "sourcePath": "docs/screenshots/fanbar-menu-light-ru.png",
+        "sourceSha": "63ddbc3def2f336d1b1c50fd1e7b521a1b048de8"
+      },
+      "cooling": {
+        "src": "/screenshots/fanbar-settings-cooling-light-ru-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-cooling-light-ru.png",
+        "sourceSha": "add823b35c897cc7bb7587f868d74321ae08b75c"
+      },
+      "menubar": {
+        "src": "/screenshots/fanbar-settings-appearance-light-ru-main-e1fb03f.webp",
+        "width": 1344,
+        "height": 1584,
+        "sourcePath": "docs/screenshots/fanbar-settings-appearance-light-ru.png",
+        "sourceSha": "8465b79545f1813d057c2f46549d7236d6078bf0"
+      }
+    }
+  }
+}

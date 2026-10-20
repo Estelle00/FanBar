@@ -1,0 +1,16 @@
+---
+import ReleaseNotePage from "@/components/ReleaseNotePage.astro";
+import { getReleases } from "@/lib/releases";
+
+export async function getStaticPaths() {
+  const releases = await getReleases("en");
+  return releases.map((entry, index) => ({
+    params: { version: entry.data.version },
+    props: { entry, newer: releases[index - 1], older: releases[index + 1], isLatest: index === 0 },
+  }));
+}
+
+const { entry, newer, older, isLatest } = Astro.props;
+---
+
+<ReleaseNotePage entry={entry} newer={newer} older={older} isLatest={isLatest} />

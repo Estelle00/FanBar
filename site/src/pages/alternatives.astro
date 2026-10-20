@@ -1,0 +1,224 @@
+---
+import { ArrowRight, ExternalLink } from "lucide-astro";
+import Footer from "@/components/Footer.astro";
+import Nav from "@/components/Nav.astro";
+import SectionLabel from "@/components/SectionLabel.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getDictionary } from "@/lib/i18n";
+import { github, releases } from "@/lib/links";
+import {
+  alternatives,
+  alternativesFaq,
+  alternativesStructuredData,
+  alternativesUpdated,
+  alternativesUrl,
+  decisionGuide,
+  macsFanControlBaseline,
+} from "@/lib/alternatives";
+import { comparisonPath, safetyPath } from "@/lib/routes";
+
+const locale = "en" as const;
+const dict = getDictionary(locale);
+---
+
+<BaseLayout
+  locale={locale}
+  dict={dict}
+  seo={{
+    title: "Macs Fan Control Alternatives: 5 Fan Control Apps for Mac Compared",
+    description:
+      "Looking for a Macs Fan Control alternative? An honest, source-linked comparison of FanBar, TG Pro, iStat Menus, Stats, and smcFanControl on price, fan control, open source, and Apple Silicon support.",
+    ogDescription: "FanBar, TG Pro, iStat Menus, Stats, and smcFanControl — compared with sources.",
+    canonical: alternativesUrl,
+    alternates: [{ lang: "en", href: alternativesUrl }, { lang: "x-default", href: alternativesUrl }],
+    keywords: [
+      "Macs Fan Control alternative",
+      "Macs Fan Control alternatives",
+      "best Mac fan control app",
+      "free Mac fan control",
+      "open source fan control Mac",
+      "TG Pro alternative",
+      "Apple Silicon fan control app",
+    ],
+    structuredData: alternativesStructuredData(),
+    preloadHero: false,
+    ogType: "article",
+    publishedTime: alternativesUpdated,
+    modifiedTime: alternativesUpdated,
+  }}
+>
+  <Nav locale={locale} dict={dict} />
+
+  <main>
+    <article>
+      <header class="mx-auto max-w-5xl px-6 pt-14 pb-16 sm:px-8 md:pt-20">
+        <nav aria-label="Breadcrumb" class="text-sm text-muted-foreground">
+          <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="/" class="transition-colors hover:text-foreground">FanBar</a></li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" class="text-foreground">Macs Fan Control alternatives</li>
+          </ol>
+        </nav>
+
+        <div class="mt-10 max-w-4xl">
+          <SectionLabel>Alternatives</SectionLabel>
+          <h1 class="mt-6 font-display text-[2.65rem] leading-[1.08] tracking-[-0.02em] sm:text-5xl md:text-[3.5rem]">
+            Macs Fan Control alternatives,{" "}
+            <span class="gradient-text">compared honestly.</span>
+          </h1>
+          <p class="mt-6 max-w-3xl text-lg leading-relaxed text-muted-foreground">
+            Five Mac apps that can control fan speed, with what each one is actually good at. Every claim about another
+            app links to its official page.
+          </p>
+          <p class="mt-7 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            Checked <time datetime={alternativesUpdated}>October 15, 2026</time>
+          </p>
+        </div>
+
+        <aside class="mt-10 max-w-3xl rounded-xl border border-border bg-card p-5 text-sm leading-relaxed text-muted-foreground">
+          <strong class="text-foreground">Disclosure:</strong> We make FanBar, so it's listed first. We say where the others are the
+          better fit, and we left out prices and features their official pages don't state.
+        </aside>
+      </header>
+
+      <section class="border-y border-border bg-card">
+        <div class="mx-auto max-w-5xl px-6 py-16 sm:px-8">
+          <SectionLabel>At a glance</SectionLabel>
+          <h2 class="mt-4 font-display text-3xl tracking-[-0.01em]">Side by side</h2>
+          <ul class="mt-8 space-y-4 md:hidden">
+            {alternatives.map((app) => (
+              <li class:list={["rounded-xl border p-5", app.isFanBar ? "border-accent/30 bg-accent/[0.04]" : "border-border bg-background"]}>
+                <a href={`#${app.id}`} class:list={["text-base font-semibold", app.isFanBar && "text-accent"]}>{app.name}</a>
+                <dl class="mt-3 space-y-2 text-sm">
+                  {[["Price", app.price], ["Fan control", app.fanControl], ["Source", app.source], ["Runs on", app.macOS]].map(([term, value]) => (
+                    <div>
+                      <dt class="font-mono text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{term}</dt>
+                      <dd class="mt-0.5 leading-relaxed">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          <div class="mt-8 hidden overflow-x-auto rounded-xl border border-border bg-background md:block">
+            <table class="w-full border-collapse text-left text-sm">
+              <caption class="sr-only">Comparison of Macs Fan Control alternatives</caption>
+              <thead>
+                <tr class="border-b border-border bg-muted/60">
+                  <th scope="col" class="px-5 py-4 font-semibold">App</th>
+                  <th scope="col" class="px-5 py-4 font-semibold">Price</th>
+                  <th scope="col" class="px-5 py-4 font-semibold">Fan control</th>
+                  <th scope="col" class="px-5 py-4 font-semibold">Source</th>
+                  <th scope="col" class="px-5 py-4 font-semibold">Runs on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {alternatives.map((app) => (
+                  <tr class:list={["border-b border-border last:border-b-0", app.isFanBar && "bg-accent/[0.04]"]}>
+                    <th scope="row" class="px-5 py-5 align-top font-semibold">
+                      <a href={`#${app.id}`} class:list={["hover:underline", app.isFanBar && "text-accent"]}>{app.name}</a>
+                    </th>
+                    <td class="px-5 py-5 align-top text-muted-foreground">{app.price}</td>
+                    <td class="px-5 py-5 align-top leading-relaxed text-muted-foreground">{app.fanControl}</td>
+                    <td class="px-5 py-5 align-top text-muted-foreground">{app.source}</td>
+                    <td class="px-5 py-5 align-top text-muted-foreground">{app.macOS}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p class="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            For reference, <a href={macsFanControlBaseline.url} target="_blank" rel="noopener noreferrer" class="text-accent hover:underline">{macsFanControlBaseline.name}</a>{" "}
+            itself: {macsFanControlBaseline.summary}
+          </p>
+        </div>
+      </section>
+
+      <section class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+        <SectionLabel>Quick pick</SectionLabel>
+        <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">Which one fits what you need?</h2>
+        <ul class="mt-10 divide-y divide-border border-y border-border">
+          {decisionGuide.map((row) => (
+            <li class="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <span class="text-[15px] text-muted-foreground">{row.need}</span>
+              <a href={`#${row.id}`} class="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold hover:text-accent">
+                {row.pick}<ArrowRight class="h-4 w-4" aria-hidden="true" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section class="border-y border-border bg-card">
+        <div class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+          <SectionLabel>The apps</SectionLabel>
+          <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">Each alternative in detail</h2>
+
+          <div class="mt-12 space-y-6">
+            {alternatives.map((app, index) => (
+              <section
+                id={app.id}
+                class:list={[
+                  "scroll-mt-24 rounded-xl border p-7",
+                  app.isFanBar ? "border-accent/30 bg-accent/[0.04]" : "border-border bg-background",
+                ]}
+              >
+                <div class="flex flex-wrap items-baseline justify-between gap-3">
+                  <h3 class="text-xl font-semibold tracking-[-0.01em]">
+                    <span class="mr-2 font-mono text-sm text-muted-foreground">{index + 1}.</span>{app.name}
+                  </h3>
+                  <span class="text-sm text-muted-foreground">{app.maker}</span>
+                </div>
+                <p class="mt-3 text-[15px] leading-relaxed"><span class="font-medium">Best for:</span> <span class="text-muted-foreground">{app.bestFor}</span></p>
+                <p class="mt-2 text-[15px] leading-relaxed"><span class="font-medium">Watch out for:</span> <span class="text-muted-foreground">{app.caveat}</span></p>
+                <div class="mt-5 flex flex-wrap gap-x-6 gap-y-1">
+                  <a href={app.url} target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-accent hover:underline">
+                    {app.sourceLabel}<ExternalLink class="h-3.5 w-3.5" aria-hidden="true" />
+                  </a>
+                  {app.isFanBar && (
+                    <>
+                      <a href={safetyPath(locale)} class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium hover:text-accent">Is FanBar safe?<ArrowRight class="h-3.5 w-3.5" aria-hidden="true" /></a>
+                      <a href={comparisonPath(locale)} class="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium hover:text-accent">FanBar vs Macs Fan Control in depth<ArrowRight class="h-3.5 w-3.5" aria-hidden="true" /></a>
+                    </>
+                  )}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="mx-auto max-w-5xl px-6 py-24 sm:px-8">
+        <SectionLabel>FAQ</SectionLabel>
+        <h2 class="mt-4 font-display text-3xl tracking-[-0.01em] md:text-4xl">Common questions</h2>
+        <div class="mt-10 grid gap-x-10 gap-y-9 md:grid-cols-2">
+          {alternativesFaq.map((item) => (
+            <section class="border-t border-border pt-5">
+              <h3 class="text-base font-semibold">{item.question}</h3>
+              <p class="mt-2 text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      <section class="relative overflow-hidden bg-foreground text-white">
+        <div class="dots-bg absolute inset-0 opacity-40" aria-hidden="true"></div>
+        <div class="relative mx-auto max-w-2xl px-6 py-20 text-center sm:px-8">
+          <SectionLabel tone="dark" center>Try FanBar</SectionLabel>
+          <h2 class="mt-5 font-display text-4xl leading-tight">Free, open source, and in your menu bar.</h2>
+          <p class="mx-auto mt-4 max-w-lg text-[15px] leading-relaxed text-white/60">
+            Every feature is included. Read the source — helper and all — before you install.
+          </p>
+          <div class="mt-8 flex flex-wrap justify-center gap-3">
+            <a href={releases} target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center rounded-[10px] bg-accent px-6 text-[15px] font-medium text-white hover:bg-[#0043d6]">Download FanBar</a>
+            <a href={github} target="_blank" rel="noopener noreferrer" class="inline-flex h-12 items-center rounded-[10px] border border-white/30 px-6 text-[15px] font-medium text-white hover:border-white">Read the source</a>
+          </div>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <Footer locale={locale} dict={dict} />
+</BaseLayout>

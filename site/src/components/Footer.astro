@@ -1,0 +1,80 @@
+---
+import { github } from "@/lib/links";
+import { releasesPath } from "@/lib/releases";
+import type { Dictionary, Locale } from "@/lib/i18n";
+import { languageNames, locales } from "@/lib/i18n";
+import { HTML_LANG } from "@/lib/seo";
+import { comparisonPath, compatibilityPath, localizedPath, safetyPath } from "@/lib/routes";
+
+interface Props {
+  locale: Locale;
+  dict: Dictionary;
+}
+
+const { locale, dict } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-border bg-background">
+  <div class="mx-auto max-w-5xl px-6 sm:px-8">
+    <div class="flex items-center justify-between gap-6 py-6 sm:py-8">
+      <div class="flex items-center gap-3">
+        <img src="/fanbar-icon-64.webp" alt="FanBar icon" width="28" height="28" loading="lazy" class="rounded-[8px]" />
+        <span class="text-[15px] font-semibold tracking-[-0.01em]">FanBar</span>
+      </div>
+
+      <a
+        href="https://fazier.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex w-fit shrink-0 rounded-sm transition-opacity hover:opacity-80"
+      >
+        <img
+          src="/fazier-featured.svg"
+          alt="Featured on Fazier"
+          width="182"
+          height="43"
+          loading="lazy"
+          class="block h-7 w-auto"
+        />
+      </a>
+    </div>
+
+    <div class="flex flex-col gap-3 border-t border-border py-4 sm:flex-row sm:items-center sm:justify-between">
+      <span class="text-[13px] leading-5 text-muted-foreground">© {year} {dict.footer.copyright}</span>
+
+      <nav aria-label={dict.a11y.footerNav} class="flex flex-wrap items-center gap-x-6">
+        <a href={github} target="_blank" rel="noopener noreferrer" data-track-event="view-source" data-track-location="footer" data-track-locale={locale} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {dict.footer.github}
+        </a>
+        <a href={releasesPath(locale === "zh" ? "zh" : "en")} data-track-event="view-release-notes" data-track-location="footer" data-track-locale={locale} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {dict.footer.releases}
+        </a>
+        <a href={comparisonPath(locale)} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {dict.nav.compare}
+        </a>
+        <a href={compatibilityPath(locale)} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {dict.nav.compatibility}
+        </a>
+        {locale === "en" && (
+          <>
+            <a href="/alternatives" class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+              Alternatives
+            </a>
+            <a href="/blog" class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+              Blog
+            </a>
+          </>
+        )}
+        <a href={safetyPath(locale)} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+          {dict.nav.safety}
+        </a>
+        {locales.filter((target) => target !== locale).map((target) => (
+          <a href={localizedPath(Astro.url.pathname, target)} lang={HTML_LANG[target]} data-track-event="change-language" data-track-location="footer" data-track-locale={locale} data-track-language={target} class="inline-flex min-h-11 items-center text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground">
+            {languageNames[target]}
+          </a>
+        ))}
+      </nav>
+    </div>
+  </div>
+</footer>
