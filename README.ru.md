@@ -70,21 +70,70 @@ FanBar — бесплатное нативное приложение для с�
 
 ## 📸 Скриншоты
 
-Русский интерфейс в светлом оформлении. Язык можно переключить на английский, упрощённый или традиционный китайский, японский или французский в разделе **Настройки → Основные → Язык интерфейса** без перезапуска.
+Русский интерфейс в светлом и тёмном оформлении. Язык можно переключить на английский, упрощённый или традиционный китайский, японский или французский в разделе **Настройки → Основные → Язык интерфейса** без перезапуска.
 
-<img src="docs/screenshots/fanbar-menu-light-ru.png" alt="Панель FanBar в строке меню на русском" width="456">
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-ru.png" alt="Панель FanBar в строке меню на русском (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-ru.png" alt="Панель FanBar в строке меню на русском (Тёмное)" width="100%"></td>
+  </tr>
+</table>
+
+На Mac с двумя вентиляторами панель показывает их рядом, у каждого своя скорость, состояние и диапазон. Снимок сделан на MacBook Pro (M2 Max) в профиле «Баланс».
+
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-ru.png" alt="Панель FanBar в строке меню на русском, MacBook Pro с двумя вентиляторами (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-ru.png" alt="Панель FanBar в строке меню на русском, MacBook Pro с двумя вентиляторами (Тёмное)" width="100%"></td>
+  </tr>
+</table>
 
 В разделе «Охлаждение» у каждого пресета панели своя редактируемая кривая «температура → обороты».
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-ru.png" alt="Настройки охлаждения FanBar на русском" width="640">
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-ru.png" alt="Настройки охлаждения FanBar на русском (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-ru.png" alt="Настройки охлаждения FanBar на русском (Тёмное)" width="100%"></td>
+  </tr>
+</table>
 
 В разделе «Оформление» выбирается значок в строке меню и то, что он показывает, с живым предпросмотром в имитации строки меню.
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-ru.png" alt="Настройки оформления FanBar на русском" width="640">
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-ru.png" alt="Настройки оформления FanBar на русском (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-ru.png" alt="Настройки оформления FanBar на русском (Тёмное)" width="100%"></td>
+  </tr>
+</table>
 
 Раздел «Основные» включает локальную проверку совместимости, состояние службы управления, автовозврат, уведомления, язык, запуск при входе и обновления. Раздел «Журнал» записывает температуры и обороты вентиляторов в CSV. Длинные страницы настроек прокручиваются.
 
-<img src="docs/screenshots/fanbar-settings-general-light-ru.png" alt="Основные настройки FanBar на русском" width="640">
+<table>
+  <tr>
+    <th>Светлое</th>
+    <th>Тёмное</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-ru.png" alt="Основные настройки FanBar на русском (Светлое)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-ru.png" alt="Основные настройки FanBar на русском (Тёмное)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ Возможности
 

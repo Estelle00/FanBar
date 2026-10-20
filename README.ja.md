@@ -50,21 +50,70 @@ FanBar は macOS 11 Big Sur 以降に対応し、Apple Silicon Mac と、AppleSM
 
 ## 📸 スクリーンショット
 
-ライトモードの日本語インターフェイスです。**設定 → 一般 → 表示言語** から、再起動せずに英語、簡体字中国語、繁体字中国語、ロシア語、フランス語に切り替えられます。
+ライトモードとダークモードの日本語インターフェイスです。**設定 → 一般 → 表示言語** から、再起動せずに英語、簡体字中国語、繁体字中国語、ロシア語、フランス語に切り替えられます。
 
-<img src="docs/screenshots/fanbar-menu-light-ja.png" alt="FanBar のメニューバーポップオーバー（日本語）" width="456">
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-light-ja.png" alt="FanBar のメニューバーポップオーバー（日本語） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dark-ja.png" alt="FanBar のメニューバーポップオーバー（日本語） (ダーク)" width="100%"></td>
+  </tr>
+</table>
+
+ファンが2基ある Mac では、各ファンの回転数・状態・範囲が横に並んで表示されます。下の画像は「バランス」で動作中の MacBook Pro（M2 Max）です。
+
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-light-ja.png" alt="FanBar 日本語メニューバーパネル（ファン2基の MacBook Pro） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-menu-dual-fan-dark-ja.png" alt="FanBar 日本語メニューバーパネル（ファン2基の MacBook Pro） (ダーク)" width="100%"></td>
+  </tr>
+</table>
 
 「冷却」タブでは、パネルの各プリセットに専用の温度→回転数カーブを編集できます。
 
-<img src="docs/screenshots/fanbar-settings-cooling-light-ja.png" alt="FanBar の冷却設定（日本語）" width="640">
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-light-ja.png" alt="FanBar の冷却設定（日本語） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-cooling-dark-ja.png" alt="FanBar の冷却設定（日本語） (ダーク)" width="100%"></td>
+  </tr>
+</table>
 
 「外観」では、メニューバーのアイコンと表示内容を選び、メニューバーを模したプレビューでその場で確認できます。
 
-<img src="docs/screenshots/fanbar-settings-appearance-light-ja.png" alt="FanBar の外観設定（日本語）" width="640">
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-light-ja.png" alt="FanBar の外観設定（日本語） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-appearance-dark-ja.png" alt="FanBar の外観設定（日本語） (ダーク)" width="100%"></td>
+  </tr>
+</table>
 
 「一般」では、この Mac の互換性、制御サービスの状態、自動復帰、高温通知、表示言語、ログイン項目、アップデートを確認・設定できます。「ログ」では温度とファン回転数を CSV に記録できます。長い設定ページはスクロールできます。
 
-<img src="docs/screenshots/fanbar-settings-general-light-ja.png" alt="FanBar の一般設定（日本語）" width="640">
+<table>
+  <tr>
+    <th>ライト</th>
+    <th>ダーク</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/fanbar-settings-general-light-ja.png" alt="FanBar の一般設定（日本語） (ライト)" width="100%"></td>
+    <td><img src="docs/screenshots/fanbar-settings-general-dark-ja.png" alt="FanBar の一般設定（日本語） (ダーク)" width="100%"></td>
+  </tr>
+</table>
 
 ## ✨ 主な機能
 
