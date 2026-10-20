@@ -28,7 +28,13 @@ struct FanMenu: View {
 
     /// Width of the v2 panel.
     static let panelWidth: CGFloat = 368
-    private static let padding: CGFloat = 16
+    static let padding: CGFloat = 16
+    static let headerIconSize: CGFloat = 32
+    static let headerSpacing: CGFloat = 10
+    static let headerSpacerMinimum: CGFloat = 8
+    static let settingsButtonSize: CGFloat = 26
+    /// The settings glyph, not its hover well, lines up with the content edge.
+    static let settingsButtonOverhang: CGFloat = 6
 
     private enum ModeOption: Hashable {
         case automatic
@@ -213,11 +219,11 @@ struct FanMenu: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Self.headerSpacing) {
             Image(nsImage: (AppIconChoice(rawValue: appIconRawValue) ?? .classic).image
                   ?? NSApplication.shared.applicationIconImage)
                 .resizable()
-                .frame(width: 32, height: 32)
+                .frame(width: Self.headerIconSize, height: Self.headerIconSize)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 1) {
@@ -229,37 +235,45 @@ struct FanMenu: View {
                 }
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: Self.headerSpacerMinimum)
 
-            PanelIconButton(systemImage: "gearshape") {
+            PanelIconButton(systemImage: "gearshape", size: Self.settingsButtonSize) {
                 SettingsWindowPresenter.shared.show(controller: controller)
             }
             .accessibilityLabel(fanBarText("打开 FanBar 设置", "Open FanBar Settings"))
             .help(fanBarText("设置", "Settings"))
             // Optically align the glyph, not its hover well, with the content edge.
-            .padding(.trailing, -6)
+            .padding(.trailing, -Self.settingsButtonOverhang)
         }
     }
 
     /// One sentence that answers "how is it right now", naming the part when one is past its limit.
-    private var headerTitle: String {
-        guard controller.isAvailable else { return controller.message }
-        guard let focus, focus.isAlert else { return fanBarText("散热良好", "Cooling normally") }
+    static func alertStatusParts(_ focus: ThermalFocus, mode: FanController.Mode) -> [String] {
         let part = focus.part.name
         if focus.level == .warm {
-            return fanBarFormat("%@温度偏高", "%@ is running warm", part)
+            return [fanBarFormat("%@温度偏高", "%@ is running warm", part)]
         }
         // macOS raises fan speed for hot chips on its own; a hot SSD or battery it may not.
-        let macOSRespondsByItself = controller.mode == .automatic && [.cpu, .gpu].contains(focus.part)
-        return macOSRespondsByItself
-            ? fanBarFormat("%@温度很高 · 系统已提速", "%@ is very hot · macOS has sped up the fans", part)
-            : fanBarFormat("%@温度很高", "%@ is very hot", part)
+        guard mode == .automatic, [.cpu, .gpu].contains(focus.part) else {
+            return [fanBarFormat("%@温度很高", "%@ is very hot", part)]
+        }
+        return [fanBarFormat("%@温度很高", "%@ is very hot", part), fanBarText("系统已提速", "macOS has sped up the fans")]
     }
 
     /// Scoped to the fans: their state and who drives them, plus the restore countdown while FanBar does.
     private var subtitle: some View {
         let isAlert = focus?.isAlert == true
-        return HStack(spacing: 6) {
+        let parts = isAlert
+            ? focus.map { Self.alertStatusParts($0, mode: controller.mode) } ?? []
+            : Self.calmStatusParts(isManual: isManual, focus: focus)
+        let indicatorWidth: CGFloat = level == .hot ? Self.hotIndicatorWidth : Self.calmIndicatorWidth
+        let lines = PanelHeaderStatus.lines(
+            parts,
+            weight: isAlert ? .semibold : .regular,
+            trailingWidth: isManual ? Self.restoreMenuWidth : 0,
+            fitting: PanelHeaderStatus.textWidth(indicatorWidth: indicatorWidth)
+        )
+        return HStack(alignment: .top, spacing: PanelHeaderStatus.indicatorSpacing) {
             Group {
                 if level == .hot {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -268,32 +282,51 @@ struct FanMenu: View {
                 } else {
                     Circle()
                         .fill(palette.color(for: level))
-                        .frame(width: 6, height: 6)
+                        .frame(width: Self.calmIndicatorWidth, height: Self.calmIndicatorWidth)
                 }
             }
+            // Centered on the first line when the status wraps.
+            .frame(height: Self.statusLineHeight)
             .accessibilityHidden(true)
 
-            Text(isAlert ? headerTitle : calmSubtitle)
-                .fontWeight(isAlert ? .semibold : .regular)
-                .foregroundColor(isAlert ? (level == .hot ? palette.hot : palette.warmInk) : palette.secondaryText)
-                .lineLimit(1)
-
-            if isManual {
-                restoreMenu
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                    HStack(spacing: PanelHeaderStatus.indicatorSpacing) {
+                        Text(line)
+                            .fontWeight(isAlert ? .semibold : .regular)
+                            .foregroundColor(isAlert ? (level == .hot ? palette.hot : palette.warmInk) : palette.secondaryText)
+                            .lineLimit(1)
+                        if isManual, index == lines.count - 1 {
+                            restoreMenu
+                        }
+                    }
+                }
             }
+            .accessibilityElement(children: .combine)
         }
-        .font(.system(size: 11))
+        .font(.system(size: PanelHeaderStatus.fontSize))
         .foregroundColor(palette.secondaryText)
     }
 
+    private static let calmIndicatorWidth: CGFloat = 6
+    private static let hotIndicatorWidth: CGFloat = 12
+    private static let statusLineHeight: CGFloat = 14
+
+    /// The countdown ticks every second, so the wrap decision reserves its widest text instead.
+    static var restoreMenuWidth: CGFloat {
+        [fanBarFormat("%@ 后恢复", "restores in %@", "8:88:88"), fanBarText("不自动恢复", "No auto restore")]
+            .map { PanelHeaderStatus.measure("· \($0)", monospacedDigits: true) }
+            .max() ?? 0
+    }
+
     /// "风扇正常 · macOS 控制 · CPU 65°": names what is normal and who is in control.
-    private var calmSubtitle: String {
+    static func calmStatusParts(isManual: Bool, focus: ThermalFocus?) -> [String] {
         let owner = isManual ? fanBarText("FanBar 控制", "FanBar in control") : fanBarText("macOS 控制", "macOS in control")
         var parts = [fanBarText("风扇正常", "Fans normal"), owner]
         if !isManual, let focus {
-            parts.append("\(focus.part.name) \(Int(focus.celsius.rounded()))°")
+            parts.append("\(focus.part.headerName) \(Int(focus.celsius.rounded()))°")
         }
-        return parts.joined(separator: " · ")
+        return parts
     }
 
     private var restoreMenu: some View {
