@@ -418,7 +418,7 @@ enum RussianCatalog {
         "Memory": "Память",
         "Disk": "Диск",
         "Temperature window": "Период графика температуры",
-        "%@ is running warm": "%@: повышенная температура",
+        "%@ is running warm": "%@ нагревается",
         "macOS has sped up the fans": "macOS ускорила вентиляторы",
         "%@ is very hot": "%@: очень горячо",
         "Attention · %@": "Внимание · %@",
