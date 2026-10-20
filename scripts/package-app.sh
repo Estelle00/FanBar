@@ -59,7 +59,7 @@ fi
 # LSMinimumSystemVersion. The widget appex is exempt: WidgetKit needs macOS 14,
 # and the app still launches where the widget cannot load.
 minimum_system_version="$(/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "App/Info.plist")"
-for executable in FanBar FanBarDiagnostics FanBarHelper; do
+for executable in FanBar FanBarCLI FanBarDiagnostics FanBarHelper; do
     deployment_targets=(${(f)"$(xcrun vtool -show-build "${binary_path}/${executable}" | awk '$1 == "minos" { print $2 }')"})
     if (( ${#deployment_targets} == 0 )); then
         print -u2 "Could not read the deployment target of ${executable}."
@@ -97,6 +97,10 @@ trap 'rm -rf "${temporary_root}"' EXIT
 bundle_path="${temporary_root}/FanBar.app"
 mkdir -p "${bundle_path}/Contents/MacOS"
 cp "${binary_path}/FanBarDiagnostics" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
+# The CLI cannot sit beside Contents/MacOS/FanBar: `fanbar` and `FanBar` are the
+# same name on a case-insensitive volume. Homebrew links this path onto PATH.
+mkdir -p "${bundle_path}/Contents/Helpers"
+cp "${binary_path}/FanBarCLI" "${bundle_path}/Contents/Helpers/fanbar"
 mkdir -p "${bundle_path}/Contents/Frameworks"
 mkdir -p "${bundle_path}/Contents/Resources"
 cp "scripts/export-diagnostics.command" "${bundle_path}/Contents/Resources/ExportDiagnostics.command"
@@ -135,6 +139,7 @@ embedded_concurrency_runtime="${bundle_path}/Contents/Frameworks/libswift_Concur
 for client in \
     "Contents/MacOS/FanBar" \
     "Contents/MacOS/FanBarDiagnostics" \
+    "Contents/Helpers/fanbar" \
     "Contents/Library/LaunchServices/local.fanbar.helper"; do
     executable="${bundle_path}/${client}"
     # Any other back-deployed Swift runtime would be missing on older macOS in the
@@ -239,6 +244,8 @@ if [[ -f "${embedded_concurrency_runtime}" ]]; then
 fi
 codesign "${sign_arguments[@]}" --identifier "local.fanbar.diagnostics" \
     --sign "${sign_identity}" "${bundle_path}/Contents/MacOS/FanBarDiagnostics"
+codesign "${sign_arguments[@]}" --identifier "local.fanbar.cli" \
+    --sign "${sign_identity}" "${bundle_path}/Contents/Helpers/fanbar"
 codesign "${sign_arguments[@]}" --identifier "local.fanbar.helper" \
     --sign "${sign_identity}" \
     "${bundle_path}/Contents/Library/LaunchServices/local.fanbar.helper"

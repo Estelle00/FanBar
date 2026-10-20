@@ -255,6 +255,10 @@ struct FanBarSettingsView: View {
             languageRow
             SettingsChrome.rowDivider
             softwareUpdateRow
+            if CommandLineToolInstaller.shared.state != .unavailable {
+                SettingsChrome.rowDivider
+                CommandLineToolRow(installer: .shared)
+            }
         }
     }
 

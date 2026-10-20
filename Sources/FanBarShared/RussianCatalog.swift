@@ -522,6 +522,19 @@ enum RussianCatalog {
         "Custom %d": "Свой %d",
         " Copy": " (копия)",
         "More actions": "Другие действия",
+        "FanBar wants to install the fanbar command in /usr/local/bin.": "FanBar хочет установить команду fanbar в /usr/local/bin.",
+        "FanBar wants to remove the fanbar command from /usr/local/bin.": "FanBar хочет удалить команду fanbar из /usr/local/bin.",
+        "Could not install the command-line tool: %@": "Не удалось установить инструмент командной строки: %@",
+        "Could not remove the command-line tool: %@": "Не удалось удалить инструмент командной строки: %@",
+        "Command-line tool": "Инструмент командной строки",
+        "Lets Terminal and scripts switch modes and read status with the fanbar command.": "Позволяет Терминалу и скриптам переключать режимы и узнавать состояние командой fanbar.",
+        "Move FanBar to the Applications folder before installing the command-line tool.": "Перед установкой инструмента командной строки переместите FanBar в папку «Программы».",
+        "Installed at /usr/local/bin/fanbar.": "Установлено в /usr/local/bin/fanbar.",
+        "/usr/local/bin/fanbar points to another copy of FanBar. Update it to use this one.": "/usr/local/bin/fanbar указывает на другую копию FanBar. Обновите ссылку, чтобы использовать эту.",
+        "/usr/local/bin/fanbar is used by another file, which FanBar will not replace.": "/usr/local/bin/fanbar занят другим файлом, и FanBar не будет его заменять.",
+        "Install…": "Установить…",
+        "Update Link…": "Обновить ссылку…",
+        "Uninstall…": "Удалить…",
     ]
 }
 

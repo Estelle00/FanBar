@@ -1,0 +1,64 @@
+import FanBarShared
+import SwiftUI
+
+/// General › FanBar: installs or removes the `fanbar` link on PATH.
+/// The row stays out of builds that do not ship the tool.
+struct CommandLineToolRow: View {
+    @ObservedObject var installer: CommandLineToolInstaller
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                SettingsRowText(title: fanBarText("命令行工具", "Command-line tool"), detail: detail)
+                if let failure = installer.failure {
+                    Text(failure)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if let action {
+                Button(action.title, action: action.perform)
+                    .disabled(installer.isWorking)
+            }
+        }
+        .settingsRow()
+        .onAppear(perform: installer.refresh)
+    }
+
+    private var detail: String {
+        switch installer.state {
+        case .unavailable, .notInstalled:
+            fanBarText(
+                "安装后可在终端用 fanbar 命令切换模式、查看状态。",
+                "Lets Terminal and scripts switch modes and read status with the fanbar command."
+            )
+        case .needsMove:
+            fanBarText(
+                "请先将 FanBar 移到“应用程序”文件夹，再安装命令行工具。",
+                "Move FanBar to the Applications folder before installing the command-line tool."
+            )
+        case .installed:
+            fanBarText("已安装到 /usr/local/bin/fanbar。", "Installed at /usr/local/bin/fanbar.")
+        case .linkedElsewhere:
+            fanBarText(
+                "/usr/local/bin/fanbar 指向另一份 FanBar，更新后将指向当前这份。",
+                "/usr/local/bin/fanbar points to another copy of FanBar. Update it to use this one."
+            )
+        case .blocked:
+            fanBarText(
+                "/usr/local/bin/fanbar 已被其他文件占用，FanBar 不会覆盖它。",
+                "/usr/local/bin/fanbar is used by another file, which FanBar will not replace."
+            )
+        }
+    }
+
+    private var action: (title: String, perform: () -> Void)? {
+        switch installer.state {
+        case .notInstalled: (fanBarText("安装…", "Install…"), installer.install)
+        case .linkedElsewhere: (fanBarText("更新链接…", "Update Link…"), installer.install)
+        case .installed: (fanBarText("卸载…", "Uninstall…"), installer.uninstall)
+        case .unavailable, .needsMove, .blocked: nil
+        }
+    }
+}

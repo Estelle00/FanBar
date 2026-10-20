@@ -527,6 +527,19 @@ enum JapaneseCatalog {
         "Custom %d": "カスタム %d",
         " Copy": " のコピー",
         "More actions": "その他の操作",
+        "FanBar wants to install the fanbar command in /usr/local/bin.": "FanBar が /usr/local/bin に fanbar コマンドをインストールしようとしています。",
+        "FanBar wants to remove the fanbar command from /usr/local/bin.": "FanBar が /usr/local/bin から fanbar コマンドを削除しようとしています。",
+        "Could not install the command-line tool: %@": "コマンドラインツールをインストールできませんでした：%@",
+        "Could not remove the command-line tool: %@": "コマンドラインツールを削除できませんでした：%@",
+        "Command-line tool": "コマンドラインツール",
+        "Lets Terminal and scripts switch modes and read status with the fanbar command.": "ターミナルやスクリプトから fanbar コマンドでモードの切り替えや状態の確認ができます。",
+        "Move FanBar to the Applications folder before installing the command-line tool.": "コマンドラインツールをインストールする前に、FanBar を「アプリケーション」フォルダに移動してください。",
+        "Installed at /usr/local/bin/fanbar.": "/usr/local/bin/fanbar にインストール済みです。",
+        "/usr/local/bin/fanbar points to another copy of FanBar. Update it to use this one.": "/usr/local/bin/fanbar は別の FanBar を指しています。更新するとこの FanBar を使います。",
+        "/usr/local/bin/fanbar is used by another file, which FanBar will not replace.": "/usr/local/bin/fanbar は別のファイルが使用しているため、FanBar は置き換えません。",
+        "Install…": "インストール…",
+        "Update Link…": "リンクを更新…",
+        "Uninstall…": "アンインストール…",
     ]
 }
 

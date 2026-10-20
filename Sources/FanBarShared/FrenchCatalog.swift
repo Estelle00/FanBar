@@ -514,6 +514,19 @@ enum FrenchCatalog {
         "Custom %d": "Personnalisé %d",
         " Copy": " (copie)",
         "More actions": "Plus d’actions",
+        "FanBar wants to install the fanbar command in /usr/local/bin.": "FanBar souhaite installer la commande fanbar dans /usr/local/bin.",
+        "FanBar wants to remove the fanbar command from /usr/local/bin.": "FanBar souhaite supprimer la commande fanbar de /usr/local/bin.",
+        "Could not install the command-line tool: %@": "Impossible d’installer l’outil en ligne de commande : %@",
+        "Could not remove the command-line tool: %@": "Impossible de supprimer l’outil en ligne de commande : %@",
+        "Command-line tool": "Outil en ligne de commande",
+        "Lets Terminal and scripts switch modes and read status with the fanbar command.": "Permet au Terminal et aux scripts de changer de mode et de lire l’état avec la commande fanbar.",
+        "Move FanBar to the Applications folder before installing the command-line tool.": "Déplacez FanBar dans le dossier Applications avant d’installer l’outil en ligne de commande.",
+        "Installed at /usr/local/bin/fanbar.": "Installé dans /usr/local/bin/fanbar.",
+        "/usr/local/bin/fanbar points to another copy of FanBar. Update it to use this one.": "/usr/local/bin/fanbar pointe vers une autre copie de FanBar. Mettez le lien à jour pour utiliser celle-ci.",
+        "/usr/local/bin/fanbar is used by another file, which FanBar will not replace.": "/usr/local/bin/fanbar est occupé par un autre fichier, que FanBar ne remplacera pas.",
+        "Install…": "Installer…",
+        "Update Link…": "Mettre à jour le lien…",
+        "Uninstall…": "Désinstaller…",
     ]
 }
 
