@@ -1,7 +1,13 @@
+import { downloads } from "./downloads";
+import { locales } from "./i18n";
 import { github, releases } from "./links";
-import { siteUrl } from "./seo";
+import { HTML_LANG, LOCALE_URLS, siteUrl } from "./seo";
+import releaseSnapshot from "../data/releases.json";
 
-export const apiUpdated = "2026-10-12";
+export const apiUpdated = "2026-10-20";
+
+// Read from the same build-time release snapshot as the download buttons.
+const latest = [...releaseSnapshot.releases].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))[0];
 export const apiDocsUrl = `${siteUrl}/api`;
 export const apiMarkdownUrl = `${siteUrl}/api.md`;
 export const apiCatalogUrl = `${siteUrl}/.well-known/api-catalog`;
@@ -44,12 +50,28 @@ export const productFacts = {
       ],
     },
   ],
+  latestRelease: {
+    version: latest.version,
+    publishedAt: latest.publishedAt,
+    notes: `${siteUrl}/releases/${latest.version}`,
+    url: latest.url,
+  },
+  downloads: Object.fromEntries(
+    Object.entries(downloads).map(([architecture, asset]) => [
+      architecture,
+      { name: asset.name, url: asset.url, size: asset.size },
+    ]),
+  ),
   features: [
-    "Menu-bar temperature and fan RPM monitoring",
+    "Menu-bar CPU temperature and fan RPM, with six icon styles that spin with the fans",
+    "Per-fan RPM on a 0-to-max meter, and a CPU, GPU, memory, and disk load grid",
+    "CPU, GPU, SSD, and battery temperatures with a 10-minute to 1-hour history chart",
     "Automatic cooling, fixed target RPM, and editable temperature-to-RPM curves",
-    "Silent, Balanced, Performance, and Extreme presets",
+    "Silent, Balanced, Performance, and Extreme presets that can restore Automatic after 15 minutes, 30 minutes, or 1 hour",
+    "Curve temperature source selectable from CPU, GPU, or SSD",
+    "Optional high-temperature notifications at 60-105°C (90°C by default) with a selectable alert sound",
+    "CSV logging of temperatures, fan speeds, and control mode every 2-60 seconds",
     "Desktop widget on macOS 14 and later",
-    "Optional high-temperature notifications",
   ],
   safety: {
     manualControlOptional: true,
@@ -59,7 +81,8 @@ export const productFacts = {
     fallback:
       "FanBar attempts to restore macOS automatic fan control when manual control ends, the app quits, the connection is lost, or the helper fails.",
   },
-  languages: ["English", "Simplified Chinese", "Traditional Chinese", "Japanese"],
+  languages: ["English", "Simplified Chinese", "Traditional Chinese", "Japanese", "Russian", "French"],
+  localizedPages: Object.fromEntries(locales.map((locale) => [HTML_LANG[locale], LOCALE_URLS[locale]])),
   updated: apiUpdated,
 } as const;
 
@@ -73,7 +96,7 @@ export const openApiDocument = {
   openapi: "3.1.0",
   info: {
     title: "FanBar Product Facts API",
-    version: "1.0.0",
+    version: "1.1.0",
     description:
       "A public, read-only API exposing canonical FanBar product, compatibility, installation, and safety facts.",
     license: {
@@ -130,9 +153,12 @@ export const openApiDocument = {
           "pricing",
           "compatibility",
           "install",
+          "latestRelease",
+          "downloads",
           "features",
           "safety",
           "languages",
+          "localizedPages",
           "updated",
         ],
         properties: {
@@ -148,9 +174,37 @@ export const openApiDocument = {
             type: "array",
             items: { type: "object", additionalProperties: true },
           },
+          latestRelease: {
+            type: "object",
+            required: ["version", "publishedAt", "notes", "url"],
+            properties: {
+              version: { type: "string" },
+              publishedAt: { type: "string", format: "date-time" },
+              notes: { type: "string", format: "uri" },
+              url: { type: "string", format: "uri" },
+            },
+          },
+          downloads: {
+            type: "object",
+            description: "Notarized DMGs of the latest release, keyed by architecture: universal, arm64, x86_64.",
+            additionalProperties: {
+              type: "object",
+              required: ["name", "url", "size"],
+              properties: {
+                name: { type: "string" },
+                url: { type: "string", format: "uri" },
+                size: { type: "integer", description: "Bytes" },
+              },
+            },
+          },
           features: { type: "array", items: { type: "string" } },
           safety: { type: "object", additionalProperties: true },
           languages: { type: "array", items: { type: "string" } },
+          localizedPages: {
+            type: "object",
+            description: "Product page URL for each BCP 47 language tag.",
+            additionalProperties: { type: "string", format: "uri" },
+          },
           updated: { type: "string", format: "date" },
         },
       },

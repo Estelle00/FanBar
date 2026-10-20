@@ -17,6 +17,12 @@ import { getDictionary } from "@/lib/i18n";
 import { siteUrl } from "@/lib/seo";
 
 const locale = "en" as const;
+const updatedLabel = new Date(`${apiUpdated}T00:00:00Z`).toLocaleDateString("en-US", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
 const dict = getDictionary(locale);
 const title = "FanBar Product Facts API";
 const description =
@@ -28,7 +34,7 @@ const endpoints = [
     method: "GET",
     url: productApiUrl,
     path: "/api/product.json",
-    description: "Canonical product, compatibility, installation, feature, and safety facts.",
+    description: "Canonical product, compatibility, installation, feature, language, and safety facts, plus the latest release and its DMG downloads.",
   },
   {
     icon: HeartPulse,
@@ -94,7 +100,7 @@ const endpoints = [
           </p>
 
           <div class="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-            <span>Updated <time datetime={apiUpdated}>October 12, 2026</time></span>
+            <span>Updated <time datetime={apiUpdated}>{updatedLabel}</time></span>
             <span aria-hidden="true">·</span>
             <a href={apiMarkdownUrl} class="underline decoration-border underline-offset-4 hover:text-foreground">Read as Markdown</a>
           </div>

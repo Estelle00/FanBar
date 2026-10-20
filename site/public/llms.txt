@@ -21,6 +21,7 @@ Key interpretation notes:
 - [French landing page](https://getfanbar.com/fr): Page produit en français et questions fréquentes.
 - [English machine-readable product page](https://getfanbar.com/index.md): Detailed product facts, compatibility, permissions, installation, and common questions in Markdown.
 - [简体中文机器可读产品页](https://getfanbar.com/zh/index.md): 中文版产品事实、兼容性、权限、安装步骤与常见问题。
+- Markdown versions of the other home pages: [繁體中文](https://getfanbar.com/zh-tw/index.md), [日本語](https://getfanbar.com/ja/index.md), [Русский](https://getfanbar.com/ru/index.md), [Français](https://getfanbar.com/fr/index.md).
 - [FanBar vs Macs Fan Control](https://getfanbar.com/compare/macs-fan-control): Maintainer-written, source-backed comparison covering price, interface, sensors, platforms, safety, and track record.
 - [Comparison in Markdown](https://getfanbar.com/compare/macs-fan-control.md): Machine-readable version of the comparison and its source list.
 - [FanBar 与 Macs Fan Control 中文对比](https://getfanbar.com/zh/compare/macs-fan-control): 中文版产品对比、选择建议与官方来源。
@@ -43,7 +44,7 @@ Key interpretation notes:
 - The HTML product, safety, comparison, compatibility, and API documentation URLs return Markdown when requested with `Accept: text/markdown`.
 - [RFC 9727 API catalog](https://getfanbar.com/.well-known/api-catalog): Linkset JSON catalog for automated API discovery.
 - [OpenAPI 3.1 description](https://getfanbar.com/openapi.json): Machine-readable API operations and response schemas.
-- [Product facts endpoint](https://getfanbar.com/api/product.json): Canonical product, compatibility, installation, feature, and safety facts in JSON.
+- [Product facts endpoint](https://getfanbar.com/api/product.json): Canonical product, compatibility, installation, feature, language, and safety facts in JSON, plus the latest release version and its DMG download URLs per architecture.
 - [API publication status](https://getfanbar.com/api/health.json): Lightweight status response for the static API.
 
 ## Download and source
