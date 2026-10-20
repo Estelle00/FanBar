@@ -1,12 +1,19 @@
 import type { Locale } from "./i18n";
 
-const homePaths: Record<Locale, string> = { en: "/", zh: "/zh", ru: "/ru" };
+const homePaths: Record<Locale, string> = {
+  en: "/",
+  zh: "/zh",
+  "zh-tw": "/zh-tw",
+  ja: "/ja",
+  ru: "/ru",
+  fr: "/fr",
+};
 
 export function homePath(locale: Locale): string {
   return homePaths[locale];
 }
 
-// Pages that exist only in English and Chinese fall back to English for Russian.
+// Pages that exist only in English and Simplified Chinese fall back to English for the other locales.
 export function comparisonPath(locale: Locale): string {
   return locale === "zh" ? "/zh/compare/macs-fan-control" : "/compare/macs-fan-control";
 }

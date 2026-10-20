@@ -117,6 +117,39 @@
         }
       ],
       "destination": "/ru/index.md"
+    },
+    {
+      "source": "/zh-tw",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "(.*)text/markdown(.*)"
+        }
+      ],
+      "destination": "/zh-tw/index.md"
+    },
+    {
+      "source": "/ja",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "(.*)text/markdown(.*)"
+        }
+      ],
+      "destination": "/ja/index.md"
+    },
+    {
+      "source": "/fr",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "(.*)text/markdown(.*)"
+        }
+      ],
+      "destination": "/fr/index.md"
     }
   ],
   "headers": [
@@ -540,6 +573,45 @@
         {
           "key": "Link",
           "value": "</ru>; rel=\"canonical\", </llms.txt>; rel=\"describedby\""
+        }
+      ]
+    },
+    {
+      "source": "/zh-tw/index.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "Link",
+          "value": "</zh-tw>; rel=\"canonical\", </llms.txt>; rel=\"describedby\""
+        }
+      ]
+    },
+    {
+      "source": "/ja/index.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "Link",
+          "value": "</ja>; rel=\"canonical\", </llms.txt>; rel=\"describedby\""
+        }
+      ]
+    },
+    {
+      "source": "/fr/index.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "Link",
+          "value": "</fr>; rel=\"canonical\", </llms.txt>; rel=\"describedby\""
         }
       ]
     }

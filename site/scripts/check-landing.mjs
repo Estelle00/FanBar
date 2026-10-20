@@ -9,7 +9,7 @@ const assets = Object.fromEntries(latest.assets.map((asset) => [
   asset,
 ]));
 
-for (const [locale, path] of [["en", "index.html"], ["zh", "zh/index.html"], ["ru", "ru/index.html"]]) {
+for (const [locale, path] of [["en", "index.html"], ["zh", "zh/index.html"], ["zh-tw", "zh-tw/index.html"], ["ja", "ja/index.html"], ["ru", "ru/index.html"], ["fr", "fr/index.html"]]) {
   const html = await readFile(new URL(`../dist/${path}`, import.meta.url), "utf8");
   const anchors = [...html.matchAll(/<a\b[^>]*>/g)].map(([tag]) => Object.fromEntries(
     [...tag.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, name, value]) => [name, value]),

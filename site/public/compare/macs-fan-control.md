@@ -24,7 +24,7 @@ Both are legitimate tools. Manual fan control is not risk-free: avoid forcing mi
 | Sensor detail | CPU, GPU, SSD, and battery temperatures, plus per-fan RPM and hardware limits. | A broader per-sensor list, including supported third-party HDD/SSD readings through S.M.A.R.T. |
 | Safety fallback | Clamps targets to hardware-reported limits and attempts to restore Automatic on quit, disconnect, or service failure. | Official documentation says all fans are restored to Auto when the app quits. |
 | Desktop widget | Yes, through WidgetKit on macOS 14+. | No WidgetKit desktop widget is listed in the current feature set. |
-| Languages | English, Simplified Chinese, Traditional Chinese, and Japanese. | Translated into most major languages. |
+| Languages | English, Simplified Chinese, Traditional Chinese, Japanese, Russian, and French. | Translated into most major languages. |
 | Install | Notarized DMG through GitHub Releases, or the official Homebrew tap. | macOS DMG and Windows installer from CrystalIDEA. |
 | Track record | A newer open-source project launched in 2026. | Public release history dates back to 2013. |
 

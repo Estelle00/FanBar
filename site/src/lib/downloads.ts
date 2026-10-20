@@ -46,6 +46,27 @@ export const downloadCopy = {
     universal: "通用版",
     universalNote: "默认下载兼容 Apple 芯片与 Intel 的通用版 DMG，也可选择更小的芯片专用版本。",
   },
+  "zh-tw": {
+    choose: "選擇 Mac 晶片",
+    arm64: "Apple 晶片",
+    x86_64: "Intel 晶片",
+    universal: "通用版",
+    universalNote: "預設下載同時支援 Apple 晶片與 Intel 的通用版 DMG，也可選擇檔案較小的晶片專用版本。",
+  },
+  ja: {
+    choose: "Mac のチップを選択",
+    arm64: "Apple シリコン",
+    x86_64: "Intel",
+    universal: "ユニバーサル",
+    universalNote: "既定では Apple シリコンと Intel の両方に対応するユニバーサル DMG をダウンロードします。チップを選ぶとより小さいファイルになります。",
+  },
+  fr: {
+    choose: "Choisir la puce du Mac",
+    arm64: "Apple Silicon",
+    x86_64: "Intel",
+    universal: "Universelle",
+    universalNote: "Par défaut : DMG universel pour Apple Silicon et Intel. Choisissez une puce pour un téléchargement plus léger.",
+  },
   ru: {
     choose: "Выберите процессор Mac",
     arm64: "Apple Silicon",

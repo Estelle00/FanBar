@@ -1,18 +1,24 @@
 import type { HighlightKey, ScreenshotKey } from "./links";
+import { fr } from "./locales/fr";
+import { ja } from "./locales/ja";
+import { zhTw } from "./locales/zh-tw";
 
-export type Locale = "en" | "zh" | "ru";
+export type Locale = "en" | "zh" | "zh-tw" | "ja" | "ru" | "fr";
 
-export const locales: Locale[] = ["en", "zh", "ru"];
+export const locales: Locale[] = ["en", "zh", "zh-tw", "ja", "ru", "fr"];
 export const defaultLocale: Locale = "en";
 
-/** Locales with the full page set (safety, comparison, compatibility). Russian has the home page only. */
-export type FullLocale = Exclude<Locale, "ru">;
+/** Locales with the full page set (safety, comparison, compatibility, release notes). The others have the home page only. */
+export type FullLocale = "en" | "zh";
 
 /** Each language named in itself, for the language menu. */
 export const languageNames: Record<Locale, string> = {
   en: "English",
   zh: "简体中文",
+  "zh-tw": "繁體中文",
+  ja: "日本語",
   ru: "Русский",
+  fr: "Français",
 };
 
 export interface Dictionary {
@@ -155,8 +161,8 @@ const en: Dictionary = {
   stats: [
     { value: "11+", label: "macOS Big Sur and later" },
     { value: "6", label: "Cooling modes, Automatic to Extreme" },
-    { value: "10 min", label: "Rolling temperature history" },
-    { value: "4", label: "Languages — EN, 简中, 繁中 & 日本語" },
+    { value: "1 h", label: "Temperature history, 10 min to 1 h" },
+    { value: "6", label: "Interface languages, switched instantly" },
   ],
   highlights: {
     badge: "Highlights",
@@ -166,7 +172,12 @@ const en: Dictionary = {
       status: {
         title: "At-a-glance status",
         description:
-          "Show the menu-bar icon, CPU temperature, average fan RPM, or both.",
+          "Show the menu-bar icon, CPU temperature, average fan RPM, or both — side by side or stacked.",
+      },
+      icons: {
+        title: "Six menu-bar icons",
+        description:
+          "Pick from six icons that spin with the fans and coast to a stop when they halt.",
       },
       widget: {
         title: "Desktop widget",
@@ -176,7 +187,12 @@ const en: Dictionary = {
       live: {
         title: "Live visualization",
         description:
-          "A rolling ten-minute chart, plus airflow that follows real RPM.",
+          "Each fan leads with its RPM on a 0-to-max meter; the chart spans 10 minutes to an hour.",
+      },
+      resources: {
+        title: "Load at a glance",
+        description:
+          "CPU, GPU, memory, and disk in one grid, colored by level with words, not just color.",
       },
       modes: {
         title: "Multiple cooling modes",
@@ -196,7 +212,12 @@ const en: Dictionary = {
       alerts: {
         title: "High-temperature alerts",
         description:
-          "Optional notifications at 90°C — one alert per episode, re-armed after cooling.",
+          "Opt-in alerts at a threshold you set (60–105°C) with a sound you choose; one tap to maximum cooling.",
+      },
+      log: {
+        title: "CSV log",
+        description:
+          "Record temperatures, fan speeds, and control mode every 2–60 seconds to CSV files.",
       },
       safe: {
         title: "Safe by default",
@@ -204,9 +225,9 @@ const en: Dictionary = {
           "Targets stay clamped to hardware range; failure restores automatic control.",
       },
       language: {
-        title: "Four interface languages",
+        title: "Six interface languages",
         description:
-          "Use English, 简体中文, 繁體中文, or 日本語 — and switch instantly.",
+          "English, 简体中文, 繁體中文, 日本語, Русский, or Français — switch without a restart.",
       },
     },
   },
@@ -229,7 +250,7 @@ const en: Dictionary = {
       popover: {
         alt: "FanBar menu-bar popover",
         title: "Menu-bar popover",
-        description: "Live temperature, RPM, and mode switching.",
+        description: "Each fan's live RPM, system load, temperatures, and mode switching.",
       },
       cooling: {
         alt: "FanBar cooling settings",
@@ -256,9 +277,9 @@ const en: Dictionary = {
       },
       {
         step: "02",
-        title: "Enable fan control",
+        title: "Approve once",
         description:
-          "Choose Enable fan control and follow the macOS authorization prompt.",
+          "The first time you switch modes, approve the one-time macOS permission. Temperatures and fan speeds work without it.",
       },
       {
         step: "03",
@@ -296,7 +317,7 @@ const en: Dictionary = {
       {
         question: "Which temperatures and fan speeds can FanBar read?",
         answer:
-          "CPU and GPU temperature on every supported Mac, plus SSD and battery temperatures where those sensors exist. It reads each fan's current RPM and hardware minimum and maximum, and the menu bar can show the icon, CPU temperature, average RPM, or a combination. Optional notifications fire when CPU or GPU reaches 90°C.",
+          "CPU and GPU temperature on every supported Mac, plus SSD and battery temperatures where those sensors exist. It reads each fan's current RPM and hardware minimum and maximum, and the menu bar can show the icon, CPU temperature, average RPM, or a combination. Optional notifications fire when CPU or GPU reaches a threshold you set between 60°C and 105°C, 90°C by default.",
       },
       {
         question: "What cooling modes does FanBar offer?",
@@ -311,7 +332,7 @@ const en: Dictionary = {
       {
         question: "Which languages does FanBar support?",
         answer:
-          "English, Simplified Chinese, Traditional Chinese, and Japanese. Choose System or a specific language in Settings → Language, and the menu-bar popover, settings, onboarding, and status messages switch instantly without a restart.",
+          "English, Simplified Chinese, Traditional Chinese, Japanese, Russian, and French. Choose System or a specific language in Settings → General → Interface language, and the menu-bar popover, settings, onboarding, and status messages switch instantly without a restart.",
       },
     ],
   },
@@ -385,8 +406,8 @@ const zh: Dictionary = {
   stats: [
     { value: "11+", label: "macOS Big Sur 及以上版本" },
     { value: "6", label: "散热模式，从自动到极速" },
-    { value: "10 min", label: "十分钟温度趋势记录" },
-    { value: "4", label: "支持英文、简中、繁中与日文" },
+    { value: "1 h", label: "温度趋势，10 分钟到 1 小时" },
+    { value: "6", label: "种界面语言，即时切换" },
   ],
   highlights: {
     badge: "亮点",
@@ -394,7 +415,11 @@ const zh: Dictionary = {
     items: {
       status: {
         title: "一眼掌握状态",
-        description: "菜单栏可显示图标、CPU 温度、平均风扇 RPM，或三者组合。",
+        description: "菜单栏可显示图标、CPU 温度、平均风扇 RPM，或并排、上下叠放两者。",
+      },
+      icons: {
+        title: "六款菜单栏图标",
+        description: "六种图标可选，随风扇转动，风扇停转时缓缓静止。",
       },
       widget: {
         title: "桌面组件",
@@ -403,7 +428,11 @@ const zh: Dictionary = {
       },
       live: {
         title: "实时可视化",
-        description: "近十分钟趋势曲线，气流动画随真实 RPM 变化。",
+        description: "每个风扇先显示转速，转速条从 0 到最大值；温度曲线可看 10 分钟到 1 小时。",
+      },
+      resources: {
+        title: "负载一目了然",
+        description: "CPU、GPU、内存与磁盘集中在一个网格里，按程度着色并配文字说明。",
       },
       modes: {
         title: "多种散热模式",
@@ -421,15 +450,19 @@ const zh: Dictionary = {
       alerts: {
         title: "高温通知",
         description:
-          "达到 90°C 时可选通知提醒——每次持续高温只提醒一次，降温后重新启用。",
+          "可自定阈值（60–105°C）和提示音；过热时一键切换到最大散热。",
+      },
+      log: {
+        title: "CSV 日志",
+        description: "每 2–60 秒把温度、风扇转速和控制模式记录到 CSV 文件。",
       },
       safe: {
         title: "默认安全",
         description: "转速始终限制在硬件范围内；发生异常时自动恢复系统控制。",
       },
       language: {
-        title: "四种界面语言",
-        description: "支持英文、简体中文、繁體中文与日本語——即时切换。",
+        title: "六种界面语言",
+        description: "English、简体中文、繁體中文、日本語、Русский 与 Français——无需重启即可切换。",
       },
     },
   },
@@ -452,7 +485,7 @@ const zh: Dictionary = {
       popover: {
         alt: "FanBar 菜单栏面板",
         title: "菜单栏面板",
-        description: "实时温度、转速与模式切换。",
+        description: "每个风扇的实时转速、系统负载、温度与模式切换。",
       },
       cooling: {
         alt: "FanBar 散热设置",
@@ -477,8 +510,8 @@ const zh: Dictionary = {
       },
       {
         step: "02",
-        title: "启用风扇控制",
-        description: "选择「启用风扇控制」，并完成 macOS 授权提示。",
+        title: "授权一次",
+        description: "第一次切换模式时，完成一次 macOS 授权；不授权也能查看温度和转速。",
       },
       {
         step: "03",
@@ -515,7 +548,7 @@ const zh: Dictionary = {
       {
         question: "FanBar 能读取哪些温度和转速？",
         answer:
-          "所有受支持的 Mac 都能读取 CPU 与 GPU 温度；当硬件提供对应传感器时，还会读取 SSD 与电池温度。它会读取每个风扇的当前转速以及硬件上下限，菜单栏可显示图标、CPU 温度、平均转速或它们的组合。CPU 或 GPU 达到 90°C 时可选发送通知。",
+          "所有受支持的 Mac 都能读取 CPU 与 GPU 温度；当硬件提供对应传感器时，还会读取 SSD 与电池温度。它会读取每个风扇的当前转速以及硬件上下限，菜单栏可显示图标、CPU 温度、平均转速或它们的组合。CPU 或 GPU 达到你设定的阈值（60–105°C，默认 90°C）时可选发送通知。",
       },
       {
         question: "FanBar 提供哪些散热模式？",
@@ -530,7 +563,7 @@ const zh: Dictionary = {
       {
         question: "FanBar 支持哪些语言？",
         answer:
-          "英文、简体中文、繁体中文与日文。在「设置 → 语言」中选择跟随系统或指定语言，菜单栏面板、设置窗口、引导流程与状态提示都会即时切换，无需重启。",
+          "英文、简体中文、繁体中文、日文、俄文与法文。在「设置 → 通用 → 界面语言」中选择跟随系统或指定语言，菜单栏面板、设置窗口、引导流程与状态提示都会即时切换，无需重启。",
       },
     ],
   },
@@ -551,8 +584,7 @@ const zh: Dictionary = {
   },
 };
 
-// Russian: home page only. The app itself has no Russian UI yet, so mode and
-// menu names stay in English (as users will see them) and the copy says so.
+// Russian: home page only. Mode and menu names match the app's Russian interface.
 const ru: Dictionary = {
   meta: {
     title: "FanBar — бесплатное управление вентиляторами Mac с открытым кодом",
@@ -601,9 +633,9 @@ const ru: Dictionary = {
   },
   stats: [
     { value: "11+", label: "macOS Big Sur и новее" },
-    { value: "6", label: "Режимов охлаждения, от Automatic до Extreme" },
-    { value: "10 мин", label: "История температур" },
-    { value: "4", label: "Языка интерфейса: EN, 简中, 繁中, 日本語" },
+    { value: "6", label: "Режимов охлаждения, от «Авто» до «Максимум»" },
+    { value: "1 ч", label: "История температур, от 10 минут до часа" },
+    { value: "6", label: "Языков интерфейса, переключение без перезапуска" },
   ],
   highlights: {
     badge: "Возможности",
@@ -613,17 +645,25 @@ const ru: Dictionary = {
         title: "Всё видно сразу",
         description: "В строке меню — значок, температура CPU, средние обороты вентиляторов или всё вместе.",
       },
+      icons: {
+        title: "Шесть значков",
+        description: "Значок в строке меню вращается вместе с вентиляторами и плавно останавливается с ними.",
+      },
       widget: {
         title: "Виджет на рабочий стол",
         description: "В macOS 14 и новее: обороты, скорость и режим прямо на рабочем столе.",
       },
       live: {
         title: "Живой график",
-        description: "Десятиминутная история температур и анимация потока воздуха по реальным оборотам.",
+        description: "Обороты каждого вентилятора на шкале от 0 до максимума; график температур — от 10 минут до часа.",
+      },
+      resources: {
+        title: "Нагрузка одним взглядом",
+        description: "CPU, GPU, память и диск в одной сетке; уровень показан цветом и словами.",
       },
       modes: {
         title: "Несколько режимов",
-        description: "Automatic, фиксированные обороты или пресеты Silent, Balanced, Performance и Extreme.",
+        description: "«Авто», фиксированные обороты или пресеты «Тихий», «Баланс», «Мощный» и «Максимум».",
       },
       curves: {
         title: "Кривые по температуре",
@@ -635,15 +675,19 @@ const ru: Dictionary = {
       },
       alerts: {
         title: "Предупреждения о перегреве",
-        description: "Необязательные уведомления при 90 °C — одно на эпизод, снова после остывания.",
+        description: "Порог от 60 до 105 °C и звук на выбор; при перегреве — максимальное охлаждение в один клик.",
+      },
+      log: {
+        title: "Журнал CSV",
+        description: "Температуры, обороты и режим каждые 2–60 секунд в файлы CSV.",
       },
       safe: {
         title: "Безопасно по умолчанию",
         description: "Обороты не выходят за пределы оборудования; при сбое управление возвращается macOS.",
       },
       language: {
-        title: "Четыре языка интерфейса",
-        description: "English, 简体中文, 繁體中文 и 日本語. Русского интерфейса пока нет — интерфейс приложения на английском.",
+        title: "Шесть языков интерфейса",
+        description: "English, 简体中文, 繁體中文, 日本語, Русский и Français — переключение без перезапуска.",
       },
     },
   },
@@ -654,7 +698,7 @@ const ru: Dictionary = {
     points: [
       "FanBar.app → защищённый XPC → подписанный helper (root) → AppleSMC",
       "Helper только читает данные вентиляторов и задаёт обороты в допустимых пределах — никаких произвольных записей в SMC",
-      "Пресеты могут сами вернуть режим Automatic через 15 минут, 30 минут или час",
+      "Пресеты могут сами вернуть режим «Авто» через 15 минут, 30 минут или час",
       "Каждая версия проходит нотаризацию Apple; исходный код, включая helper, открыт",
     ],
     cta: "Безопасен ли FanBar? Что именно может helper (англ.)",
@@ -666,7 +710,7 @@ const ru: Dictionary = {
       popover: {
         alt: "Окно FanBar в строке меню",
         title: "Окно в строке меню",
-        description: "Температура, обороты и переключение режимов.",
+        description: "Обороты каждого вентилятора, нагрузка, температуры и переключение режимов.",
       },
       cooling: {
         alt: "Настройки охлаждения FanBar",
@@ -691,13 +735,13 @@ const ru: Dictionary = {
       },
       {
         step: "02",
-        title: "Включите управление",
-        description: "Выберите «Enable fan control» и подтвердите запрос macOS.",
+        title: "Разрешите один раз",
+        description: "При первом переключении режима подтвердите разовый запрос macOS. Температуры и обороты видны и без него.",
       },
       {
         step: "03",
         title: "Выберите режим",
-        description: "Пресет или фиксированные обороты — а вернуться в Automatic можно в любой момент.",
+        description: "Пресет или фиксированные обороты — а вернуться в «Авто» можно в любой момент.",
       },
     ],
   },
@@ -739,7 +783,7 @@ const ru: Dictionary = {
       {
         question: "Есть ли русский интерфейс?",
         answer:
-          "Пока нет. Приложение доступно на английском, упрощённом и традиционном китайском и японском; язык меняется в настройках без перезапуска. Если вы хотите помочь с русским переводом, напишите нам в GitHub Issues.",
+          "Да. FanBar доступен на русском, английском, упрощённом и традиционном китайском, японском и французском. Язык выбирается в «Настройки → Основные → Язык интерфейса» и меняется без перезапуска.",
       },
     ],
   },
@@ -766,7 +810,8 @@ const ru: Dictionary = {
   },
 };
 
-export const dictionaries: Record<Locale, Dictionary> = { en, zh, ru };
+// Traditional Chinese, Japanese, and French live in ./locales.
+export const dictionaries: Record<Locale, Dictionary> = { en, zh, "zh-tw": zhTw, ja, ru, fr };
 
 export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale] ?? dictionaries[defaultLocale];

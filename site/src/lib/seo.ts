@@ -8,15 +8,39 @@ export const siteUrl = "https://getfanbar.com";
 export const siteName = "FanBar";
 
 // BCP 47 tags, shared by <html lang>, hreflang alternates, and Open Graph.
-export const HTML_LANG: Record<Locale, string> = { en: "en", zh: "zh-Hans", ru: "ru" };
-export const OG_LOCALE: Record<Locale, string> = { en: "en_US", zh: "zh_CN", ru: "ru_RU" };
+export const HTML_LANG: Record<Locale, string> = {
+  en: "en",
+  zh: "zh-Hans",
+  "zh-tw": "zh-Hant",
+  ja: "ja",
+  ru: "ru",
+  fr: "fr",
+};
+export const OG_LOCALE: Record<Locale, string> = {
+  en: "en_US",
+  zh: "zh_CN",
+  "zh-tw": "zh_TW",
+  ja: "ja_JP",
+  ru: "ru_RU",
+  fr: "fr_FR",
+};
 
 // English lives at the bare domain; Vercel permanently redirects "/en" here.
-export const LOCALE_PATHS: Record<Locale, string> = { en: "/", zh: "/zh", ru: "/ru" };
+export const LOCALE_PATHS: Record<Locale, string> = {
+  en: "/",
+  zh: "/zh",
+  "zh-tw": "/zh-tw",
+  ja: "/ja",
+  ru: "/ru",
+  fr: "/fr",
+};
 export const LOCALE_URLS: Record<Locale, string> = {
   en: siteUrl,
   zh: `${siteUrl}/zh`,
+  "zh-tw": `${siteUrl}/zh-tw`,
+  ja: `${siteUrl}/ja`,
   ru: `${siteUrl}/ru`,
+  fr: `${siteUrl}/fr`,
 };
 
 // Absolute hreflang map, plus the x-default the default locale answers to.

@@ -9,13 +9,16 @@ Key interpretation notes:
 - FanBar supports macOS 11 Big Sur or later on Apple Silicon and Intel Macs that expose readable AppleSMC fan data.
 - Manual fan control is optional and requires explicit approval of FanBar's signed privileged helper. Monitoring does not require enabling manual control.
 - Hardware sensor availability varies by Mac. Targets are bounded by the fan limits reported by the hardware, and FanBar attempts to restore macOS automatic control when manual control ends or fails.
-- FanBar is free, GPL-3.0-licensed, requires no account, and supports English, Simplified Chinese, Traditional Chinese, and Japanese.
+- FanBar is free, GPL-3.0-licensed, requires no account, and supports English, Simplified Chinese, Traditional Chinese, Japanese, Russian, and French.
 
 ## Product overview
 
 - [English landing page](https://getfanbar.com/): Canonical product overview, screenshots, safety explanation, FAQ, and download links.
 - [Simplified Chinese landing page](https://getfanbar.com/zh): Canonical Chinese product overview and FAQ.
-- [Russian landing page](https://getfanbar.com/ru): Русская страница продукта с инструкцией по проверке оригинальной сборки. The app UI itself is not yet available in Russian.
+- [Traditional Chinese landing page](https://getfanbar.com/zh-tw): 繁體中文產品頁與常見問題。
+- [Japanese landing page](https://getfanbar.com/ja): 日本語の製品ページとよくある質問。
+- [Russian landing page](https://getfanbar.com/ru): Русская страница продукта с инструкцией по проверке оригинальной сборки.
+- [French landing page](https://getfanbar.com/fr): Page produit en français et questions fréquentes.
 - [English machine-readable product page](https://getfanbar.com/index.md): Detailed product facts, compatibility, permissions, installation, and common questions in Markdown.
 - [简体中文机器可读产品页](https://getfanbar.com/zh/index.md): 中文版产品事实、兼容性、权限、安装步骤与常见问题。
 - [FanBar vs Macs Fan Control](https://getfanbar.com/compare/macs-fan-control): Maintainer-written, source-backed comparison covering price, interface, sensors, platforms, safety, and track record.
@@ -52,6 +55,7 @@ Key interpretation notes:
 
 - [English README](https://github.com/helson-lin/FanBar/blob/main/README.md): Features, requirements, usage, architecture, safety notes, and build instructions.
 - [简体中文 README](https://github.com/helson-lin/FanBar/blob/main/README.zh-CN.md): 中文功能说明、系统要求、使用方式、架构与安全提示。
+- [繁體中文 README](https://github.com/helson-lin/FanBar/blob/main/README.zh-TW.md), [日本語 README](https://github.com/helson-lin/FanBar/blob/main/README.ja.md), [Русский README](https://github.com/helson-lin/FanBar/blob/main/README.ru.md), [README en français](https://github.com/helson-lin/FanBar/blob/main/README.fr.md): The same documentation in the app's other interface languages.
 
 ## Optional
 

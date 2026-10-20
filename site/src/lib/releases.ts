@@ -15,9 +15,17 @@ export async function getReleases(locale: FullLocale): Promise<ReleaseEntry[]> {
   );
 }
 
+const dateLocales: Record<Locale, string> = {
+  en: "en-US",
+  zh: "zh-CN",
+  "zh-tw": "zh-TW",
+  ja: "ja-JP",
+  ru: "ru-RU",
+  fr: "fr-FR",
+};
+
 export function formatReleaseDate(iso: string, locale: Locale): string {
-  const lang = locale === "zh" ? "zh-CN" : locale === "ru" ? "ru-RU" : "en-US";
-  return new Date(iso).toLocaleDateString(lang, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
+  return new Date(iso).toLocaleDateString(dateLocales[locale], { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 }
 
 export function assetLabel(name: string): string {

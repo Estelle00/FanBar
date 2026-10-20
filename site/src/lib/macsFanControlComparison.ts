@@ -89,7 +89,7 @@ export const comparisonRows: ComparisonRow[] = [
   },
   {
     criterion: "Languages",
-    fanbar: "English, Simplified Chinese, Traditional Chinese, and Japanese.",
+    fanbar: "English, Simplified Chinese, Traditional Chinese, Japanese, Russian, and French.",
     competitor: "Translated into most major languages.",
     source: competitorSources.overview,
     sourceLabel: "Language coverage",
@@ -169,7 +169,7 @@ export const comparisonRowsZh: ComparisonRow[] = [
   },
   {
     criterion: "语言",
-    fanbar: "英文、简体中文、繁体中文与日文。",
+    fanbar: "英文、简体中文、繁体中文、日文、俄文与法文。",
     competitor: "已翻译为多数主要语言。",
     source: competitorSources.overview,
     sourceLabel: "语言覆盖",

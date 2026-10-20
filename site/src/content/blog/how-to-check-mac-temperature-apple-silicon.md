@@ -45,7 +45,7 @@ To read degrees, you need an app that reads the Mac's sensors directly. Apple do
 With [FanBar](/), which is free and open source:
 
 1. [Download the latest release](https://github.com/helson-lin/FanBar/releases/latest) and open it. It lives in the menu bar.
-2. Click the menu-bar item. The popover shows **CPU, GPU, SSD, and battery** temperatures with a ten-minute history chart, alongside each fan's speed.
+2. Click the menu-bar item. The popover shows **CPU, GPU, SSD, and battery** temperatures with a history chart that spans 10 minutes to an hour, alongside each fan's speed.
 3. To keep a temperature visible at all times, choose what the menu-bar item shows in **Settings → Appearance**.
 
 Reading temperatures needs no special permission. FanBar only asks for administrator approval if you later choose to control the fans yourself, and you can [see exactly what that permission allows](/is-fanbar-safe).

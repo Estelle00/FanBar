@@ -3,6 +3,7 @@ import { getCollection } from "astro:content";
 import { alternativesUpdated } from "@/lib/alternatives";
 import { getReleases } from "@/lib/releases";
 import { modelPages } from "@/lib/compatibilityModels";
+import { locales } from "@/lib/i18n";
 import { HTML_LANG, LOCALE_URLS, siteUrl } from "@/lib/seo";
 
 export const prerender = true;
@@ -22,23 +23,15 @@ export const GET: APIRoute = async () => {
     <lastmod>${lastmod}</lastmod>${releaseAlternates(path)}
   </url>
 `)).join("");
-  const alternates = `
-      <xhtml:link rel="alternate" hreflang="${HTML_LANG.en}" href="${LOCALE_URLS.en}" />
-      <xhtml:link rel="alternate" hreflang="${HTML_LANG.zh}" href="${LOCALE_URLS.zh}" />
-      <xhtml:link rel="alternate" hreflang="${HTML_LANG.ru}" href="${LOCALE_URLS.ru}" />
+  const alternates = `${locales.map((locale) => `
+      <xhtml:link rel="alternate" hreflang="${HTML_LANG[locale]}" href="${LOCALE_URLS[locale]}" />`).join("")}
       <xhtml:link rel="alternate" hreflang="x-default" href="${LOCALE_URLS.en}" />`;
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-  <url>
-    <loc>${LOCALE_URLS.en}</loc>${alternates}
+${locales.map((locale) => `  <url>
+    <loc>${LOCALE_URLS[locale]}</loc>${alternates}
   </url>
-  <url>
-    <loc>${LOCALE_URLS.zh}</loc>${alternates}
-  </url>
-  <url>
-    <loc>${LOCALE_URLS.ru}</loc>${alternates}
-  </url>
-  <url>
+`).join("")}  <url>
     <loc>${siteUrl}/is-fanbar-safe</loc>
     <lastmod>2026-10-15</lastmod>
     <xhtml:link rel="alternate" hreflang="en" href="${siteUrl}/is-fanbar-safe" />

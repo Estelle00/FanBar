@@ -1,9 +1,11 @@
 # Landing page screenshots
 
-The hero and interface gallery use the real macOS captures from upstream `main`
-at commit [`e1fb03f`](https://github.com/helson-lin/FanBar/tree/e1fb03f4013dcbbe26177527f5eae627ba5d1393/docs/screenshots).
-These include the custom-preset entry point in Cooling settings. English,
-Simplified Chinese, and Russian pages each use matching native-language captures.
+The hero and interface gallery use the real macOS captures of FanBar 0.6.3 from
+upstream `main` at commit [`3e7d3a7`](https://github.com/helson-lin/FanBar/tree/3e7d3a7525b429a30b957d7f690a245e8e61f651/docs/screenshots).
+The popover is the two-fan MacBook Pro capture with Balanced active, so both fan
+meters show live speeds; Cooling and Appearance come from the Mac mini set. Every
+locale (English, Simplified and Traditional Chinese, Japanese, Russian, French)
+uses its own native-language captures.
 
 Run `npm run assets:optimize` from `site/` to regenerate the published WebP images
 and responsive AVIF/WebP hero variants. `src/data/screenshots.json` records the

@@ -19,12 +19,15 @@ export function getHeroScreenshot(locale: Locale) {
 
 export const highlightKeys = [
   "status",
+  "icons",
   "widget",
   "live",
+  "resources",
   "modes",
   "curves",
   "source",
   "alerts",
+  "log",
   "safe",
   "language",
 ] as const;
@@ -33,12 +36,15 @@ export type HighlightKey = (typeof highlightKeys)[number];
 
 export const highlightIcons = {
   status: "activity",
+  icons: "fan",
   widget: "layoutGrid",
   live: "activityChart",
+  resources: "gauge",
   modes: "slidersHorizontal",
   curves: "waypoints",
   source: "thermometer",
   alerts: "bellRing",
+  log: "fileSpreadsheet",
   safe: "shieldCheck",
   language: "languages",
 } as const satisfies Record<HighlightKey, string>;
