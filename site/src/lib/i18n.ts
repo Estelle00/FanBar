@@ -53,7 +53,6 @@ export interface Dictionary {
     primaryCta: string;
     secondaryCta: string;
     compatibilityCta: string;
-    caption: string;
   };
   stats: { value: string; label: string }[];
   highlights: {
@@ -156,13 +155,12 @@ const en: Dictionary = {
     primaryCta: "Download for macOS",
     secondaryCta: "View on GitHub",
     compatibilityCta: "View compatibility evidence",
-    caption: "MACOS 11+ · APPLE SILICON & INTEL · DMG & HOMEBREW",
   },
   stats: [
     { value: "11+", label: "macOS Big Sur and later" },
     { value: "6", label: "Cooling modes, Automatic to Extreme" },
-    { value: "1 h", label: "Temperature history, 10 min to 1 h" },
-    { value: "6", label: "Interface languages, switched instantly" },
+    { value: "GPL-3.0", label: "Free and open source, no account or ads" },
+    { value: "100%", label: "Of releases notarized by Apple" },
   ],
   highlights: {
     badge: "Highlights",
@@ -342,7 +340,7 @@ const en: Dictionary = {
     body: "Notarized builds for Apple Silicon, Intel, and Universal Macs. Free, open source, and honest about the trade-offs of manual control.",
     primaryCta: "Download the .dmg",
     secondaryCta: "View on GitHub",
-    caption: "MACOS 11+ · APPLE SILICON & INTEL · GPL-3.0 LICENSE",
+    caption: "MACOS 11+ · APPLE SILICON & INTEL · DMG & HOMEBREW",
     latest: "Latest: FanBar {version}, released {date}",
     latestLink: "What's new",
   },
@@ -401,13 +399,12 @@ const zh: Dictionary = {
     primaryCta: "下载 macOS 版",
     secondaryCta: "查看 GitHub 源码",
     compatibilityCta: "查看兼容性证据",
-    caption: "免费开源 · MACOS 11 及以上 · APPLE SILICON 与 INTEL",
   },
   stats: [
     { value: "11+", label: "macOS Big Sur 及以上版本" },
     { value: "6", label: "散热模式，从自动到极速" },
-    { value: "1 h", label: "温度趋势，10 分钟到 1 小时" },
-    { value: "6", label: "种界面语言，即时切换" },
+    { value: "GPL-3.0", label: "免费开源，无需账号，没有广告" },
+    { value: "100%", label: "版本均经 Apple 公证" },
   ],
   highlights: {
     badge: "亮点",
@@ -573,7 +570,7 @@ const zh: Dictionary = {
     body: "已公证的 Apple Silicon、Intel 与通用版安装包。免费开源，也坦诚说明手动控制的取舍。",
     primaryCta: "下载 .dmg",
     secondaryCta: "查看 GitHub",
-    caption: "MACOS 11 及以上 · APPLE SILICON 与 INTEL · GPL-3.0 许可",
+    caption: "免费开源 · MACOS 11 及以上 · APPLE SILICON 与 INTEL",
     latest: "最新版本：FanBar {version}，发布于 {date}",
     latestLink: "查看更新内容",
   },
@@ -629,13 +626,12 @@ const ru: Dictionary = {
     primaryCta: "Скачать для macOS",
     secondaryCta: "Исходный код на GitHub",
     compatibilityCta: "Данные о совместимости (англ.)",
-    caption: "MACOS 11+ · APPLE SILICON И INTEL · DMG И HOMEBREW",
   },
   stats: [
     { value: "11+", label: "macOS Big Sur и новее" },
     { value: "6", label: "Режимов охлаждения, от «Авто» до «Максимум»" },
-    { value: "1 ч", label: "История температур, от 10 минут до часа" },
-    { value: "6", label: "Языков интерфейса, переключение без перезапуска" },
+    { value: "GPL-3.0", label: "Бесплатно и открыто, без учётной записи и рекламы" },
+    { value: "100%", label: "Версий с нотаризацией Apple" },
   ],
   highlights: {
     badge: "Возможности",
@@ -793,7 +789,7 @@ const ru: Dictionary = {
     body: "Сборки с нотаризацией Apple для Apple Silicon, Intel и универсальные. Бесплатно, с открытым кодом и честно о компромиссах ручного управления.",
     primaryCta: "Скачать .dmg",
     secondaryCta: "Открыть GitHub",
-    caption: "MACOS 11+ · APPLE SILICON И INTEL · ЛИЦЕНЗИЯ GPL-3.0",
+    caption: "MACOS 11+ · APPLE SILICON И INTEL · DMG И HOMEBREW",
     latest: "Последняя версия: FanBar {version}, {date}",
     latestLink: "Что нового (англ.)",
     verify: {

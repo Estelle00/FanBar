@@ -3,7 +3,6 @@ import { ArrowRight, Download } from "lucide-astro";
 import SectionLabel from "./SectionLabel.astro";
 import DownloadPicker from "./DownloadPicker.astro";
 import { github, getHeroScreenshot } from "@/lib/links";
-import { downloadCopy } from "@/lib/downloads";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { compatibilityPath } from "@/lib/routes";
 import { releasesPath } from "@/lib/releases";
@@ -53,13 +52,7 @@ const heroScreenshot = getHeroScreenshot(locale);
         </a>
       </div>
 
-      <p class="mt-3 max-w-md text-xs leading-relaxed text-muted-foreground">{downloadCopy[locale].universalNote}</p>
-
-      <p class="mt-5 font-mono text-xs tracking-[0.04em] text-muted-foreground">
-        {dict.hero.caption}
-      </p>
-
-      <div class="mt-4 flex flex-wrap gap-x-6">
+      <div class="mt-5 flex flex-wrap gap-x-6">
         <a
           href={compatibilityPath(locale)}
           class="group inline-flex min-h-11 items-center gap-2 text-sm font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:text-accent"

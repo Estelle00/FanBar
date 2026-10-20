@@ -1,7 +1,6 @@
 ---
 import SectionLabel from "./SectionLabel.astro";
 import { github } from "@/lib/links";
-import { downloadCopy } from "@/lib/downloads";
 import DownloadPicker from "./DownloadPicker.astro";
 import type { Dictionary, Locale } from "@/lib/i18n";
 import { formatReleaseDate, getReleases, releasePath } from "@/lib/releases";
@@ -45,8 +44,6 @@ const [latest] = await getReleases(notesLocale);
         {dict.finalCta.secondaryCta}
       </a>
     </div>
-
-    <p class="mt-3 text-xs leading-relaxed text-white/60">{downloadCopy[locale].universalNote}</p>
 
     <p class="mt-5 font-mono text-xs tracking-[0.04em] text-white/40">{dict.finalCta.caption}</p>
 

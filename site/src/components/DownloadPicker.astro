@@ -31,13 +31,13 @@ const copy = downloadCopy[locale];
         !compact && "sm:px-3.5",
       ]}
     >
-      {!compact && <span class="hidden lg:inline">{copy.choose}</span>}
       <ChevronDown class="h-3.5 w-3.5" aria-hidden="true" />
     </summary>
     <ul class:list={[
-      "absolute top-full z-50 mt-2 w-60 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-lg",
+      "absolute top-full z-50 mt-2 w-64 rounded-xl border border-border bg-card p-1.5 text-foreground shadow-lg",
       compact ? "right-0" : "left-0",
     ]}>
+      <li class="px-3 pt-2 pb-2 text-xs leading-relaxed text-muted-foreground">{copy.universalNote}</li>
       {downloadArchitectures.map((architecture) => (
         <li>
           <DownloadLink
