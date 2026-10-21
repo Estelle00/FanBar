@@ -86,6 +86,72 @@ final class RaycastScriptsInstallerTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: mine.path), "files FanBar did not ship stay")
     }
 
+    private func destinationText(_ name: String) throws -> String {
+        try String(contentsOf: destination.appendingPathComponent(name), encoding: .utf8)
+    }
+
+    func testLaunchSyncKeepsAScriptTheUserEdited() throws {
+        makeInstaller().setUp()
+        let edited = destination.appendingPathComponent("fanbar-preset.sh")
+        try "#!/bin/bash\necho my presets\n".write(to: edited, atomically: true, encoding: .utf8)
+        // A newer app changes both scripts.
+        try writeScript("fanbar-preset.sh", "echo new preset")
+        try writeScript("fanbar-auto.sh", "echo new auto")
+
+        makeInstaller().syncIfSetUp()
+
+        XCTAssertTrue(try destinationText("fanbar-preset.sh").contains("echo my presets"), "the user's edit survives")
+        XCTAssertTrue(try destinationText("fanbar-auto.sh").contains("echo new auto"), "untouched scripts still update")
+
+        // And once the user's edit is unchanged, later syncs still leave it alone.
+        try writeScript("fanbar-preset.sh", "echo newer preset")
+        makeInstaller().syncIfSetUp()
+        XCTAssertTrue(try destinationText("fanbar-preset.sh").contains("echo my presets"))
+    }
+
+    func testRetiringAScriptKeepsTheUsersEditedCopy() throws {
+        makeInstaller().setUp()
+        let edited = destination.appendingPathComponent("fanbar-preset.sh")
+        try "#!/bin/bash\necho mine\n".write(to: edited, atomically: true, encoding: .utf8)
+        try FileManager.default.removeItem(at: source.appendingPathComponent("fanbar-preset.sh"))
+
+        makeInstaller().syncIfSetUp()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: edited.path))
+    }
+
+    func testDeletingAnEditedCopyBringsBackTheStockScript() throws {
+        makeInstaller().setUp()
+        let edited = destination.appendingPathComponent("fanbar-preset.sh")
+        try "#!/bin/bash\necho mine\n".write(to: edited, atomically: true, encoding: .utf8)
+        makeInstaller().syncIfSetUp()
+        try FileManager.default.removeItem(at: edited)
+
+        makeInstaller().syncIfSetUp()
+
+        XCTAssertTrue(try destinationText("fanbar-preset.sh").contains("echo fanbar-preset.sh"))
+        XCTAssertTrue(FileManager.default.isExecutableFile(atPath: edited.path))
+    }
+
+    func testFilesWrittenBeforeTheManifestAreJudgedByContent() throws {
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        // Identical to the bundle: adopted. Different: treated as the user's.
+        try FileManager.default.copyItem(
+            at: source.appendingPathComponent("fanbar-auto.sh"),
+            to: destination.appendingPathComponent("fanbar-auto.sh")
+        )
+        try "#!/bin/bash\necho someone else\n".write(
+            to: destination.appendingPathComponent("fanbar-preset.sh"), atomically: true, encoding: .utf8
+        )
+
+        makeInstaller().setUp()
+        try writeScript("fanbar-auto.sh", "echo updated auto")
+        makeInstaller().syncIfSetUp()
+
+        XCTAssertTrue(try destinationText("fanbar-auto.sh").contains("echo updated auto"))
+        XCTAssertTrue(try destinationText("fanbar-preset.sh").contains("echo someone else"))
+    }
+
     func testBundledScriptsMatchTheRepository() throws {
         // package-app.sh copies integrations/raycast as-is; keep the two lists in step.
         let repository = URL(fileURLWithPath: #filePath)
