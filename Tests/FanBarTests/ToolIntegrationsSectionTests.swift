@@ -1,4 +1,5 @@
 import AppKit
+import FanBarShared
 import SwiftUI
 import XCTest
 @testable import FanBar
@@ -77,5 +78,55 @@ final class ToolIntegrationsSectionTests: XCTestCase {
         // not by a second header and footer.
         XCTAssertGreaterThan(both, max(toolOnly, raycastOnly))
         XCTAssertLessThan(both, toolOnly + raycastOnly)
+    }
+
+    func testLanguageChangesRefreshTheExistingSectionAndBothRows() throws {
+        let saved = UserDefaults.standard.object(forKey: FanBarLanguage.preferenceKey)
+        defer { UserDefaults.standard.set(saved, forKey: FanBarLanguage.preferenceKey) }
+        UserDefaults.standard.set(FanBarLanguage.french.rawValue, forKey: FanBarLanguage.preferenceKey)
+        let raycast = try makeRaycast(available: true)
+        raycast.setUp()
+        let host = NSHostingView(rootView: ToolIntegrationsSection(
+            tool: try makeTool(available: true),
+            raycast: raycast
+        ).frame(width: 520))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 500),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        window.contentView = host
+        window.orderFront(nil)
+        defer {
+            window.orderOut(nil)
+            window.contentView = nil
+        }
+
+        // Keep the same hosting view and installers: recreating the root would
+        // hide the stale-child bug seen when switching French to Japanese.
+        var frenchImage: Data?
+        for language in [FanBarLanguage.french, .japanese, .english, .chinese, .traditionalChinese, .russian] {
+            UserDefaults.standard.set(language.rawValue, forKey: FanBarLanguage.preferenceKey)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+            host.layoutSubtreeIfNeeded()
+            let actual = try snapshot(host)
+            let reference = NSHostingView(rootView: ToolIntegrationsSection(
+                tool: try makeTool(available: true), raycast: raycast
+            ).frame(width: 520))
+            reference.frame = host.frame
+            window.contentView = reference
+            reference.layoutSubtreeIfNeeded()
+            XCTAssertEqual(actual, try snapshot(reference), "\(language): existing section differs from fresh translations")
+            window.contentView = host
+            if language == .french { frenchImage = actual }
+            if language == .japanese {
+                XCTAssertNotEqual(actual, frenchImage, "Fixture must distinguish stale French from Japanese")
+            }
+        }
+    }
+
+    private func snapshot(_ view: NSView) throws -> Data {
+        let bitmap = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        return try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
     }
 }

@@ -5,6 +5,8 @@ import SwiftUI
 /// builds that ship it. Both are opt-in ways to drive FanBar from outside, so
 /// they sit apart from the app basics; with neither shipped, the section hides.
 struct ToolIntegrationsSection: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
     var tool: CommandLineToolInstaller = .shared
     var raycast: RaycastScriptsInstaller = .shared
 
@@ -29,6 +31,10 @@ struct ToolIntegrationsSection: View {
                     RaycastRow(installer: raycast)
                 }
             }
+            // The translation helpers read UserDefaults outside SwiftUI's
+            // dependency tracking. Observe the preference here and rebuild the
+            // rows too, even when their installer objects have not changed.
+            .id(languageRawValue)
         }
     }
 }
