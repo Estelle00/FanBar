@@ -28,7 +28,8 @@ final class RaycastScriptsInstaller: ObservableObject {
     nonisolated static let downloadURL = URL(string: "https://www.raycast.com")!
 
     @Published private(set) var state: State = .unavailable
-    @Published private(set) var failure: String?
+    @Published private var failureText: (() -> String)?
+    var failure: String? { failureText?() }
 
     let destinationURL: URL
     private let sourceURL: URL?
@@ -81,15 +82,18 @@ final class RaycastScriptsInstaller: ObservableObject {
 
     /// Copies the scripts, puts the folder path on the clipboard, opens Raycast.
     func setUp() {
-        failure = nil
+        failureText = nil
         do {
             try copyScripts()
         } catch {
-            failure = fanBarFormat(
-                "无法准备 Raycast 脚本：%@",
-                "Could not prepare the Raycast scripts: %@",
-                error.localizedDescription
-            )
+            let detail = error.localizedDescription
+            failureText = {
+                fanBarFormat(
+                    "无法准备 Raycast 脚本：%@",
+                    "Could not prepare the Raycast scripts: %@",
+                    detail
+                )
+            }
             refresh()
             return
         }

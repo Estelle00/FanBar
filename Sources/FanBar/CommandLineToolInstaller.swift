@@ -30,7 +30,8 @@ final class CommandLineToolInstaller: ObservableObject {
     nonisolated static let toolRelativePath = "Contents/Helpers/fanbar"
 
     @Published private(set) var state: State = .unavailable
-    @Published private(set) var failure: String?
+    @Published private var failureText: (() -> String)?
+    var failure: String? { failureText?() }
     @Published private(set) var isWorking = false
     /// Which `fanbar` the user's shell runs once the link is installed. nil
     /// until the login shell has been read, or when not installed.
@@ -135,7 +136,7 @@ final class CommandLineToolInstaller: ObservableObject {
         failure failureMessage: @escaping (String) -> String,
         directly: @escaping () throws -> Void
     ) {
-        failure = nil
+        failureText = nil
         isWorking = true
         // Let the button show its working state before the password sheet blocks.
         DispatchQueue.main.async { [self] in
@@ -152,7 +153,7 @@ final class CommandLineToolInstaller: ObservableObject {
             // -128: the user cancelled the password prompt; nothing to report.
             if error[NSAppleScript.errorNumber] as? Int == -128 { return }
             let detail = error[NSAppleScript.errorMessage] as? String ?? "\(error)"
-            failure = failureMessage(detail)
+            failureText = { failureMessage(detail) }
         }
     }
 

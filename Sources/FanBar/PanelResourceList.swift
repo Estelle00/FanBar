@@ -5,6 +5,9 @@ import SwiftUI
 
 /// A two-by-two resource grid held together by whitespace; disk details expand beneath it.
 struct PanelResourceList: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     enum Resource: Hashable {
         case cpu
         case memory
@@ -48,6 +51,7 @@ struct PanelResourceList: View {
                     .onDisappear { isDiskDetailRevealed = false }
             }
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private func setExpanded(_ resource: Resource?) {
@@ -508,6 +512,9 @@ private struct CapacityBar: View {
 /// beside 8 P-cores), so the labels share one row instead of each column's width: the first
 /// starts at the leading edge and the last ends at the trailing edge, under its own bars.
 struct CoreGroups: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     let fractions: [Double]
     let kinds: [CPUCoreKind]
     let coreCount: Int?
@@ -578,5 +585,6 @@ struct CoreGroups: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(fanBarText("每核 CPU 使用率", "CPU usage per core"))
         .accessibilityValue(fractions.map { "\(Int(($0 * 100).rounded()))%" }.joined(separator: ", "))
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 }

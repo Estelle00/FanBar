@@ -4,6 +4,9 @@ import SwiftUI
 /// General › Command Line & Automation: installs or removes the `fanbar` link on PATH.
 /// The row stays out of builds that do not ship the tool.
 struct CommandLineToolRow: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var installer: CommandLineToolInstaller
 
     var body: some View {
@@ -30,6 +33,7 @@ struct CommandLineToolRow: View {
         }
         .settingsRow()
         .onAppear(perform: installer.refresh)
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private var detail: String {
