@@ -113,8 +113,16 @@ that ships the CLI.
 - The temperatures command passes `--no-launch`, so its background refresh never
   reopens a FanBar you quit. It shows "FanBar is not running" instead.
 - Custom presets are not in the dropdown, because Raycast's choices are fixed in
-  the script. Add them to `fanbar-preset.sh` as more `data` entries, using the
-  name `fanbar preset list` prints.
+  the script. Copy `fanbar-preset.sh` to a new file in the same folder, such as
+  `my-presets.sh`, then give it its own `@raycast.title` and list your presets
+  as `data` entries, using the names `fanbar preset list` prints. Keep your
+  changes in a file of your own: FanBar's launch-time refresh never touches
+  files it did not write.
+- That refresh also leaves alone any FanBar script you edited. It compares
+  each file with what it last wrote (recorded in `.fanbar-scripts.json` in the
+  same folder), and keeps edited files as they are, including when a newer
+  FanBar retires a script. To get FanBar's version back, delete your copy and
+  relaunch FanBar or click **Set Up in Raycast…**.
 
 ## Design
 

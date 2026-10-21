@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import Darwin
 import FanBarShared
 import Foundation
@@ -108,26 +109,56 @@ final class RaycastScriptsInstaller: ObservableObject {
         NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
     }
 
+    /// Name of the record of what FanBar last wrote, kept beside the scripts.
+    nonisolated static let manifestName = ".fanbar-scripts.json"
+
+    /// Writes the bundled scripts, but never over a user's edits: a script
+    /// whose contents differ from what FanBar last wrote there belongs to the
+    /// user now, and stays until they delete it. Retired scripts go only if
+    /// unedited, and files FanBar never wrote are not touched at all.
     private func copyScripts() throws {
         let manager = FileManager.default
         try manager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+        let manifestURL = destinationURL.appendingPathComponent(Self.manifestName)
+        let written = (try? Data(contentsOf: manifestURL))
+            .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:]
+        var manifest: [String: String] = [:]
+
         let bundled = bundledScripts
-        // Scripts dropped from a newer build must not linger as dead commands.
-        let bundledNames = Set(bundled.map(\.lastPathComponent))
-        for existing in (try? manager.contentsOfDirectory(at: destinationURL, includingPropertiesForKeys: nil)) ?? []
-            where existing.pathExtension == "sh" && existing.lastPathComponent.hasPrefix("fanbar-")
-            && !bundledNames.contains(existing.lastPathComponent) {
-            try manager.removeItem(at: existing)
-        }
         for script in bundled {
-            let target = destinationURL.appendingPathComponent(script.lastPathComponent)
-            if manager.fileExists(atPath: target.path) {
+            let name = script.lastPathComponent
+            let target = destinationURL.appendingPathComponent(name)
+            let contents = try Data(contentsOf: script)
+            let bundledDigest = Self.digest(contents)
+            if let current = try? Data(contentsOf: target) {
+                let currentDigest = Self.digest(current)
+                // Unknown to the manifest yet identical, or exactly what we wrote: ours.
+                let isOurs = currentDigest == bundledDigest || currentDigest == written[name]
+                guard isOurs else { continue }
                 try manager.removeItem(at: target)
             }
-            try manager.copyItem(at: script, to: target)
+            try contents.write(to: target)
             try manager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: target.path)
             // A downloaded app's files can carry quarantine; Raycast runs these directly.
             removexattr(target.path, "com.apple.quarantine", 0)
+            manifest[name] = bundledDigest
         }
+
+        // Scripts dropped from a newer build must not linger as dead commands.
+        let bundledNames = Set(bundled.map(\.lastPathComponent))
+        for (name, digest) in written where !bundledNames.contains(name) {
+            let target = destinationURL.appendingPathComponent(name)
+            guard let current = try? Data(contentsOf: target) else { continue }
+            if Self.digest(current) == digest {
+                try manager.removeItem(at: target)
+            }
+        }
+
+        let data = try JSONEncoder().encode(manifest)
+        try data.write(to: manifestURL, options: .atomic)
+    }
+
+    nonisolated static func digest(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 }
