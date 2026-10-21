@@ -18,6 +18,9 @@ enum OnboardingPreferences {
 /// model, shows the real status item to look for and a live preview of the
 /// real panel, then hands the user directly into the real popover.
 struct OnboardingCard: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     static let width: CGFloat = 580
 
     /// The permission notice only appears before the helper is approved; without it the
@@ -115,6 +118,7 @@ struct OnboardingCard: View {
                 }
             }
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     // MARK: Preview

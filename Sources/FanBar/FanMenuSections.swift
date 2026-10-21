@@ -366,6 +366,9 @@ private struct PanelPressBody<Content: View>: View {
 
 /// The hottest temperature, the panel's single large number, with the fans it drives beside it.
 struct ThermalHero: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     let focus: ThermalFocus?
     let trend: (delta: Double, minutes: Int)?
     let fans: [FanReading]
@@ -395,6 +398,7 @@ struct ThermalHero: View {
             }
             .frame(maxWidth: .infinity)
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private var temperature: some View {

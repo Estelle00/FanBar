@@ -42,6 +42,9 @@ struct ToolIntegrationsSection: View {
 /// General › Command Line & Automation: hands the Raycast Script Commands to Raycast.
 /// Raycast's own menu names stay in English: Raycast is not localized.
 struct RaycastRow: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var installer: RaycastScriptsInstaller
 
     var body: some View {
@@ -73,6 +76,7 @@ struct RaycastRow: View {
         }
         .settingsRow()
         .onAppear(perform: installer.refresh)
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private var detail: String {

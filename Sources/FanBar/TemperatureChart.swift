@@ -146,6 +146,9 @@ enum TemperatureChartRange: TimeInterval, CaseIterable, Identifiable {
 /// current reading and toggles each series. Drawn with SwiftUI paths so it
 /// works on macOS 11 without Charts.framework.
 struct TemperatureChart: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     static let historyDuration = TemperatureChartTimeAxis.historyDuration
 
     /// Everything the controller retains, newest last. `samples` narrows it to the selected window.
@@ -282,6 +285,7 @@ struct TemperatureChart: View {
             axisLabels
                 .padding(.top, 5)
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private var legend: some View {

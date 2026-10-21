@@ -84,6 +84,7 @@ struct FanBarSettingsView: View {
         .onChange(of: selectedTabRawValue) { _ in
             SettingsWindowPresenter.shared.resizeToFitContentSoon()
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     // MARK: - Cooling
@@ -409,6 +410,7 @@ struct FanBarSettingsView: View {
                 }
             }
             .labelsHidden()
+            .id(languageRawValue)
             .frame(minWidth: SettingsChrome.trailingControlMinWidth)
             .fixedSize()
         }
@@ -434,6 +436,7 @@ struct FanBarSettingsView: View {
                 }
             }
             .labelsHidden()
+            .id(languageRawValue)
             .frame(minWidth: SettingsChrome.trailingControlMinWidth)
             .fixedSize()
         }
@@ -498,6 +501,9 @@ struct FanBarSettingsView: View {
 /// Shown on the Cooling pane only when the control service needs attention,
 /// with the state named by symbol and text rather than color alone.
 struct ControlServiceBanner: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var controller: FanController
 
     var body: some View {
@@ -537,5 +543,6 @@ struct ControlServiceBanner: View {
                 .stroke(state.tint.opacity(0.4), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 }

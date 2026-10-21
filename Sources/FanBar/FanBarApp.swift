@@ -114,7 +114,7 @@ struct FanBarApp: App {
         RuntimeDiagnostics.shared.beginLaunch()
         // Keep Sparkle alive for the full LSUIElement app lifetime. Diagnostic
         // command-line modes exit above and never start network update checks.
-        _ = SoftwareUpdateController.shared
+        SoftwareUpdateController.shared.start()
         let controller = FanController()
         RuntimeDiagnostics.shared.record(.app, .controllerReady, .succeeded)
         _controller = StateObject(wrappedValue: controller)
