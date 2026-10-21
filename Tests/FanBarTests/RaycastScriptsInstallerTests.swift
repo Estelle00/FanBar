@@ -4,27 +4,27 @@ import XCTest
 
 @MainActor
 final class RaycastScriptsInstallerTests: XCTestCase {
-    private var root = URL(fileURLWithPath: "/tmp")
-    private var source: URL { root.appendingPathComponent("Bundle/Raycast") }
-    private var destination: URL { root.appendingPathComponent("Support/Raycast") }
+    // XCTest makes a fresh instance per test, so `root` can be a constant. It
+    // and the helpers below are nonisolated because the setUp/tearDown
+    // overrides are; they touch no main-actor state.
+    private let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    private nonisolated var source: URL { root.appendingPathComponent("Bundle/Raycast") }
+    private nonisolated var destination: URL { root.appendingPathComponent("Support/Raycast") }
     private var pasted: [String] = []
     private var opened = 0
 
     override func setUpWithError() throws {
-        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
         for name in ["fanbar-auto.sh", "fanbar-preset.sh"] {
             try writeScript(name, "echo \(name)")
         }
-        pasted = []
-        opened = 0
     }
 
     override func tearDownWithError() throws {
         try? FileManager.default.removeItem(at: root)
     }
 
-    private func writeScript(_ name: String, _ body: String) throws {
+    private nonisolated func writeScript(_ name: String, _ body: String) throws {
         let url = source.appendingPathComponent(name)
         try "#!/bin/bash\n\(body)\n".write(to: url, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: url.path)
