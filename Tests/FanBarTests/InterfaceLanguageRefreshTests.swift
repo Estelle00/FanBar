@@ -152,6 +152,7 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         defaults.set(FanBarLanguage.french.rawValue, forKey: FanBarLanguage.preferenceKey)
         func content() -> some View {
             make().environment(\.colorScheme, .light).environment(\.isPanelVisible, false)
+                .modifier(NoScrollIndicators())
                 // The welcome card uses an appearance fade. Snapshot text
                 // after a language change, independent of runner frame rate.
                 .transaction {
@@ -187,7 +188,6 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
                     XCTAssertEqual(field.stringValue, retainedDraft, "Language changes must preserve the draft name")
                 } else { retainedDraft = field.stringValue }
             }
-            if name == "welcome" { prepareWelcomeLayout(host) }
             let actual = try snapshot(host, hideEditableText: name == "new-preset")
             let fresh = NSHostingView(rootView: content())
             fresh.frame = host.frame
@@ -196,7 +196,6 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
             fresh.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
             fresh.layoutSubtreeIfNeeded()
-            if name == "welcome" { prepareWelcomeLayout(fresh) }
             let expected = try snapshot(fresh, hideEditableText: name == "new-preset")
             referenceWindow.contentView = nil
             if actual != expected {
@@ -241,26 +240,17 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         let own = (view as? NSTextField).flatMap { $0.isEditable ? $0 : nil }.map { [$0] } ?? []
         return own + view.subviews.flatMap { editableFields(in: $0) }
     }
+}
 
-    private func prepareWelcomeLayout(_ view: NSView) {
-        view.layoutSubtreeIfNeeded()
-        forceStableScrollers(in: view)
-        // SwiftUI rewraps the scroll content for the new gutter on a later pass
-        // (macOS 15), so let the fresh view catch up with the retained one.
-        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
-        view.layoutSubtreeIfNeeded()
-    }
-
-    private func forceStableScrollers(in view: NSView) {
-        // Reserve the same scrollbar gutter in both windows. Automatic scrollbar
-        // visibility otherwise changes wrapping between the retained and fresh view.
-        if let scroll = view as? NSScrollView {
-            scroll.scrollerStyle = .legacy
-            scroll.hasVerticalScroller = true
-            scroll.autohidesScrollers = false
-        }
-        for child in view.subviews {
-            forceStableScrollers(in: child)
+/// A scrollbar appears only when content overflows (or always, with legacy
+/// scrollers) and its gutter narrows the content, so a short retained view and
+/// a fresh one can wrap differently. Ask SwiftUI for no indicators in both.
+private struct NoScrollIndicators: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(macOS 13.0, *) {
+            content.scrollIndicators(.never)
+        } else {
+            content
         }
     }
 }
