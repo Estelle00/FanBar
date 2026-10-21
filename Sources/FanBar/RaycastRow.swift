@@ -1,22 +1,39 @@
 import FanBarShared
 import SwiftUI
 
-/// The command-line tool and Raycast rows, each only in builds that ship it.
-/// Each brings its own leading divider, so an absent row leaves no gap.
-struct ToolIntegrationRows: View {
+/// General › Command Line & Automation: the CLI and Raycast rows, each only in
+/// builds that ship it. Both are opt-in ways to drive FanBar from outside, so
+/// they sit apart from the app basics; with neither shipped, the section hides.
+struct ToolIntegrationsSection: View {
+    var tool: CommandLineToolInstaller = .shared
+    var raycast: RaycastScriptsInstaller = .shared
+
     var body: some View {
-        if CommandLineToolInstaller.shared.state != .unavailable {
-            SettingsChrome.rowDivider
-            CommandLineToolRow(installer: .shared)
-        }
-        if RaycastScriptsInstaller.shared.state != .unavailable {
-            SettingsChrome.rowDivider
-            RaycastRow(installer: .shared)
+        let showsTool = tool.state != .unavailable
+        let showsRaycast = raycast.state != .unavailable
+        if showsTool || showsRaycast {
+            SettingsSection(
+                title: fanBarText("命令行与自动化", "Command Line & Automation"),
+                footer: fanBarText(
+                    "两者都通过 FanBar 控制风扇；FanBar 未运行时会在后台打开它。",
+                    "Both control the fans through FanBar, and open it in the background when it is not running."
+                )
+            ) {
+                if showsTool {
+                    CommandLineToolRow(installer: tool)
+                }
+                if showsTool, showsRaycast {
+                    SettingsChrome.rowDivider
+                }
+                if showsRaycast {
+                    RaycastRow(installer: raycast)
+                }
+            }
         }
     }
 }
 
-/// General › FanBar: hands the Raycast Script Commands to Raycast.
+/// General › Command Line & Automation: hands the Raycast Script Commands to Raycast.
 /// Raycast's own menu names stay in English: Raycast is not localized.
 struct RaycastRow: View {
     @ObservedObject var installer: RaycastScriptsInstaller

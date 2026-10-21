@@ -548,6 +548,8 @@ enum JapaneseCatalog {
         "Switch presets, set a fixed speed and see temperatures from Raycast.": "Raycast からプリセットの切り替え、固定回転数の設定、温度の確認ができます。",
         "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "スクリプトは FanBar の Raycast フォルダにあります。Raycast にまだ表示されない場合は、Raycast の設定 › Extensions で + › Add Script Directory をクリックし、⌘⇧G を押してこのボタンがコピーしたパスをペーストしてください。",
         "Could not prepare the Raycast scripts: %@": "Raycast スクリプトを準備できませんでした：%@",
+        "Command Line & Automation": "コマンドラインと自動化",
+        "Both control the fans through FanBar, and open it in the background when it is not running.": "どちらも FanBar を通じてファンを制御し、FanBar が起動していない場合はバックグラウンドで開きます。",
     ]
 }
 

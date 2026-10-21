@@ -535,6 +535,8 @@ enum FrenchCatalog {
         "Switch presets, set a fixed speed and see temperatures from Raycast.": "Changez de profil, fixez une vitesse et consultez les températures depuis Raycast.",
         "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "Les scripts se trouvent dans le dossier Raycast de FanBar. Si Raycast ne les affiche pas encore : dans ses réglages › Extensions, cliquez sur + › Add Script Directory, appuyez sur ⌘⇧G et collez le chemin que ce bouton copie.",
         "Could not prepare the Raycast scripts: %@": "Impossible de préparer les scripts Raycast : %@",
+        "Command Line & Automation": "Ligne de commande et automatisation",
+        "Both control the fans through FanBar, and open it in the background when it is not running.": "Tous deux pilotent les ventilateurs via FanBar et l’ouvrent en arrière-plan s’il n’est pas lancé.",
     ]
 }
 
