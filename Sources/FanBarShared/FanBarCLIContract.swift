@@ -14,13 +14,46 @@ public enum FanBarCLIContract {
     public static let socketDirectoryName = "FanBar"
     public static let socketFileName = "cli.sock"
 
-    /// `~/Library/Application Support/FanBar/cli.sock`. Both sides derive the
-    /// path from the same user's home, so a socket owned by another account is
-    /// never even looked at.
-    public static func socketURL(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL {
-        home.appendingPathComponent("Library/Application Support", isDirectory: true)
+    public static let fallbackSocketFileName = "local.fanbar.cli.sock"
+
+    /// The most the app may spend on one request: waiting out a switch already
+    /// in flight, then its own switch, at the helper's worst-case write time.
+    public static let commandTimeout = FanControlTiming.writeReplyTimeout(
+        fanCount: FanControlTiming.maximumFanCount,
+        base: 10
+    )
+    /// The CLI waits longer than the app can take, so a slow switch is never
+    /// reported as a lost connection while it is still being applied.
+    public static let replyTimeout = commandTimeout + 15
+
+    /// `~/Library/Application Support/FanBar/cli.sock`, or, when that does not
+    /// fit in `sockaddr_un` (long user names, relocated homes), a socket in the
+    /// per-user temporary directory. Both are private to the user and both sides
+    /// compute the same choice, so a socket owned by another account is never
+    /// even looked at.
+    public static func socketURL(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser,
+        userTemporaryDirectory: URL? = FanBarCLIContract.userTemporaryDirectory()
+    ) -> URL {
+        let preferred = home.appendingPathComponent("Library/Application Support", isDirectory: true)
             .appendingPathComponent(socketDirectoryName, isDirectory: true)
             .appendingPathComponent(socketFileName, isDirectory: false)
+        guard FanBarCLISocket.address(for: preferred.path) == nil,
+              let temporary = userTemporaryDirectory?.appendingPathComponent(fallbackSocketFileName),
+              FanBarCLISocket.address(for: temporary.path) != nil else { return preferred }
+        return temporary
+    }
+
+    /// `/var/folders/…/T/`: owned by the user, mode 0700, and the same for every
+    /// process of that user (unlike `NSTemporaryDirectory()` in a sandbox).
+    public static func userTemporaryDirectory() -> URL? {
+        let size = confstr(_CS_DARWIN_USER_TEMP_DIR, nil, 0)
+        guard size > 0 else { return nil }
+        var buffer = [CChar](repeating: 0, count: size)
+        guard confstr(_CS_DARWIN_USER_TEMP_DIR, &buffer, size) > 0 else { return nil }
+        let bytes = buffer.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+        guard let path = String(bytes: bytes, encoding: .utf8), !path.isEmpty else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true)
     }
 
     public static func makeEncoder() -> JSONEncoder {

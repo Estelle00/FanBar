@@ -22,8 +22,12 @@ fanbar mode auto                  # hand the fans back to macOS
 | `--json` | Print the app's reply as JSON (`ok`, `message`, `status`, `presets`). |
 | `--no-launch` | Fail with exit code 3 instead of starting FanBar when it is not running. |
 
-By default `fanbar` starts FanBar in the background (`open -g`) when it is not
-running, then waits up to 20 seconds for the app to accept the command.
+`fanbar` tries the app's socket first and only then asks Launch Services
+whether FanBar runs, because over SSH, from cron or from a background launchd
+job Launch Services may not list the app at all. When FanBar is not running,
+`fanbar` starts it in the background (`open -g`) and waits up to 20 seconds for
+it to accept the command. An app that started moments ago (a login item, for
+example) gets the rest of those 20 seconds instead of 2.
 
 Exit codes: `0` success · `1` FanBar refused or failed the command ·
 `2` usage error · `3` FanBar could not be reached.
@@ -43,7 +47,8 @@ been approved) keep the app's wording.
   for an administrator password. The same row offers **Uninstall…**, and
   **Update Link…** when the link points to another copy of FanBar. FanBar
   never replaces a `fanbar` it did not create. The row asks you to move FanBar
-  to Applications first when it runs from a disk image or a translocated copy,
+  to Applications first when it runs from a read-only disk image or a
+  translocated copy (an Applications folder on a writable external disk is fine),
   and it is hidden in builds without the tool (`swift run`).
 - **By hand:**
 
@@ -76,6 +81,14 @@ fanbar ──JSON over ~/Library/Application Support/FanBar/cli.sock──▶ Fa
 - **One request per connection.** Each side writes one newline-terminated JSON
   message, capped at 64 KB (`FanBarCLIContract` in `FanBarShared`). Requests
   carry a protocol version, and the app refuses a version it does not speak.
+- **Socket path.** `sockaddr_un` holds about 104 bytes. When the
+  Application Support path does not fit (long user names, relocated homes),
+  both sides use `local.fanbar.cli.sock` in the per-user temporary directory
+  (`confstr(_CS_DARWIN_USER_TEMP_DIR)`, mode `0700`) instead.
+- **Timeouts.** The app spends at most `commandTimeout` on a request (the
+  helper's worst-case write for eight fans, shared by both waits), and the CLI
+  waits `replyTimeout`, 15 seconds longer. A slow switch is therefore never
+  reported as a lost connection while it is still being applied.
 - **Access control.** The socket's directory is created `0700` and the socket
   `0600`. Every connection's peer must also be the app's own user
   (`getpeereid`), so the CLI can do nothing that user could not already do from

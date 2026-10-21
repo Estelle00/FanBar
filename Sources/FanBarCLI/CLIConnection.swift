@@ -22,24 +22,43 @@ enum CLIConnectionError: Error, Equatable {
     }
 }
 
+/// What to do when the socket did not answer on the first try.
+enum CLIConnectPlan: Equatable {
+    /// The app runs; give its listener this long to come up.
+    case wait(TimeInterval)
+    case launch
+    case fail(CLIConnectionError)
+}
+
 /// Finds or starts FanBar.app, then exchanges one request with it.
 enum CLIConnection {
-    /// Long enough for the slowest fan write the app may wait on.
-    private static let replyTimeoutSeconds = 150
     /// A cold start includes the helper status check and first sensor read.
-    private static let launchConnectTimeout: TimeInterval = 20
-    private static let runningConnectTimeout: TimeInterval = 2
+    static let launchConnectTimeout: TimeInterval = 20
+    static let runningConnectTimeout: TimeInterval = 2
 
-    static func send(_ request: FanBarCLIRequest, noLaunch: Bool) -> Result<FanBarCLIResponse, CLIConnectionError> {
-        let path = FanBarCLIContract.socketURL().path
-        var timeout = runningConnectTimeout
-        if !isAppRunning {
-            if noLaunch { return .failure(.notRunning) }
-            guard let app = locateApp() else { return .failure(.appNotFound) }
-            guard launch(app) else { return .failure(.launchFailed) }
-            timeout = launchConnectTimeout
+    static func send(
+        _ request: FanBarCLIRequest,
+        noLaunch: Bool,
+        path: String = FanBarCLIContract.socketURL().path
+    ) -> Result<FanBarCLIResponse, CLIConnectionError> {
+        // The socket is the source of truth. Launch Services may not list the
+        // app at all from an SSH, cron or background launchd session, so only
+        // consult it once the socket has not answered.
+        var descriptor = connect(path, timeout: 0)
+        if descriptor == nil {
+            let launchDate = runningAppLaunchDate()
+            switch plan(runningSince: launchDate.map { $0 ?? .distantPast }, now: Date(), noLaunch: noLaunch) {
+            case .wait(let timeout):
+                descriptor = connect(path, timeout: timeout)
+            case .launch:
+                guard let app = locateApp() else { return .failure(.appNotFound) }
+                guard launch(app) else { return .failure(.launchFailed) }
+                descriptor = connect(path, timeout: launchConnectTimeout)
+            case .fail(let error):
+                return .failure(error)
+            }
         }
-        guard let descriptor = connect(path, timeout: timeout) else { return .failure(.notAccepting) }
+        guard let descriptor else { return .failure(.notAccepting) }
         defer { close(descriptor) }
         guard let body = try? FanBarCLIContract.makeEncoder().encode(request),
               FanBarCLISocket.writeMessage(body, to: descriptor),
@@ -50,8 +69,21 @@ enum CLIConnection {
         return .success(response)
     }
 
-    private static var isAppRunning: Bool {
-        !NSRunningApplication.runningApplications(withBundleIdentifier: FanBarService.appBundleID).isEmpty
+    /// `runningSince` is nil when FanBar is not running, `.distantPast` when
+    /// its launch time is unknown. An app that started moments ago (a login
+    /// item, another `fanbar`) gets the rest of the cold-start allowance
+    /// instead of being reported as too old to accept commands.
+    static func plan(runningSince: Date?, now: Date, noLaunch: Bool) -> CLIConnectPlan {
+        guard let runningSince else { return noLaunch ? .fail(.notRunning) : .launch }
+        let remaining = launchConnectTimeout - now.timeIntervalSince(runningSince)
+        return .wait(max(runningConnectTimeout, remaining))
+    }
+
+    /// nil: not running. `.some(nil)`: running, launch time unknown.
+    private static func runningAppLaunchDate() -> Date?? {
+        let apps = NSRunningApplication.runningApplications(withBundleIdentifier: FanBarService.appBundleID)
+        guard !apps.isEmpty else { return nil }
+        return .some(apps.compactMap(\.launchDate).max())
     }
 
     /// Prefers the app this tool ships inside (`FanBar.app/Contents/Helpers/fanbar`,
@@ -102,7 +134,7 @@ enum CLIConnection {
     private static func connect(_ path: String, timeout: TimeInterval) -> Int32? {
         guard var address = FanBarCLISocket.address(for: path) else { return nil }
         let deadline = Date().addingTimeInterval(timeout)
-        repeat {
+        while true {
             let descriptor = socket(AF_UNIX, SOCK_STREAM, 0)
             guard descriptor >= 0 else { return nil }
             let connected = withUnsafePointer(to: &address) {
@@ -113,14 +145,15 @@ enum CLIConnection {
             if connected {
                 var enabled: Int32 = 1
                 setsockopt(descriptor, SOL_SOCKET, SO_NOSIGPIPE, &enabled, socklen_t(MemoryLayout<Int32>.size))
-                var wait = timeval(tv_sec: replyTimeoutSeconds, tv_usec: 0)
+                var wait = timeval(tv_sec: Int(FanBarCLIContract.replyTimeout.rounded(.up)), tv_usec: 0)
                 setsockopt(descriptor, SOL_SOCKET, SO_RCVTIMEO, &wait, socklen_t(MemoryLayout<timeval>.size))
                 return descriptor
             }
             close(descriptor)
+            // A zero timeout is a single probe: no sleep after it fails.
+            guard Date() < deadline else { return nil }
             usleep(200_000)
-        } while Date() < deadline
-        return nil
+        }
     }
 
     static var appVersion: String {

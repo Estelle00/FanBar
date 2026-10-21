@@ -13,17 +13,14 @@ import Foundation
 /// controller's own localized wording.
 @MainActor
 enum CLICommandHandler {
-    /// Covers the helper's worst-case write on a Mac with the most fans.
-    static let busyTimeout = FanControlTiming.writeReplyTimeout(
-        fanCount: FanControlTiming.maximumFanCount,
-        base: 10
-    )
-
     static func handle(
         _ request: FanBarCLIRequest,
         controller: FanController,
-        busyTimeout: TimeInterval = busyTimeout
+        commandTimeout: TimeInterval = FanBarCLIContract.commandTimeout
     ) async -> FanBarCLIResponse {
+        // One budget for the whole request, so the reply always arrives inside
+        // the CLI's `replyTimeout` however the time splits between the waits.
+        let deadline = Date().addingTimeInterval(commandTimeout)
         guard request.version == FanBarCLIContract.version else {
             return FanBarCLIResponse(
                 ok: false,
@@ -44,13 +41,13 @@ enum CLICommandHandler {
                     message: "Unknown preset \"\(request.preset ?? "")\". Available: \(names)"
                 )
             }
-            return await run(request, controller: controller, busyTimeout: busyTimeout) {
+            return await run(request, controller: controller, deadline: deadline) {
                 controller.setCoolingPreset(preset)
             } succeeded: {
                 controller.mode == .temperatureCurve && controller.curveCoolingPreset == preset
             }
         case .curve:
-            return await run(request, controller: controller, busyTimeout: busyTimeout) {
+            return await run(request, controller: controller, deadline: deadline) {
                 controller.setTemperatureCurveEnabled(true)
             } succeeded: {
                 controller.mode == .temperatureCurve
@@ -59,13 +56,13 @@ enum CLICommandHandler {
             guard let rpm = request.rpm else {
                 return FanBarCLIResponse(ok: false, message: "Missing RPM.")
             }
-            return await run(request, controller: controller, busyTimeout: busyTimeout) {
+            return await run(request, controller: controller, deadline: deadline) {
                 controller.setCustomFixedRPM(rpm)
             } succeeded: {
                 controller.mode == .fixed(rpm)
             }
         case .automatic:
-            return await run(request, controller: controller, busyTimeout: busyTimeout) {
+            return await run(request, controller: controller, deadline: deadline) {
                 controller.setAutomatic()
             } succeeded: {
                 controller.mode == .automatic
@@ -76,17 +73,17 @@ enum CLICommandHandler {
     private static func run(
         _ request: FanBarCLIRequest,
         controller: FanController,
-        busyTimeout: TimeInterval,
+        deadline: Date,
         action: () -> Void,
         succeeded: () -> Bool
     ) async -> FanBarCLIResponse {
         // A switch already in flight would make the controller drop this one.
-        guard await waitUntilIdle(controller, timeout: busyTimeout) else {
+        guard await waitUntilIdle(controller, until: deadline) else {
             return FanBarCLIResponse(ok: false, message: "FanBar is busy switching modes. Try again.")
         }
         controller.clearModeActionFeedback()
         action()
-        guard await waitUntilIdle(controller, timeout: busyTimeout) else {
+        guard await waitUntilIdle(controller, until: deadline) else {
             return FanBarCLIResponse(ok: false, message: "Timed out waiting for the fans to respond.")
         }
         if let feedback = controller.modeActionFeedback, feedback.kind == .failure {
@@ -105,8 +102,7 @@ enum CLICommandHandler {
         return FanBarCLIResponse(ok: true, message: summary(of: controller), status: status(of: controller))
     }
 
-    private static func waitUntilIdle(_ controller: FanController, timeout: TimeInterval) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
+    private static func waitUntilIdle(_ controller: FanController, until deadline: Date) async -> Bool {
         while controller.isBusy {
             guard Date() < deadline else { return false }
             try? await Task.sleep(nanoseconds: 50_000_000)

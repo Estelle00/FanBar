@@ -14,7 +14,8 @@ final class CommandLineToolInstaller: ObservableObject {
     enum State: Equatable {
         /// This build has no `Contents/Helpers/fanbar` (e.g. `swift run`).
         case unavailable
-        /// Running from a disk image or a translocated copy; a link would dangle.
+        /// Running from a read-only disk image or a translocated copy; a link
+        /// would dangle once the image is ejected or the copy is cleaned up.
         case needsMove
         case notInstalled
         case installed
@@ -44,7 +45,8 @@ final class CommandLineToolInstaller: ObservableObject {
     private var toolURL: URL { appURL.appendingPathComponent(Self.toolRelativePath) }
 
     func refresh() {
-        state = Self.state(toolURL: toolURL, linkURL: linkURL)
+        let readOnly = (try? toolURL.resourceValues(forKeys: [.volumeIsReadOnlyKey]))?.volumeIsReadOnly ?? false
+        state = Self.state(toolURL: toolURL, linkURL: linkURL, isOnReadOnlyVolume: readOnly)
     }
 
     func install() {
@@ -117,11 +119,13 @@ final class CommandLineToolInstaller: ObservableObject {
     nonisolated static func state(
         toolURL: URL,
         linkURL: URL,
+        isOnReadOnlyVolume: Bool = false,
         fileManager: FileManager = .default
     ) -> State {
         guard fileManager.isExecutableFile(atPath: toolURL.path) else { return .unavailable }
-        let appPath = toolURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().path
-        if appPath.hasPrefix("/Volumes/") || appPath.contains("/AppTranslocation/") {
+        // A path under /Volumes is not enough: an Applications folder on an
+        // external disk is a fine home. Disk images mount read-only.
+        if isOnReadOnlyVolume || toolURL.path.contains("/AppTranslocation/") {
             return .needsMove
         }
         guard let destination = try? fileManager.destinationOfSymbolicLink(atPath: linkURL.path) else {

@@ -125,3 +125,87 @@ struct CLIOutputTests {
         """)
     }
 }
+
+struct CLIConnectionPlanTests {
+    private let now = Date(timeIntervalSince1970: 1_000_000)
+
+    @Test func notRunningLaunchesUnlessToldNotTo() {
+        #expect(CLIConnection.plan(runningSince: nil, now: now, noLaunch: false) == .launch)
+        #expect(CLIConnection.plan(runningSince: nil, now: now, noLaunch: true) == .fail(.notRunning))
+    }
+
+    @Test func aLongRunningAppGetsAShortGrace() {
+        let started = now.addingTimeInterval(-3_600)
+        #expect(CLIConnection.plan(runningSince: started, now: now, noLaunch: false) == .wait(2))
+        #expect(CLIConnection.plan(runningSince: .distantPast, now: now, noLaunch: true) == .wait(2))
+    }
+
+    @Test func aJustLaunchedAppGetsTheRestOfTheColdStart() {
+        let started = now.addingTimeInterval(-5)
+        #expect(CLIConnection.plan(runningSince: started, now: now, noLaunch: true) == .wait(15))
+    }
+
+    /// A background session (SSH, cron) may not see the app through Launch
+    /// Services; an answering socket must win even with --no-launch.
+    @Test func anAnsweringSocketIsUsedBeforeAskingLaunchServices() throws {
+        let directory = URL(fileURLWithPath: "/tmp/fanbar-cli-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let path = directory.appendingPathComponent("cli.sock").path
+        var address = try #require(FanBarCLISocket.address(for: path))
+        let listener = socket(AF_UNIX, SOCK_STREAM, 0)
+        defer { close(listener) }
+        let bound = withUnsafePointer(to: &address) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                bind(listener, $0, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        #expect(bound == 0)
+        #expect(listen(listener, 1) == 0)
+        let expected = FanBarCLIResponse(ok: true, message: "macOS automatic control")
+        let reply = try FanBarCLIContract.makeEncoder().encode(expected)
+        DispatchQueue.global().async {
+            let client = accept(listener, nil, nil)
+            _ = FanBarCLISocket.readMessage(from: client)
+            _ = FanBarCLISocket.writeMessage(reply, to: client)
+            close(client)
+        }
+        let result = CLIConnection.send(FanBarCLIRequest(action: .status), noLaunch: true, path: path)
+        #expect(result == .success(expected))
+    }
+}
+
+struct CLITimeoutAndPathTests {
+    @Test func theCLIOutwaitsTheAppsWholeBudget() {
+        #expect(FanBarCLIContract.replyTimeout > FanBarCLIContract.commandTimeout)
+        #expect(FanBarCLIContract.commandTimeout >= FanControlTiming.writeReplyTimeout(
+            fanCount: FanControlTiming.maximumFanCount,
+            base: 10
+        ))
+    }
+
+    @Test func aNormalHomeKeepsTheApplicationSupportSocket() {
+        let url = FanBarCLIContract.socketURL(
+            home: URL(fileURLWithPath: "/Users/someone"),
+            userTemporaryDirectory: URL(fileURLWithPath: "/var/folders/ab/xyz/T")
+        )
+        #expect(url.path == "/Users/someone/Library/Application Support/FanBar/cli.sock")
+    }
+
+    @Test func aHomeTooLongForSockaddrFallsBackToTheUserTemporaryDirectory() {
+        let home = URL(fileURLWithPath: "/Volumes/Macintosh HD 2/Users/" + String(repeating: "n", count: 60))
+        let url = FanBarCLIContract.socketURL(
+            home: home,
+            userTemporaryDirectory: URL(fileURLWithPath: "/var/folders/ab/xyz/T")
+        )
+        #expect(url.path == "/var/folders/ab/xyz/T/local.fanbar.cli.sock")
+        #expect(FanBarCLISocket.address(for: url.path) != nil)
+    }
+
+    @Test func theUserTemporaryDirectoryIsPrivate() throws {
+        let directory = try #require(FanBarCLIContract.userTemporaryDirectory())
+        let attributes = try FileManager.default.attributesOfItem(atPath: directory.path)
+        #expect(attributes[.posixPermissions] as? Int == 0o700)
+        #expect(attributes[.ownerAccountID] as? UInt32 == getuid())
+    }
+}

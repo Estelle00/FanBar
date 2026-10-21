@@ -64,6 +64,15 @@ final class CommandLineToolInstallerTests: XCTestCase {
         XCTAssertEqual(state(app: app, link: link), .blocked)
     }
 
+    func testOnlyReadOnlyVolumesNeedAMove() throws {
+        let app = try makeApp(in: root)
+        let tool = app.appendingPathComponent(CommandLineToolInstaller.toolRelativePath)
+        let link = root.appendingPathComponent("fanbar")
+        // An Applications folder on a writable external disk is fine.
+        XCTAssertEqual(CommandLineToolInstaller.state(toolURL: tool, linkURL: link, isOnReadOnlyVolume: false), .notInstalled)
+        XCTAssertEqual(CommandLineToolInstaller.state(toolURL: tool, linkURL: link, isOnReadOnlyVolume: true), .needsMove)
+    }
+
     func testTranslocatedCopyMustMoveFirst() throws {
         let app = try makeApp(in: root.appendingPathComponent("AppTranslocation/ABC/d"))
         XCTAssertEqual(state(app: app, link: root.appendingPathComponent("fanbar")), .needsMove)
