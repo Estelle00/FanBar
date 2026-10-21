@@ -61,6 +61,7 @@ final class CLIServerTests: XCTestCase {
         XCTAssertEqual(response.status?.mode, .automatic)
         XCTAssertEqual(response.status?.fans.map(\.currentRPM), [1_850, 1_900])
         XCTAssertEqual(response.status?.cpuCelsius, 52)
+        XCTAssertEqual(response.appPath, Bundle.main.bundleURL.resolvingSymlinksInPath().path)
     }
 
     func testPresetListMarksTheSelectedPreset() async throws {

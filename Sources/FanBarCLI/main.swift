@@ -37,6 +37,14 @@ case .failure(let error):
     exit(3)
 }
 
+if let warning = CLIConnection.copyMismatchWarning(
+    answeredBy: response.appPath,
+    shippedIn: CLIConnection.enclosingApp(of: CLIConnection.executableURL())
+) {
+    // stderr, so --json output on stdout stays parseable.
+    fputs("fanbar: \(warning)\n", stderr)
+}
+
 if invocation.json {
     print(CLIOutput.json(response))
 } else if !response.ok {

@@ -29,6 +29,10 @@ job Launch Services may not list the app at all. When FanBar is not running,
 it to accept the command. An app that started moments ago (a login item, for
 example) gets the rest of those 20 seconds instead of 2.
 
+Every reply names the app copy that answered. When that is not the copy the
+tool ships in (an old FanBar in Downloads, a test build), `fanbar` prints a
+warning on stderr, so `--json` output stays parseable.
+
 Exit codes: `0` success · `1` FanBar refused or failed the command ·
 `2` usage error · `3` FanBar could not be reached.
 
@@ -50,6 +54,9 @@ been approved) keep the app's wording.
   to Applications first when it runs from a read-only disk image or a
   translocated copy (an Applications folder on a writable external disk is fine),
   and it is hidden in builds without the tool (`swift run`).
+  The row also reads the PATH of your login shell (`$SHELL -i -l -c env`, once
+  per app run) and warns when another `fanbar` earlier on it would run instead,
+  or when `/usr/local/bin` is not on it at all.
 - **By hand:**
 
   ```sh

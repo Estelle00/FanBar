@@ -209,3 +209,39 @@ struct CLITimeoutAndPathTests {
         #expect(attributes[.ownerAccountID] as? UInt32 == getuid())
     }
 }
+
+struct CLICopyMismatchTests {
+    private let own = URL(fileURLWithPath: "/Applications/FanBar.app")
+
+    @Test func sameCopyIsSilentEvenThroughSymlinks() throws {
+        #expect(CLIConnection.copyMismatchWarning(answeredBy: "/Applications/FanBar.app", shippedIn: own) == nil)
+        // /tmp is a link to /private/tmp: both spellings are one copy.
+        let name = "fanbar-copy-\(UUID().uuidString.prefix(8)).app"
+        try FileManager.default.createDirectory(atPath: "/tmp/\(name)", withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: "/tmp/\(name)") }
+        #expect(CLIConnection.copyMismatchWarning(
+            answeredBy: "/private/tmp/\(name)",
+            shippedIn: URL(fileURLWithPath: "/tmp/\(name)")
+        ) == nil)
+    }
+
+    @Test func anotherCopyIsNamed() throws {
+        let warning = try #require(CLIConnection.copyMismatchWarning(
+            answeredBy: "/Users/someone/Downloads/FanBar.app",
+            shippedIn: own
+        ))
+        #expect(warning.contains("/Users/someone/Downloads/FanBar.app"))
+        #expect(warning.contains("/Applications/FanBar.app"))
+    }
+
+    @Test func unknownSidesStaySilent() {
+        #expect(CLIConnection.copyMismatchWarning(answeredBy: nil, shippedIn: own) == nil)
+        #expect(CLIConnection.copyMismatchWarning(answeredBy: "/Applications/FanBar.app", shippedIn: nil) == nil)
+    }
+
+    @Test func olderAppsWithoutAPathStillDecode() throws {
+        let data = Data(#"{"ok":true,"message":"macOS automatic control"}"#.utf8)
+        let response = try FanBarCLIContract.makeDecoder().decode(FanBarCLIResponse.self, from: data)
+        #expect(response.appPath == nil)
+    }
+}

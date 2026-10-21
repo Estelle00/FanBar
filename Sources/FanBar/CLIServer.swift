@@ -137,7 +137,12 @@ final class CLIServer {
         }
     }
 
+    /// Resolved once: the bundle cannot move while the app runs.
+    private nonisolated static let appPath = Bundle.main.bundleURL.resolvingSymlinksInPath().path
+
     private nonisolated static func reply(_ response: FanBarCLIResponse, to client: Int32) {
+        var response = response
+        response.appPath = appPath
         if let data = try? FanBarCLIContract.makeEncoder().encode(response) {
             _ = FanBarCLISocket.writeMessage(data, to: client)
         }

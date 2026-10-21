@@ -535,6 +535,8 @@ enum RussianCatalog {
         "Install…": "Установить…",
         "Update Link…": "Обновить ссылку…",
         "Uninstall…": "Удалить…",
+        "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "Оболочка сначала находит %@ и не запускает эту команду. Удалите его или измените порядок PATH.",
+        "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin нет в PATH оболочки, поэтому она не находит fanbar.",
     ]
 }
 

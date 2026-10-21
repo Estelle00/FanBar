@@ -10,6 +10,12 @@ struct CommandLineToolRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 SettingsRowText(title: fanBarText("命令行工具", "Command-line tool"), detail: detail)
+                if let pathWarning {
+                    Text(pathWarning)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if let failure = installer.failure {
                     Text(failure)
                         .font(.caption)
@@ -50,6 +56,25 @@ struct CommandLineToolRow: View {
                 "/usr/local/bin/fanbar 已被其他文件占用，FanBar 不会覆盖它。",
                 "/usr/local/bin/fanbar is used by another file, which FanBar will not replace."
             )
+        }
+    }
+
+    /// Installed is not enough: the terminal must also reach this link.
+    private var pathWarning: String? {
+        switch installer.pathResolution {
+        case .shadowed(let other):
+            fanBarFormat(
+                "终端会先找到 %@，不会用到这里安装的命令。请删除它或调整 PATH 顺序。",
+                "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.",
+                other
+            )
+        case .notOnPath:
+            fanBarText(
+                "/usr/local/bin 不在终端的 PATH 中，终端找不到 fanbar。",
+                "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar."
+            )
+        case .resolvesToTool, nil:
+            nil
         }
     }
 

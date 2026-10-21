@@ -102,17 +102,23 @@ public struct FanBarCLIResponse: Codable, Equatable, Sendable {
     public var message: String
     public var status: FanBarCLIStatus?
     public var presets: [FanBarCLIPreset]?
+    /// Bundle path of the app that answered, so a `fanbar` can tell when a
+    /// different FanBar copy than the one it ships in is serving the socket.
+    /// Optional: replies from builds before it simply lack the key.
+    public var appPath: String?
 
     public init(
         ok: Bool,
         message: String,
         status: FanBarCLIStatus? = nil,
-        presets: [FanBarCLIPreset]? = nil
+        presets: [FanBarCLIPreset]? = nil,
+        appPath: String? = nil
     ) {
         self.ok = ok
         self.message = message
         self.status = status
         self.presets = presets
+        self.appPath = appPath
     }
 }
 

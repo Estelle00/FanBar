@@ -81,7 +81,7 @@ final class CommandLineToolInstallerTests: XCTestCase {
     func testInstallAndUninstallInAWritableDirectory() async throws {
         let app = try makeApp(in: root)
         let link = root.appendingPathComponent("bin/fanbar")
-        let installer = CommandLineToolInstaller(appURL: app, linkURL: link)
+        let installer = CommandLineToolInstaller(appURL: app, linkURL: link, readSearchPath: { nil })
         XCTAssertEqual(installer.state, .notInstalled)
 
         installer.install()
@@ -103,10 +103,47 @@ final class CommandLineToolInstallerTests: XCTestCase {
         let app = try makeApp(in: root)
         let link = root.appendingPathComponent("fanbar")
         try Data("mine".utf8).write(to: link)
-        let installer = CommandLineToolInstaller(appURL: app, linkURL: link)
+        let installer = CommandLineToolInstaller(appURL: app, linkURL: link, readSearchPath: { nil })
         installer.uninstall()
         XCTAssertFalse(installer.isWorking)
         XCTAssertEqual(try Data(contentsOf: link), Data("mine".utf8))
+    }
+
+    func testInstalledLinkShadowedByAnEarlierFanbarIsReported() async throws {
+        let app = try makeApp(in: root)
+        let bin = root.appendingPathComponent("bin")
+        let link = bin.appendingPathComponent("fanbar")
+        let earlier = root.appendingPathComponent("local-bin")
+        try FileManager.default.createDirectory(at: earlier, withIntermediateDirectories: true)
+        let other = earlier.appendingPathComponent("fanbar")
+        try FileManager.default.createSymbolicLink(at: other, withDestinationURL: URL(fileURLWithPath: "/usr/bin/true"))
+        let searchPath = "\(earlier.path):\(bin.path):/usr/bin"
+        let installer = CommandLineToolInstaller(appURL: app, linkURL: link, readSearchPath: { searchPath })
+
+        installer.install()
+        while installer.isWorking {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        await installer.settlePathResolution()
+        XCTAssertEqual(installer.state, .installed)
+        XCTAssertEqual(installer.pathResolution, .shadowed(by: other.path))
+
+        try FileManager.default.removeItem(at: other)
+        installer.refresh()
+        await installer.settlePathResolution()
+        XCTAssertEqual(installer.pathResolution, .resolvesToTool)
+    }
+
+    func testNoResolutionUntilInstalled() async throws {
+        let app = try makeApp(in: root)
+        let installer = CommandLineToolInstaller(
+            appURL: app,
+            linkURL: root.appendingPathComponent("bin/fanbar"),
+            readSearchPath: { "/usr/bin" }
+        )
+        await installer.settlePathResolution()
+        XCTAssertEqual(installer.state, .notInstalled)
+        XCTAssertNil(installer.pathResolution)
     }
 
     func testShellAndAppleScriptQuoting() {

@@ -32,13 +32,27 @@ final class CommandLineToolInstaller: ObservableObject {
     @Published private(set) var state: State = .unavailable
     @Published private(set) var failure: String?
     @Published private(set) var isWorking = false
+    /// Which `fanbar` the user's shell runs once the link is installed. nil
+    /// until the login shell has been read, or when not installed.
+    @Published private(set) var pathResolution: LoginShellPath.Resolution?
 
     private let appURL: URL
     private let linkURL: URL
+    /// Reads the login shell's PATH; injectable so tests never spawn a shell.
+    private let readSearchPath: @Sendable () -> String?
+    /// The shell is started once per app run; later checks only rescan the
+    /// directories, so deleting a shadowing file shows up on the next refresh.
+    private var cachedSearchPath: String?
+    private var resolutionTask: Task<Void, Never>?
 
-    init(appURL: URL = Bundle.main.bundleURL, linkURL: URL = CommandLineToolInstaller.linkURL) {
+    init(
+        appURL: URL = Bundle.main.bundleURL,
+        linkURL: URL = CommandLineToolInstaller.linkURL,
+        readSearchPath: @escaping @Sendable () -> String? = { LoginShellPath.read() }
+    ) {
         self.appURL = appURL
         self.linkURL = linkURL
+        self.readSearchPath = readSearchPath
         refresh()
     }
 
@@ -47,6 +61,34 @@ final class CommandLineToolInstaller: ObservableObject {
     func refresh() {
         let readOnly = (try? toolURL.resourceValues(forKeys: [.volumeIsReadOnlyKey]))?.volumeIsReadOnly ?? false
         state = Self.state(toolURL: toolURL, linkURL: linkURL, isOnReadOnlyVolume: readOnly)
+        refreshPathResolution()
+    }
+
+    private func refreshPathResolution() {
+        resolutionTask?.cancel()
+        guard state == .installed else {
+            pathResolution = nil
+            return
+        }
+        let tool = toolURL
+        let cached = cachedSearchPath
+        let readSearchPath = readSearchPath
+        resolutionTask = Task { [weak self] in
+            let searchPath = await Task.detached { cached ?? readSearchPath() }.value
+            guard !Task.isCancelled, let self else { return }
+            guard let searchPath else {
+                // The shell could not be read; say nothing rather than guess.
+                self.pathResolution = nil
+                return
+            }
+            self.cachedSearchPath = searchPath
+            self.pathResolution = LoginShellPath.resolution(of: "fanbar", in: searchPath, toolURL: tool)
+        }
+    }
+
+    /// Waits for the PATH check started by the latest refresh (tests).
+    func settlePathResolution() async {
+        await resolutionTask?.value
     }
 
     func install() {

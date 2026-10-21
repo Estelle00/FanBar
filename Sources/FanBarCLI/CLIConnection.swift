@@ -106,7 +106,27 @@ enum CLIConnection {
         return app
     }
 
-    private static func executableURL() -> URL? {
+    /// A warning when the app that answered is not the copy this tool ships in,
+    /// e.g. an old FanBar left in Downloads or a test build. Silent when either
+    /// side is unknown: a `swift run` tool has no app, older apps send no path.
+    static func copyMismatchWarning(answeredBy: String?, shippedIn: URL?) -> String? {
+        guard let answeredBy, let shippedIn else { return nil }
+        let answered = canonicalPath(answeredBy)
+        let own = canonicalPath(shippedIn.path)
+        guard answered != own else { return nil }
+        return "warning: FanBar at \(answered) answered, but this fanbar belongs to \(own). " +
+            "Quit the other copy, or run the fanbar inside it."
+    }
+
+    /// `realpath` also folds `/tmp` into `/private/tmp`, which
+    /// `resolvingSymlinksInPath()` does not do consistently.
+    private static func canonicalPath(_ path: String) -> String {
+        guard let resolved = realpath(path, nil) else { return URL(fileURLWithPath: path).standardizedFileURL.path }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
+    static func executableURL() -> URL? {
         var size: UInt32 = 0
         _ = _NSGetExecutablePath(nil, &size)
         var buffer = [CChar](repeating: 0, count: Int(size))

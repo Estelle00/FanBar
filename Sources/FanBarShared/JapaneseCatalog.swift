@@ -540,6 +540,8 @@ enum JapaneseCatalog {
         "Install…": "インストール…",
         "Update Link…": "リンクを更新…",
         "Uninstall…": "アンインストール…",
+        "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "シェルは先に %@ を見つけるため、このコマンドは実行されません。削除するか PATH の順序を変更してください。",
+        "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin がシェルの PATH に含まれていないため、fanbar が見つかりません。",
     ]
 }
 

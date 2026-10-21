@@ -527,6 +527,8 @@ enum FrenchCatalog {
         "Install…": "Installer…",
         "Update Link…": "Mettre à jour le lien…",
         "Uninstall…": "Désinstaller…",
+        "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "Votre shell trouve d’abord %@ et n’exécute donc pas cette commande. Supprimez-le ou modifiez l’ordre du PATH.",
+        "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin n’est pas dans le PATH de votre shell, qui ne trouve donc pas fanbar.",
     ]
 }
 
