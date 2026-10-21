@@ -5,9 +5,12 @@ import SwiftUI
 /// builds that ship it. Both are opt-in ways to drive FanBar from outside, so
 /// they sit apart from the app basics; with neither shipped, the section hides.
 struct ToolIntegrationsSection: View {
+    var tool: CommandLineToolInstaller = .shared
+    var raycast: RaycastScriptsInstaller = .shared
+
     var body: some View {
-        let showsTool = CommandLineToolInstaller.shared.state != .unavailable
-        let showsRaycast = RaycastScriptsInstaller.shared.state != .unavailable
+        let showsTool = tool.state != .unavailable
+        let showsRaycast = raycast.state != .unavailable
         if showsTool || showsRaycast {
             SettingsSection(
                 title: fanBarText("命令行与自动化", "Command Line & Automation"),
@@ -17,13 +20,13 @@ struct ToolIntegrationsSection: View {
                 )
             ) {
                 if showsTool {
-                    CommandLineToolRow(installer: .shared)
+                    CommandLineToolRow(installer: tool)
                 }
                 if showsTool, showsRaycast {
                     SettingsChrome.rowDivider
                 }
                 if showsRaycast {
-                    RaycastRow(installer: .shared)
+                    RaycastRow(installer: raycast)
                 }
             }
         }
