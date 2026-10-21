@@ -537,6 +537,13 @@ enum RussianCatalog {
         "Uninstall…": "Удалить…",
         "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "Оболочка сначала находит %@ и не запускает эту команду. Удалите его или измените порядок PATH.",
         "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin нет в PATH оболочки, поэтому она не находит fanbar.",
+        "Show in Finder": "Показать в Finder",
+        "Get Raycast…": "Загрузить Raycast…",
+        "Set Up in Raycast…": "Настроить в Raycast…",
+        "Install Raycast to control FanBar from it.": "Установите Raycast, чтобы управлять FanBar из него.",
+        "Switch presets, set a fixed speed and see temperatures from Raycast.": "Переключайте профили, задавайте фиксированную скорость и смотрите температуры из Raycast.",
+        "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "Скрипты лежат в папке Raycast программы FanBar. Если Raycast их ещё не показывает: в его настройках › Extensions нажмите + › Add Script Directory, затем ⌘⇧G и вставьте путь, который копирует эта кнопка.",
+        "Could not prepare the Raycast scripts: %@": "Не удалось подготовить скрипты Raycast: %@",
     ]
 }
 

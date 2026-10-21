@@ -51,6 +51,11 @@ print "app-architectures=${app_archs}"
 print "helper-architectures=${helper_archs}"
 print "widget-architectures=${widget_archs}"
 print "cli-architectures=${cli_archs}"
+raycast_scripts=("${app_path}/Contents/Resources/Raycast/"*.sh)
+(( ${#raycast_scripts} == 4 ))
+for script in "${raycast_scripts[@]}"; do
+    [[ -x "${script}" ]]
+done
 # Help needs no running app, so it proves the CLI loads its runtime.
 "${app_path}/Contents/Helpers/fanbar" --help > /dev/null
 "${app_path}/Contents/MacOS/FanBar" --telemetry-test

@@ -99,9 +99,21 @@ Two integrations call `fanbar` from Raycast:
 | `fanbar-auto.sh` | FanBar Automatic | Hand the fans back to macOS |
 | `fanbar-temperatures.sh` | FanBar Temperatures | `CPU 59° · GPU 52° · SSD 41°` in Raycast's root search, refreshed every minute |
 
-To use them, open Raycast Settings › Extensions › **+** › Add Script
-Directory, and choose `integrations/raycast` (or a copy of it). Assign hotkeys
-or aliases to the commands like any other.
+**From FanBar (easiest):** in **Settings › General › FanBar › Raycast**, click
+**Set Up in Raycast…**. FanBar copies the scripts to
+`~/Library/Application Support/FanBar/Raycast`, puts that path on the clipboard
+and opens Raycast. Then, once, in Raycast Settings › Extensions click **+** ›
+**Add Script Directory**, press ⌘⇧G and paste. Raycast offers no way for
+another app to add a script directory, so this one step stays manual. After
+that, FanBar refreshes the folder from the app at every launch, so updates to
+the scripts arrive with app updates. The row offers **Get Raycast…** when
+Raycast is not installed, and is hidden in builds without the scripts.
+
+**By hand:** add `integrations/raycast` (or a copy of it) the same way.
+
+Assign hotkeys or aliases to the commands like any other. A Raycast Store
+extension, which installs in one click, is planned for after the first release
+that ships the CLI.
 
 - Raycast does not load your shell profile, so the scripts do not rely on PATH.
   They use `$FANBAR_CLI` if set, then `/usr/local/bin/fanbar` (Settings),

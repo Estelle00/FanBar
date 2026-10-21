@@ -529,6 +529,13 @@ enum FrenchCatalog {
         "Uninstall…": "Désinstaller…",
         "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "Votre shell trouve d’abord %@ et n’exécute donc pas cette commande. Supprimez-le ou modifiez l’ordre du PATH.",
         "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin n’est pas dans le PATH de votre shell, qui ne trouve donc pas fanbar.",
+        "Show in Finder": "Afficher dans le Finder",
+        "Get Raycast…": "Obtenir Raycast…",
+        "Set Up in Raycast…": "Configurer dans Raycast…",
+        "Install Raycast to control FanBar from it.": "Installez Raycast pour piloter FanBar depuis Raycast.",
+        "Switch presets, set a fixed speed and see temperatures from Raycast.": "Changez de profil, fixez une vitesse et consultez les températures depuis Raycast.",
+        "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "Les scripts se trouvent dans le dossier Raycast de FanBar. Si Raycast ne les affiche pas encore : dans ses réglages › Extensions, cliquez sur + › Add Script Directory, appuyez sur ⌘⇧G et collez le chemin que ce bouton copie.",
+        "Could not prepare the Raycast scripts: %@": "Impossible de préparer les scripts Raycast : %@",
     ]
 }
 
