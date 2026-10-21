@@ -28,7 +28,6 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         let controller = makeController()
         let store = EmptyLanguageTestReceipts()
         let cases: [(String, () -> AnyView)] = [
-            ("welcome", { AnyView(OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {})) }),
             ("compatibility", { AnyView(DeviceCompatibilityView(controller: controller)) }),
             ("report", { AnyView(CompatibilityReportPreview(data: Data("{}".utf8))) }),
             ("receipts", { AnyView(CompatibilityReceiptsView(store: store)) }),
@@ -53,6 +52,11 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         for (name, make) in cases {
             try assertRefresh(name: name, make: make)
         }
+    }
+
+    func testWelcomeRefreshesWithoutControllerChanges() throws {
+        let controller = makeController()
+        try assertRefresh(name: "welcome") { AnyView(OnboardingCard(controller: controller, onOpenMenu: {}, onDismiss: {})) }
     }
 
     func testMenuRefreshesWithoutControllerChanges() throws {
@@ -147,6 +151,7 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         let referenceWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 740, height: 850),
                                        styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = host
+        if name == "welcome" { prepareWelcomeLayout(host) }
         window.orderFront(nil)
         referenceWindow.orderBack(nil)
         defer {
@@ -172,6 +177,7 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
             let fresh = NSHostingView(rootView: content())
             fresh.frame = host.frame
             referenceWindow.contentView = fresh
+            if name == "welcome" { prepareWelcomeLayout(fresh) }
             RunLoop.current.run(until: Date().addingTimeInterval(0.35))
             fresh.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
@@ -216,6 +222,24 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
     private func editableFields(in view: NSView) -> [NSTextField] {
         let own = (view as? NSTextField).flatMap { $0.isEditable ? $0 : nil }.map { [$0] } ?? []
         return own + view.subviews.flatMap { editableFields(in: $0) }
+    }
+
+    private func prepareWelcomeLayout(_ view: NSView) {
+        view.layoutSubtreeIfNeeded()
+        forceOverlayScrollers(in: view)
+        view.layoutSubtreeIfNeeded()
+    }
+
+    private func forceOverlayScrollers(in view: NSView) {
+        // Legacy scrollers reserve a gutter and can produce two different
+        // wrapping layouts for the retained and newly opened welcome card.
+        if let scroll = view as? NSScrollView {
+            scroll.scrollerStyle = .overlay
+            scroll.autohidesScrollers = true
+        }
+        for child in view.subviews {
+            forceOverlayScrollers(in: child)
+        }
     }
 }
 
