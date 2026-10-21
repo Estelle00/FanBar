@@ -37,6 +37,11 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
     func testIndependentWindowsSheetsAndSettingsChildrenRefresh() throws {
         let controller = makeController()
         let store = EmptyLanguageTestReceipts()
+        // A failed attached upload shows its error and a retry button.
+        let failedDiagnostic = DiagnosticUploadCoordinator(collect: { await controller.collectDiagnosticReport() },
+                                                           makeService: { _ in throw CompatibilityServiceError.notConfigured },
+                                                           store: store)
+        failedDiagnostic.exportFailed()
         let cases: [(String, () -> AnyView)] = [
             ("compatibility", { AnyView(DeviceCompatibilityView(controller: controller)) }),
             ("report", { AnyView(CompatibilityReportPreview(data: Data("{}".utf8))) }),
@@ -72,7 +77,8 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
                     usage: SystemUsage(), thermal: nil, cpuHistory: [], gpuHistory: [], animates: false, expanded: .constant(nil)
                 ))
             }),
-            ("chart", { AnyView(TemperatureChart(samples: [], range: .constant(.tenMinutes), alertThreshold: 90)) })
+            ("chart", { AnyView(TemperatureChart(samples: [], range: .constant(.tenMinutes), alertThreshold: 90)) }),
+            ("attached-diagnostic", { AnyView(AttachedDiagnosticStatus(model: failedDiagnostic, retry: {})) })
         ]
         for (name, make) in cases {
             try assertRefresh(name: name, make: make)

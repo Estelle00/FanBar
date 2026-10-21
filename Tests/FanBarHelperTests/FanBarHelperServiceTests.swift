@@ -108,7 +108,10 @@ final class FanBarHelperServiceTests: XCTestCase {
 
         let result = write { service.setAllFans(rpm: 3_000, reply: $0) }
         XCTAssertFalse(result.ok)
-        XCTAssertEqual(result.message, FanHardwareError.unavailable(-3).localizedDescription)
+        let failure = result.message.flatMap(HelperControlFailure.decode(reply:))
+        XCTAssertEqual(failure?.code, .smcConnectionFailed)
+        XCTAssertEqual(failure?.resultCode, -3)
+        XCTAssertEqual(failure?.message, FanHardwareError.unavailable(-3).localizedDescription)
         XCTAssertFalse(fanCount(service).ok)
     }
 
@@ -119,7 +122,30 @@ final class FanBarHelperServiceTests: XCTestCase {
 
         let result = write { service.setAllFans(rpm: 3_000, reply: $0) }
         XCTAssertFalse(result.ok)
-        XCTAssertEqual(result.message, FanHardwareError.operation("F0Tg", -9).localizedDescription)
+        let failure = result.message.flatMap(HelperControlFailure.decode(reply:))
+        XCTAssertEqual(failure?.code, .smcOperationFailed)
+        XCTAssertEqual(failure?.smcKey, "F0Tg")
+        XCTAssertEqual(failure?.resultCode, -9)
+        XCTAssertNotNil(failure?.durationMS)
+        XCTAssertEqual(failure?.message, FanHardwareError.operation("F0Tg", -9).localizedDescription)
+    }
+
+    func testRejectedRequestIsReportedAsInvalidRequest() {
+        let service = makeService(DriverFactory())
+        let result = write { service.setAllFans(rpm: .nan, reply: $0) }
+        XCTAssertFalse(result.ok)
+        XCTAssertEqual(result.message.flatMap(HelperControlFailure.decode(reply:))?.code, .invalidRequest)
+    }
+
+    func testUnlockTimeoutKeepsTheFanButNeverALocalizedParameterName() {
+        let timeout = FanHardwareError.unlockTimeout(1).controlFailure(durationMS: 10_500)
+        XCTAssertEqual(timeout.code, .unlockTimeout)
+        XCTAssertEqual(timeout.fanIndex, 1)
+        XCTAssertEqual(timeout.durationMS, 10_500)
+        let invalid = FanHardwareError.invalidValue("cooling fraction").controlFailure()
+        XCTAssertEqual(invalid.code, .smcInvalidValue)
+        XCTAssertNil(invalid.smcKey)
+        XCTAssertEqual(FanHardwareError.invalidValue("FNum").controlFailure().smcKey, "FNum")
     }
 
     func testGetFanReturnsReadingAndRejectsUnknownIndex() {

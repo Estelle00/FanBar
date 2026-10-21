@@ -17,7 +17,7 @@ import { Page, PageTitle, SiteHeader } from '../components/shell';
 import { StatusLabel } from '../components/status';
 import { t } from '../i18n';
 import {
-  ApiError, api, type AdminDetail, type AdminList, type Capability, type ReviewReason, type ReviewStatus, type VerificationCandidate,
+  ApiError, api, failureSummary, type AdminDetail, type AdminList, type Capability, type ReviewReason, type ReviewStatus, type VerificationCandidate,
   type VerificationStatus,
 } from '../lib/api';
 import { capabilityOrder, capabilityTitle, errorMessage, modelTitle, statusTitle, toneOf } from '../lib/labels';
@@ -437,6 +437,7 @@ function ReportDetail({ id, detail, request, onError, onOpen, onChanged }: {
                     <StatusLabel tone={row.userConfirmedWorking ? 'ok' : toneOf(row.status)} label={row.userConfirmedWorking ? t('本机实测可用（用户确认）') : statusTitle(row.status)} />
                     {row.userConfirmedWorking && <span className="text-xs text-kumo-subtle">{t('自动检测：{status}', { status: statusTitle(row.status) })}</span>}
                     <span className="font-mono text-[11px] text-kumo-subtle">{row.reasonCode}</span>
+                    {row.failure && <span className="font-mono text-[11px] text-kumo-subtle">{failureSummary(row.failure)}</span>}
                   </span>}</Table.Cell>
                   <Table.Cell>
                     {other && other.existing.length > 0

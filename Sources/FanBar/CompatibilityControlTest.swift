@@ -16,6 +16,9 @@ extension HelperClient: CompatibilityControlClient {}
 struct CompatibilityControlTestResult {
     var manual: CompatibilityControlEvidence = .unverified
     var curve: CompatibilityControlEvidence = .unverified
+    /// Set alongside a `.requestFailed` result, for the compatibility report.
+    var manualFailure: CompatibilityControlFailure?
+    var curveFailure: CompatibilityControlFailure?
     var restored = true
     var restoreError: String?
     var controlError: String?
@@ -52,11 +55,12 @@ struct CompatibilityControlTestResult {
 @MainActor
 enum CompatibilityControlTest {
     // Bounded orchestration is covered by failure, cancellation, and restoration tests.
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     static func run(client: any CompatibilityControlClient, curveFraction: Float?) async -> CompatibilityControlTestResult {
         var result = CompatibilityControlTestResult()
         for isCurve in [false, true] {
             if Task.isCancelled || (isCurve && curveFraction == nil) { break }
+            var failure: CompatibilityControlFailure?
             do {
                 let readings = try await client.fans()
                 guard !readings.isEmpty else { break }
@@ -81,11 +85,13 @@ enum CompatibilityControlTest {
                 } else {
                     result.manual = accepted ? .requestSucceeded : .requestFailed
                 }
+                if !accepted { failure = .readbackNotManual(feedback) }
             } catch is CancellationError {
                 result.cancelled = true
             } catch {
                 result.controlError = error.localizedDescription
                 result.controlFailure = error
+                failure = CompatibilityControlFailure(error: error)
                 if isCurve { result.curve = .requestFailed } else { result.manual = .requestFailed }
             }
             // Also restore after a failed/timeout write: it may have partly applied.
@@ -116,6 +122,10 @@ enum CompatibilityControlTest {
                     result.restoreReadbackUnconfirmed = false
                     continue
                 }
+            }
+            if var failure {
+                failure.restoredAutomatic = result.restored
+                if isCurve { result.curveFailure = failure } else { result.manualFailure = failure }
             }
             if !result.restored { break }
         }

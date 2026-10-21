@@ -512,7 +512,7 @@ struct NewCustomPresetForm: View {
                     }
                 }
                 .labelsHidden()
-            .id(languageRawValue)
+                .id(languageRawValue)
                 .frame(maxWidth: .infinity)
             }
 

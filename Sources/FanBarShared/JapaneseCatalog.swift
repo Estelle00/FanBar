@@ -145,6 +145,13 @@ enum JapaneseCatalog {
 
         "90 days online. Reviewed reports feed public counts; raw reports stay private. Cloudflare handles network data.":
             "オンラインで 90 日間保存します。審査済みレポートを公開集計に使いますが、元のレポートは非公開です。Cloudflare が通信メタデータを処理します。",
+        "Only model, chip, versions, capability states, failure codes for failed controls, and report ID. No personal identifiers, logs, temperatures or error text.": "機種、プロセッサ、バージョン、機能の状態、失敗した制御の失敗コード、レポート ID のみを含みます。個人識別情報、ログ、温度履歴、エラーの説明文は含みません。",
+        "Also upload diagnostic logs (administrators only)": "診断ログも送信する（管理者のみ閲覧可）",
+        "Diagnostic logs follow their own rules: sensor probes, recent control events and error codes, filed under this report’s ID so both can be read together. Never published or counted; withdraw them separately.": "診断ログは独自のルールで扱われます。センサーの検出結果、最近の制御イベント、エラーコードを含み、照合できるようこのレポートと同じ ID で保存されます。公開や集計はされず、個別に取り下げられます。",
+        "A control check failed. Attaching diagnostic logs helps find the cause.": "制御のチェックに失敗しました。診断ログを添付すると原因の特定に役立ちます。",
+        "Diagnostic logs uploaded.": "診断ログを送信しました。",
+        "Uploading diagnostic logs…": "診断ログを送信中…",
+        "Retry diagnostic upload": "診断ログの送信を再試行",
         "Also publish this report after review": "このレポートを審査後に公開する",
         "Collection and processing rules": "収集と処理のルール",
         "Confirm submission": "送信を確認",
@@ -209,8 +216,6 @@ enum JapaneseCatalog {
         "Not detected this time": "今回は未検出",
         "Not yet checked.": "まだ確認していません。",
         "Not yet verified": "未確認",
-        "Only model, chip, versions, capability states and report ID. No personal identifiers, logs or temperatures.":
-            "機種、プロセッサ、バージョン、機能の状態、レポート ID のみを含みます。個人識別情報、ログ、温度履歴は含みません。",
         "Reading verified": "読み取り確認済み",
         "Request failed": "リクエスト失敗",
         "Request succeeded": "リクエスト成功",
