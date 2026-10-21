@@ -86,7 +86,8 @@ Two integrations call `fanbar` from Raycast:
   load it with `npm install && npm run dev` in that folder. See its
   [README](../integrations/raycast-extension/README.md).
 - **Script Commands** ([`integrations/raycast`](../integrations/raycast)): no
-  Node needed, but set up by hand and limited to the built-in presets.
+  Node needed, but Raycast needs one manual Add Script Directory step and the
+  preset dropdown lists only the built-in presets.
 
 ### Script Commands
 
@@ -111,9 +112,8 @@ Raycast is not installed, and is hidden in builds without the scripts.
 
 **By hand:** add `integrations/raycast` (or a copy of it) the same way.
 
-Assign hotkeys or aliases to the commands like any other. A Raycast Store
-extension, which installs in one click, is planned for after the first release
-that ships the CLI.
+Assign hotkeys or aliases to the commands like any other. The extension above
+replaces this setup with a one-click install once it is in the Raycast Store.
 
 - Raycast does not load your shell profile, so the scripts do not rely on PATH.
   They use `$FANBAR_CLI` if set, then `/usr/local/bin/fanbar` (Settings),
