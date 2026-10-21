@@ -245,6 +245,9 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
     private func prepareWelcomeLayout(_ view: NSView) {
         view.layoutSubtreeIfNeeded()
         forceStableScrollers(in: view)
+        // SwiftUI rewraps the scroll content for the new gutter on a later pass
+        // (macOS 15), so let the fresh view catch up with the retained one.
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
         view.layoutSubtreeIfNeeded()
     }
 
