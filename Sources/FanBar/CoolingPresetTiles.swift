@@ -384,15 +384,10 @@ struct PresetActionsMenu: View {
         Group {
             switch preset {
             case .builtIn:
-                Button(fanBarText("复制为自定义预设", "Duplicate as Custom Preset")) {
-                    controller.duplicatePreset(preset)
-                }
-                .disabled(!controller.canAddCustomPreset)
+                Button(fanBarText("复制为自定义预设", "Duplicate as Custom Preset"), action: duplicate)
+                    .disabled(!controller.canAddCustomPreset)
             case .custom(let id):
-                Button(fanBarText("重命名…", "Rename…")) {
-                    controller.selectCoolingCurvePreset(preset)
-                    PresetRenameCoordinator.shared.renaming = preset
-                }
+                Button(fanBarText("重命名…", "Rename…"), action: startRename)
                 Menu(fanBarText("更换图标", "Change Icon")) {
                     let current = controller.customPresets.first { $0.id == id }?.symbol
                     ForEach(CustomPresetSymbol.allCases) { symbol in
@@ -404,10 +399,8 @@ struct PresetActionsMenu: View {
                         .disabled(symbol == current)
                     }
                 }
-                Button(fanBarText("复制", "Duplicate")) {
-                    controller.duplicatePreset(preset)
-                }
-                .disabled(!controller.canAddCustomPreset)
+                Button(fanBarText("复制", "Duplicate"), action: duplicate)
+                    .disabled(!controller.canAddCustomPreset)
                 Divider()
                 Button(fanBarText("删除…", "Delete…")) {
                     CustomPresetDeletion.confirm(controller: controller, preset: preset)
@@ -415,6 +408,16 @@ struct PresetActionsMenu: View {
             }
         }
         .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
+    }
+
+    func duplicate() {
+        controller.duplicatePreset(preset)
+    }
+
+    /// Selects the preset so its tile is on screen, then edits its name in place.
+    func startRename() {
+        controller.selectCoolingCurvePreset(preset)
+        PresetRenameCoordinator.shared.renaming = preset
     }
 }
 
