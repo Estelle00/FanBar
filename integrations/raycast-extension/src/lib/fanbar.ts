@@ -88,8 +88,12 @@ export const DOCS_URL = "https://github.com/helson-lin/FanBar/blob/main/docs/cli
 export const INSTALL_COMMAND =
   "sudo mkdir -p /usr/local/bin && sudo ln -sf /Applications/FanBar.app/Contents/Helpers/fanbar /usr/local/bin/fanbar";
 
-// Longer than the CLI's own reply timeout plus its 20-second launch wait.
-const TIMEOUT_MS = 120_000;
+// Must outlast fanbar's worst case, or Raycast kills it while a switch is still
+// being applied: launch wait 20 s (CLIConnection.launchConnectTimeout) + reply
+// timeout 117 s (FanBarCLIContract.replyTimeout = commandTimeout 102 s + 15 s,
+// commandTimeout = 10 s + 8 fans × 11.5 s) = 137 s, plus 13 s of margin.
+// RaycastExtensionTimeoutTests keeps this in step with the Swift constants.
+const TIMEOUT_MS = 150_000;
 
 function isExecutable(path: string): boolean {
   try {
