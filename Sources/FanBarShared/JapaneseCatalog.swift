@@ -542,6 +542,13 @@ enum JapaneseCatalog {
         "Uninstall…": "アンインストール…",
         "Your shell finds %@ first, so it does not run this command. Remove it or reorder PATH.": "シェルは先に %@ を見つけるため、このコマンドは実行されません。削除するか PATH の順序を変更してください。",
         "/usr/local/bin is not on your shell's PATH, so the shell cannot find fanbar.": "/usr/local/bin がシェルの PATH に含まれていないため、fanbar が見つかりません。",
+        "Show in Finder": "Finder に表示",
+        "Get Raycast…": "Raycast を入手…",
+        "Set Up in Raycast…": "Raycast で設定…",
+        "Install Raycast to control FanBar from it.": "Raycast をインストールすると、Raycast から FanBar を操作できます。",
+        "Switch presets, set a fixed speed and see temperatures from Raycast.": "Raycast からプリセットの切り替え、固定回転数の設定、温度の確認ができます。",
+        "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "スクリプトは FanBar の Raycast フォルダにあります。Raycast にまだ表示されない場合は、Raycast の設定 › Extensions で + › Add Script Directory をクリックし、⌘⇧G を押してこのボタンがコピーしたパスをペーストしてください。",
+        "Could not prepare the Raycast scripts: %@": "Raycast スクリプトを準備できませんでした：%@",
     ]
 }
 

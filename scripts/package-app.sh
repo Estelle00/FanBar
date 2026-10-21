@@ -195,6 +195,10 @@ ditto "Assets/AppIcons" "${bundle_path}/Contents/Resources/AppIcons"
 cp "App/local.fanbar.helper.plist" \
     "${bundle_path}/Contents/Library/LaunchDaemons/local.fanbar.helper.plist"
 cp "THIRD_PARTY_NOTICES.md" "${bundle_path}/Contents/Resources/THIRD_PARTY_NOTICES.md"
+# Raycast Script Commands, copied out by Settings › General › Raycast.
+mkdir -p "${bundle_path}/Contents/Resources/Raycast"
+cp integrations/raycast/*.sh "${bundle_path}/Contents/Resources/Raycast/"
+chmod 755 "${bundle_path}/Contents/Resources/Raycast/"*.sh
 cp "ThirdParty/Sparkle-LICENSE.txt" \
     "${bundle_path}/Contents/Resources/Sparkle-LICENSE.txt"
 

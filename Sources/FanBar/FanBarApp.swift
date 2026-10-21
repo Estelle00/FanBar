@@ -21,6 +21,7 @@ final class FanBarAppDelegate: NSObject, NSApplicationDelegate {
         self.controller = controller
         LegacyStatusItemController.shared.install(controller: controller)
         CLIServer.shared.start(controller: controller)
+        RaycastScriptsInstaller.shared.syncIfSetUp()
         // Optional local launch convenience; appearance always follows macOS.
         if CommandLine.arguments.contains("--show-panel") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
