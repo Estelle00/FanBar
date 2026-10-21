@@ -34,6 +34,56 @@ final class ControlMessageLocalizationTests: XCTestCase {
         }
     }
 
+    func testUnavailableServiceFeedbackAndAutomaticStatusRetranslate() throws {
+        let defaults = UserDefaults.standard
+        let saved = defaults.object(forKey: FanBarLanguage.preferenceKey)
+        defer { defaults.set(saved, forKey: FanBarLanguage.preferenceKey) }
+        let source = FakeFanReadingSource()
+        let controller = FanController(notificationCenter: nil, widgetSnapshotDestination: .disabled,
+                                       makeReadingSource: { source }, readUsage: { SystemUsage() }, refreshInterval: nil)
+        guard controller.helperState != .enabled else { throw XCTSkip("Requires an unregistered test helper") }
+        for activate in [{ controller.setFixedRPM(3000) }, { controller.setTemperatureCurveEnabled(true) }] {
+            defaults.set(FanBarLanguage.french.rawValue, forKey: FanBarLanguage.preferenceKey)
+            activate()
+            let feedback = try XCTUnwrap(controller.modeActionFeedback)
+            defaults.set(FanBarLanguage.japanese.rawValue, forKey: FanBarLanguage.preferenceKey)
+            let expected = fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
+            XCTAssertEqual(controller.message, expected)
+            XCTAssertEqual(feedback.message, expected)
+            XCTAssertFalse(controller.isBusy)
+        }
+        controller.setAutomatic()
+        defaults.set(FanBarLanguage.english.rawValue, forKey: FanBarLanguage.preferenceKey)
+        XCTAssertEqual(controller.message, controller.helperState.title)
+        controller.refresh()
+        XCTAssertEqual(controller.message, "Managed automatically by macOS")
+        source.error = LocalizedControlTestError()
+        controller.refresh()
+        defaults.set(FanBarLanguage.japanese.rawValue, forKey: FanBarLanguage.preferenceKey)
+        XCTAssertEqual(controller.message, LocalizedControlTestError().localizedDescription)
+        XCTAssertFalse(controller.isAvailable)
+    }
+
+    func testUnconfirmedRestoreKeepsItsMeaningAndClearsObsoleteError() {
+        let defaults = UserDefaults.standard
+        let saved = defaults.object(forKey: FanBarLanguage.preferenceKey)
+        defer { defaults.set(saved, forKey: FanBarLanguage.preferenceKey) }
+        defaults.set(FanBarLanguage.french.rawValue, forKey: FanBarLanguage.preferenceKey)
+        var result = CompatibilityControlTestResult(restored: false)
+        result.restoreFailure = LocalizedControlTestError()
+        result.markRestoreReadbackUnconfirmed()
+        let french = result.currentRestoreError
+        defaults.set(FanBarLanguage.english.rawValue, forKey: FanBarLanguage.preferenceKey)
+        XCTAssertEqual(result.currentRestoreError, "Restore request accepted, but automatic mode was not confirmed by readback.")
+        XCTAssertNotEqual(result.currentRestoreError, french)
+        XCTAssertNil(result.restoreFailure)
+        result.clearRestoreError()
+        XCTAssertNil(result.currentRestoreError)
+        XCTAssertFalse(result.restoreReadbackUnconfirmed)
+        result.controlFailure = LocalizedControlTestError()
+        XCTAssertEqual(result.currentControlError, LocalizedControlTestError().localizedDescription)
+    }
+
     func testFormattedProgressKeepsTheOriginalOperationValues() {
         let defaults = UserDefaults.standard
         let saved = defaults.object(forKey: FanBarLanguage.preferenceKey)

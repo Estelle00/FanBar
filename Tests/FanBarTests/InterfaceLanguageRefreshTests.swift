@@ -14,6 +14,16 @@ private final class EmptyLanguageTestReceipts: CompatibilityReceiptStoring {
     func remove(reportID: String) throws {}
 }
 
+@MainActor
+private final class UnreadableLanguageTestReceipts: CompatibilityReceiptStoring {
+    func save(_ receipt: CompatibilitySavedReceipt) throws {}
+    func receipts() throws -> [CompatibilitySavedReceipt] {
+        throw CompatibilityServiceError.credentialStorage
+    }
+
+    func remove(reportID: String) throws {}
+}
+
 /// Compare a retained view against a freshly constructed view in each language.
 /// Static fixtures prevent sensor polling or animation from hiding stale text.
 @MainActor
@@ -31,7 +41,12 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
             ("compatibility", { AnyView(DeviceCompatibilityView(controller: controller)) }),
             ("report", { AnyView(CompatibilityReportPreview(data: Data("{}".utf8))) }),
             ("receipts", { AnyView(CompatibilityReceiptsView(store: store)) }),
+            ("receipt-storage-error", { AnyView(CompatibilityReceiptsView(store: UnreadableLanguageTestReceipts())) }),
             ("service-banner", { AnyView(ControlServiceBanner(controller: controller)) }),
+            ("preset-actions", { AnyView(VStack { PresetActionsMenu(controller: controller, preset: .fallback) }) }),
+            ("custom-preset-actions", {
+                AnyView(VStack { PresetActionsMenu(controller: controller, preset: .custom(UUID())) })
+            }),
             ("curve-editor", { AnyView(FanCurveEditorView(controller: controller)) }),
             ("new-preset", { AnyView(NewCustomPresetForm(controller: controller, isPresented: .constant(true))) }),
             ("log", { AnyView(VStack { TemperatureLogSettingsView(controller: controller) }) }),
@@ -151,7 +166,6 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         let referenceWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 740, height: 850),
                                        styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = host
-        if name == "welcome" { prepareWelcomeLayout(host) }
         window.orderFront(nil)
         referenceWindow.orderBack(nil)
         defer {
@@ -173,15 +187,16 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
                     XCTAssertEqual(field.stringValue, retainedDraft, "Language changes must preserve the draft name")
                 } else { retainedDraft = field.stringValue }
             }
+            if name == "welcome" { prepareWelcomeLayout(host) }
             let actual = try snapshot(host, hideEditableText: name == "new-preset")
             let fresh = NSHostingView(rootView: content())
             fresh.frame = host.frame
             referenceWindow.contentView = fresh
-            if name == "welcome" { prepareWelcomeLayout(fresh) }
             RunLoop.current.run(until: Date().addingTimeInterval(0.35))
             fresh.layoutSubtreeIfNeeded()
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
             fresh.layoutSubtreeIfNeeded()
+            if name == "welcome" { prepareWelcomeLayout(fresh) }
             let expected = try snapshot(fresh, hideEditableText: name == "new-preset")
             referenceWindow.contentView = nil
             if actual != expected {
@@ -229,19 +244,20 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
 
     private func prepareWelcomeLayout(_ view: NSView) {
         view.layoutSubtreeIfNeeded()
-        forceOverlayScrollers(in: view)
+        forceStableScrollers(in: view)
         view.layoutSubtreeIfNeeded()
     }
 
-    private func forceOverlayScrollers(in view: NSView) {
-        // Legacy scrollers reserve a gutter and can produce two different
-        // wrapping layouts for the retained and newly opened welcome card.
+    private func forceStableScrollers(in view: NSView) {
+        // Reserve the same scrollbar gutter in both windows. Automatic scrollbar
+        // visibility otherwise changes wrapping between the retained and fresh view.
         if let scroll = view as? NSScrollView {
-            scroll.scrollerStyle = .overlay
-            scroll.autohidesScrollers = true
+            scroll.scrollerStyle = .legacy
+            scroll.hasVerticalScroller = true
+            scroll.autohidesScrollers = false
         }
         for child in view.subviews {
-            forceOverlayScrollers(in: child)
+            forceStableScrollers(in: child)
         }
     }
 }
