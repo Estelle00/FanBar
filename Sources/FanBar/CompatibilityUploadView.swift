@@ -274,7 +274,10 @@ struct CompatibilityReportPreview: View {
 }
 
 /// Progress of the diagnostic sent along with a compatibility report.
-private struct AttachedDiagnosticStatus: View {
+struct AttachedDiagnosticStatus: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var model: DiagnosticUploadCoordinator
     let retry: () -> Void
 
@@ -291,5 +294,6 @@ private struct AttachedDiagnosticStatus: View {
             }
         }
         .font(.caption)
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 }
