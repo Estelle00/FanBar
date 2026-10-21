@@ -153,7 +153,9 @@ struct OnboardingCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(width: 172, alignment: .leading)
+            // Let the copy column give way so the stage never overflows the scroll
+            // view's width (it would shift sideways, more so with a visible scroller).
+            .frame(maxWidth: 172, alignment: .leading)
             .padding(20)
 
             Spacer(minLength: 0)
