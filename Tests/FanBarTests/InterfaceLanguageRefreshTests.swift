@@ -133,6 +133,12 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
         defaults.set(FanBarLanguage.french.rawValue, forKey: FanBarLanguage.preferenceKey)
         func content() -> some View {
             make().environment(\.colorScheme, .light).environment(\.isPanelVisible, false)
+                // The welcome card uses an appearance fade. Snapshot text
+                // after a language change, independent of runner frame rate.
+                .transaction {
+                    $0.disablesAnimations = true
+                    $0.animation = nil
+                }
                 .frame(width: 740, height: 850, alignment: .topLeading)
         }
         let host = NSHostingView(rootView: content())
