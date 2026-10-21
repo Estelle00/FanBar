@@ -190,13 +190,16 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
                 let difference = try LanguageRefreshRendering.difference(actual, expected)
                 let tolerance = name == "welcome" ? 0.05 : 0.03
                 if difference >= tolerance {
-                    print("Language snapshot \(name)/\(language): retained \(host.frame), fresh \(fresh.frame), difference \(difference)")
-                    try actual.write(to: URL(fileURLWithPath: "/tmp/fanbar-\(name)-\(language)-actual.png"))
-                    try expected.write(to: URL(fileURLWithPath: "/tmp/fanbar-\(name)-\(language)-expected.png"))
+                    try saveMismatch(name: name, language: language, actual: actual, expected: expected)
                 }
                 XCTAssertLessThan(difference, tolerance, "\(name) retained stale text for \(language)")
             }
         }
+    }
+
+    private func saveMismatch(name: String, language: FanBarLanguage, actual: Data, expected: Data) throws {
+        try actual.write(to: URL(fileURLWithPath: "/tmp/fanbar-\(name)-\(language)-actual.png"))
+        try expected.write(to: URL(fileURLWithPath: "/tmp/fanbar-\(name)-\(language)-expected.png"))
     }
 
     private func snapshot(_ view: NSView, hideEditableText: Bool = false) throws -> Data {
