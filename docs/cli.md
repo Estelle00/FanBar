@@ -75,6 +75,35 @@ been approved) keep the app's wording.
 Every method links into the app rather than copying the tool, so Sparkle
 updates the CLI together with the app.
 
+## Raycast
+
+[`integrations/raycast`](../integrations/raycast) holds Raycast Script Commands
+that call `fanbar`:
+
+| Script | Raycast command | What it does |
+|---|---|---|
+| `fanbar-preset.sh` | FanBar Preset | Pick silent, balanced, performance or extreme from a dropdown; optionally hold it until changed |
+| `fanbar-fixed.sh` | FanBar Fixed RPM | Hold every fan at the RPM you type; optionally until changed |
+| `fanbar-auto.sh` | FanBar Automatic | Hand the fans back to macOS |
+| `fanbar-temperatures.sh` | FanBar Temperatures | `CPU 59° · GPU 52° · SSD 41°` in Raycast's root search, refreshed every minute |
+
+To use them, open Raycast Settings › Extensions › **+** › Add Script
+Directory, and choose `integrations/raycast` (or a copy of it). Assign hotkeys
+or aliases to the commands like any other.
+
+- Raycast does not load your shell profile, so the scripts do not rely on PATH.
+  They use `$FANBAR_CLI` if set, then `/usr/local/bin/fanbar` (Settings),
+  `/opt/homebrew/bin/fanbar` (Homebrew on Apple Silicon), and finally the tool
+  inside `/Applications/FanBar.app`.
+- The preset, fixed and automatic commands show the result or the error as
+  Raycast's HUD, and exit non-zero on failure. Like the CLI, they start FanBar
+  if it is not running.
+- The temperatures command passes `--no-launch`, so its background refresh never
+  reopens a FanBar you quit. It shows "FanBar is not running" instead.
+- Custom presets are not in the dropdown, because Raycast's choices are fixed in
+  the script. Add them to `fanbar-preset.sh` as more `data` entries, using the
+  name `fanbar preset list` prints.
+
 ## Design
 
 ```
