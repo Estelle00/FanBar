@@ -40,6 +40,9 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable {
 
 /// The single source of truth for both the real menu bar label and its settings preview.
 struct MenuBarStatusLabel: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var controller: FanController
     let displayMode: MenuBarDisplayMode
     @AppStorage(MenuBarIconStyle.preferenceKey)
@@ -68,6 +71,7 @@ struct MenuBarStatusLabel: View {
         }
         .accessibilityLabel(accessibilityText)
         .help(controller.temperatureHistory.last?.cpuTemperatureSummary ?? "FanBar")
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     private var statusText: String? {

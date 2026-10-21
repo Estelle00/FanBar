@@ -23,11 +23,14 @@ extension CompatibilityServiceError {
 }
 
 struct CompatibilityReportPreview: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     let data: Data
     private let preparesSubmission: Bool
     @Environment(\.presentationMode) private var presentationMode
     @StateObject private var upload: CompatibilityUploadCoordinator
-    @State private var saveError: String?
+    @State private var saveFailed = false
     @State private var consent = false
     @State private var publishReport = false
 
@@ -52,7 +55,10 @@ struct CompatibilityReportPreview: View {
                     reportSummary
                     uploadOptions
                     if let error = upload.error { Text(error.message).font(.caption).foregroundColor(.orange) }
-                    if let saveError { Text(saveError).font(.caption).foregroundColor(.orange) }
+                    if saveFailed {
+                        Text(fanBarText("无法保存报告，请选择其他位置后重试。", "Unable to save. Choose another location and retry."))
+                            .font(.caption).foregroundColor(.orange)
+                    }
                 }
             }
             Divider().padding(.vertical, 14)
@@ -77,6 +83,7 @@ struct CompatibilityReportPreview: View {
                 Task { await upload.loadPolicy() }
             }
         }
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     @ViewBuilder
@@ -219,7 +226,7 @@ struct CompatibilityReportPreview: View {
             do {
                 try upload.data.write(to: url, options: .atomic)
             } catch {
-                saveError = fanBarText("无法保存报告，请选择其他位置后重试。", "Unable to save. Choose another location and retry.")
+                saveFailed = true
             }
         }
     }

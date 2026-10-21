@@ -45,6 +45,9 @@ struct MenuBarPreviewStrip: View {
 
 /// One selectable menu bar display style, with its own rendered sample.
 struct MenuBarDisplayOptionRow: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var controller: FanController
     let mode: MenuBarDisplayMode
     let isSelected: Bool
@@ -88,6 +91,7 @@ struct MenuBarDisplayOptionRow: View {
             ? fanBarFormat("已选择，第 %d 项，共 %d 项", "Selected, %d of %d", position, count)
             : fanBarFormat("第 %d 项，共 %d 项", "%d of %d", position, count))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 }
 
@@ -95,6 +99,9 @@ struct MenuBarDisplayOptionRow: View {
 /// glyphs; each item shows its glyph beside the name, and the display rows
 /// below preview the chosen one at real size.
 struct MenuBarIconStylePicker: View {
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+
     @ObservedObject var controller: FanController
     @AppStorage(MenuBarIconStyle.preferenceKey)
     private var selectedRawValue = MenuBarIconStyle.defaultStyle.rawValue
@@ -119,9 +126,11 @@ struct MenuBarIconStylePicker: View {
                 }
             }
             .labelsHidden()
+            .id(languageRawValue)
             .frame(minWidth: SettingsChrome.trailingControlMinWidth)
             .fixedSize()
         }
         .settingsRow()
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 }
