@@ -154,6 +154,21 @@ final class CompatibilityFailureReportingTests: XCTestCase {
         XCTAssertEqual(rows.filter { $0["failure"] != nil }.count, 1)
     }
 
+    func testEmptyReadbackIsOmittedSoTheReportStaysValid() throws {
+        let failure = CompatibilityControlFailure.readbackNotManual([])
+        XCTAssertEqual(failure.code, .readbackNotManual)
+        XCTAssertNil(failure.readbackManual)
+        let data = try JSONEncoder().encode(failure)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertNil(json["readbackManual"])
+
+        let fans = (0..<10).map {
+            FanReading(index: $0, minimumRPM: 1200, currentRPM: 1850, maximumRPM: 6000, isManual: $0.isMultiple(of: 2))
+        }
+        XCTAssertEqual(CompatibilityControlFailure.readbackNotManual(fans.reversed()).readbackManual,
+                       [true, false, true, false, true, false, true, false])
+    }
+
     func testFailuresSurviveTheLocalHistory() throws {
         let suite = "fanbar.tests.failureHistory.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

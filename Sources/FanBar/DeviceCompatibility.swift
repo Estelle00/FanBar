@@ -125,7 +125,8 @@ struct CompatibilityControlFailure: Codable, Equatable {
         self.resultCode = resultCode
         self.fanIndex = fanIndex
         self.durationMS = durationMS
-        self.readbackManual = readbackManual.map { Array($0.prefix(8)) }
+        // The service requires 1–8 values; an empty readback is omitted rather than sent as [].
+        self.readbackManual = readbackManual.flatMap { $0.isEmpty ? nil : Array($0.prefix(8)) }
         self.restoredAutomatic = restoredAutomatic
     }
 
