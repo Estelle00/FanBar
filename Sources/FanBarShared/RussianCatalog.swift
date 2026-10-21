@@ -543,6 +543,8 @@ enum RussianCatalog {
         "Switch presets, set a fixed speed and see temperatures from Raycast.": "Переключайте профили, задавайте фиксированную скорость и смотрите температуры из Raycast.",
         "The scripts are in FanBar's Raycast folder. If Raycast does not list them yet: in its Settings › Extensions, click + › Add Script Directory, press ⌘⇧G and paste the path this button copies.": "Скрипты лежат в папке Raycast программы FanBar. Если Raycast их ещё не показывает: в его настройках › Extensions нажмите + › Add Script Directory, затем ⌘⇧G и вставьте путь, который копирует эта кнопка.",
         "Could not prepare the Raycast scripts: %@": "Не удалось подготовить скрипты Raycast: %@",
+        "Command Line & Automation": "Командная строка и автоматизация",
+        "Both control the fans through FanBar, and open it in the background when it is not running.": "Оба управляют вентиляторами через FanBar и открывают его в фоне, если он не запущен.",
     ]
 }
 

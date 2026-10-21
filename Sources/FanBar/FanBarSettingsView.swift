@@ -206,6 +206,7 @@ struct FanBarSettingsView: View {
         fanControlSection
         notificationsSection
         appSection
+        ToolIntegrationsSection()
         compatibilitySection
         freeSoftwareNotice
             .frame(maxWidth: .infinity)
@@ -255,7 +256,6 @@ struct FanBarSettingsView: View {
             languageRow
             SettingsChrome.rowDivider
             softwareUpdateRow
-            ToolIntegrationRows()
         }
     }
 

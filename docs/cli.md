@@ -44,7 +44,7 @@ been approved) keep the app's wording.
 
 ## Installing on `PATH`
 
-- **Settings:** open **Settings › General › FanBar › Command-line tool** and
+- **Settings:** open **Settings › General › Command Line & Automation › Command-line tool** and
   click **Install…**. This links `/usr/local/bin/fanbar` to the tool inside
   the app. FanBar first tries without privileges, because Intel Homebrew
   leaves `/usr/local/bin` writable by the user. If that fails, macOS asks once
@@ -100,7 +100,7 @@ Two integrations call `fanbar` from Raycast:
 | `fanbar-auto.sh` | FanBar Automatic | Hand the fans back to macOS |
 | `fanbar-temperatures.sh` | FanBar Temperatures | `CPU 59° · GPU 52° · SSD 41°` in Raycast's root search, refreshed every minute |
 
-**From FanBar (easiest):** in **Settings › General › FanBar › Raycast**, click
+**From FanBar (easiest):** in **Settings › General › Command Line & Automation › Raycast**, click
 **Set Up in Raycast…**. FanBar copies the scripts to
 `~/Library/Application Support/FanBar/Raycast`, puts that path on the clipboard
 and opens Raycast. Then, once, in Raycast Settings › Extensions click **+** ›

@@ -1,7 +1,7 @@
 import FanBarShared
 import SwiftUI
 
-/// General › FanBar: installs or removes the `fanbar` link on PATH.
+/// General › Command Line & Automation: installs or removes the `fanbar` link on PATH.
 /// The row stays out of builds that do not ship the tool.
 struct CommandLineToolRow: View {
     @ObservedObject var installer: CommandLineToolInstaller
