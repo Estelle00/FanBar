@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import worker from '../src/index.ts';
 import { cleanup } from '../src/reports.ts';
 import { reportSchema, type Report } from '../src/schema.ts';
-import { POLICY_VERSION } from '../src/policy.ts';
+import { LEGACY_POLICY_VERSION, POLICY_VERSION } from '../src/policy.ts';
 const token = 'A'.repeat(43);
 function fixture(): Report {
   return {
@@ -26,9 +26,9 @@ function request(path: string, method = 'GET', body?: unknown, headers: Record<s
     'CF-Connecting-IP': crypto.randomUUID(), 'Content-Type': 'application/json', ...headers,
   }, ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) }) });
 }
-function submit(report: Report, publish = false, credential = token) {
+function submit(report: Report, publish = false, credential = token, policyVersion = POLICY_VERSION) {
   return SELF.fetch(request('/api/reports', 'POST', report, {
-    Authorization: 'Bearer ' + credential, 'X-FanBar-Policy-Version': POLICY_VERSION,
+    Authorization: 'Bearer ' + credential, 'X-FanBar-Policy-Version': policyVersion,
     'X-FanBar-Publish-Report': publish ? '1' : '0',
   }));
 }
@@ -414,5 +414,57 @@ describe('machines without a built-in battery', () => {
     const report = fixture();
     report.capabilities[3] = { capability: 'batteryTemperature', status: 'available', reasonCode: 'NO_BUILT_IN_BATTERY' };
     expect((await submit(report)).status).toBe(400);
+  });
+});
+describe('control failure details', () => {
+  function failed(failure: NonNullable<Report['capabilities'][number]['failure']>): Report {
+    const report = fixture();
+    report.capabilities[5] = { capability: 'manualControl', status: 'requestFailed', reasonCode: 'CONTROL_REQUEST_FAILED', failure };
+    return report;
+  }
+  it('keeps the legacy policy as the default response and serves the current one on request', async () => {
+    const legacy = await (await SELF.fetch(request('/api/policy'))).json<{ version: string; fields: string[] }>();
+    expect(legacy.version).toBe(LEGACY_POLICY_VERSION);
+    expect(legacy.fields.some(field => field.includes('failure'))).toBe(false);
+    const current = await (await SELF.fetch(request('/api/policy?version=' + POLICY_VERSION)))
+      .json<{ version: string; fields: string[] }>();
+    expect(current.version).toBe(POLICY_VERSION);
+    expect(current.fields).toContain('capabilities[].failure.code');
+    expect((await (await SELF.fetch(request('/api/policy?version=1999-01-01'))).json<{ version: string }>()).version)
+      .toBe(LEGACY_POLICY_VERSION);
+  });
+  it('stores bounded failure evidence under the current policy', async () => {
+    const report = failed({ code: 'UNLOCK_TIMEOUT', smcKey: 'F0Md', fanIndex: 1, durationMS: 10512, restoredAutomatic: true });
+    expect((await submit(report, true)).status).toBe(201);
+    await review(report.reportID);
+    const data = await (await SELF.fetch(request('/api/reports/' + report.reportID))).json<{ report: Report }>();
+    expect(data.report.capabilities[5].failure).toEqual(report.capabilities[5].failure);
+    const row = await env.DB.prepare('SELECT policy_version FROM reports WHERE id = ?').bind(report.reportID).first('policy_version');
+    expect(row).toBe(POLICY_VERSION);
+  });
+  it('still accepts legacy reports, but never with failure details', async () => {
+    const legacy = fixture();
+    expect((await submit(legacy, false, token, LEGACY_POLICY_VERSION)).status).toBe(201);
+    expect(await env.DB.prepare('SELECT policy_version FROM reports WHERE id = ?').bind(legacy.reportID).first('policy_version'))
+      .toBe(LEGACY_POLICY_VERSION);
+    expect((await submit(failed({ code: 'HELPER_TIMEOUT' }), false, token, LEGACY_POLICY_VERSION)).status).toBe(400);
+    expect((await submit(fixture(), false, token, '2026-01-01')).status).toBe(409);
+  });
+  it('rejects failure details on anything but a failed control and free-form evidence', async () => {
+    const onSuccess = fixture();
+    onSuccess.capabilities[5] = { ...onSuccess.capabilities[5], failure: { code: 'HELPER_TIMEOUT' } };
+    expect((await submit(onSuccess)).status).toBe(400);
+    const onSensor = fixture();
+    onSensor.capabilities[0] = { ...onSensor.capabilities[0], failure: { code: 'HELPER_TIMEOUT' } };
+    expect((await submit(onSensor)).status).toBe(400);
+    for (const bad of [
+      { code: 'HELPER_TIMEOUT', message: 'Timed out unlocking system mode for fan 1' },
+      { code: 'SOMETHING_ELSE' },
+      { code: 'SMC_OPERATION_FAILED', smcKey: '/Users/me' },
+      { code: 'READBACK_NOT_MANUAL', readbackManual: Array(9).fill(false) },
+      { code: 'UNLOCK_TIMEOUT', fanIndex: 8 },
+    ]) {
+      expect((await submit(failed(bad as never))).status).toBe(400);
+    }
   });
 });

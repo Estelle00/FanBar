@@ -28,11 +28,29 @@ export interface MatrixGroup {
 }
 export interface Matrix { schemaVersion: 1; generatedAt: string; truncated: boolean; nextOffset: number | null; groups: MatrixGroup[] }
 
+/** Fixed failure code plus bounded numeric evidence for a failed control request. */
+export interface ControlFailure {
+  code: string; smcKey?: string; resultCode?: number; fanIndex?: number; durationMS?: number;
+  readbackManual?: boolean[]; restoredAutomatic?: boolean;
+}
+/** Compact, untranslated token line; every part is a code or a number. */
+export function failureSummary(failure: ControlFailure): string {
+  return [
+    failure.code,
+    failure.smcKey !== undefined && `key ${failure.smcKey}`,
+    failure.resultCode !== undefined && `result ${failure.resultCode}`,
+    failure.fanIndex !== undefined && `fan ${failure.fanIndex + 1}`,
+    failure.durationMS !== undefined && `${failure.durationMS} ms`,
+    failure.readbackManual && `readback ${failure.readbackManual.map(manual => manual ? 'manual' : 'auto').join('/')}`,
+    failure.restoredAutomatic !== undefined && (failure.restoredAutomatic ? 'restored' : 'NOT restored'),
+  ].filter(Boolean).join(' · ');
+}
+
 export interface Report {
   schemaVersion: 1; reportID: string;
   device: { modelIdentifier: string; processor: string; macOSVersion: string; appVersion: string; helperVersion: string };
   fanCount?: number;
-  capabilities: { capability: Capability; status: CommunityStatus; reasonCode: string; userConfirmedWorking?: true }[];
+  capabilities: { capability: Capability; status: CommunityStatus; reasonCode: string; userConfirmedWorking?: true; failure?: ControlFailure }[];
   selectedTemperatureSource: string;
 }
 

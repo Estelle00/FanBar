@@ -1,6 +1,6 @@
 # FanBar 兼容性报告：字段和处理规则
 
-规则版本：2026-10-13。运营者：FanBar 项目维护者。服务地址：https://report.getfanbar.com。
+规则版本：2026-10-21（FanBar 0.7.0 及更早版本按 2026-10-13 提交，见下方“控制失败证据”）。运营者：FanBar 项目维护者。服务地址：https://report.getfanbar.com。
 
 本机检测与导出默认离线；客户端只在用户点击“上传报告”或“准备上报”后获取服务规则，勾选单次同意并点击提交后才发送报告。无需用户账号。
 
@@ -19,6 +19,7 @@
 | capabilities | 七项能力各一条：能力枚举、状态枚举、标准原因码 |
 | capabilities[].userConfirmedWorking | 可选；仅用于手动调速与智能温控，用户主动勾选确认本机实际使用可用时为 true，不修改自动检测结果，不等同于开发者验证；仅可附在 requestSucceeded 或 unverified 结果上，控制请求失败或 Helper 未授权／缺失时拒绝 |
 | selectedTemperatureSource | 当前所选温控来源：maxChip / cpu / gpu / ssd |
+| capabilities[].failure | 可选；2026-10-21 起，仅附在 `CONTROL_REQUEST_FAILED` 的手动调速／智能温控结果上，见下方“控制失败证据” |
 
 额外请求头：`X-FanBar-Policy-Version` 确认规则版本；`X-FanBar-Publish-Report` 明确选择是否公开单份报告（0 / 1）；`Authorization: Bearer …` 是每份报告独立的撤回凭证。请求头不并入公开报告。
 
@@ -70,6 +71,26 @@ Cloudflare 会处理传输与安全所需的网络地址等元数据，不宣称
 D1 Time Travel 历史恢复点保留 7 天（Workers Free）或 30 天（Workers Paid）；在线删除不会立即清除这些历史副本。参考 [Cloudflare 官方说明](https://developers.cloudflare.com/d1/reference/time-travel/)。本项目不增加无限期外部原始报告备份。历史恢复只能在维护窗口进行，恢复后先清理到期报告并重新审查公开状态；无法核对撤回记录时不得直接恢复原始报告对外服务，应只迁移独立开发者验证数据。公开下载与第三方副本无法追回。
 
 规则更新需要更新版本及客户端支持版本，再取得新提交的同意；不能悄悄复用旧同意扩大收集范围。
+
+## 控制失败证据（2026-10-21）
+
+报告无法回访提交者，所以失败结果本身必须说明原因。2026-10-21 起，控制请求失败的那一项可附带 `failure` 对象，只含：
+
+| 字段 | 内容 |
+| --- | --- |
+| code | 固定枚举：`SMC_CONNECTION_FAILED`、`SMC_OPERATION_FAILED`、`SMC_INVALID_VALUE`、`UNLOCK_TIMEOUT`、`MODE_KEY_MISSING`、`INVALID_REQUEST`、`HELPER_TIMEOUT`、`HELPER_CONNECTION_FAILED`、`READBACK_NOT_MANUAL`、`HELPER_ERROR_UNCLASSIFIED` |
+| smcKey | 出错的四字符 SMC 键名，例如 `F0Md`、`Ftst` |
+| resultCode | SMC／IOKit／XPC 的数值返回码 |
+| fanIndex | 出错风扇的序号（0–7） |
+| durationMS | 失败的写入请求耗时 |
+| readbackManual | 写入后每个风扇回读是否为手动模式（最多 8 个） |
+| restoredAutomatic | 测试结束后回读是否确认已恢复系统自动控制 |
+
+不上传错误描述文本，因为它随界面语言变化，内容也不受约束。成功、未验证或非控制项附带 `failure` 一律拒绝。
+
+服务端同时接受 2026-10-13 与 2026-10-21 两个版本；按 2026-10-13 提交的报告带 `failure` 一律拒绝，旧同意不会被用来扩大收集。`GET /api/policy` 默认仍返回 2026-10-13，因为 FanBar 0.7.0 及更早版本只接受这个版本；新客户端以 `?version=2026-10-21` 请求当前规则。数据库按行记录实际确认的规则版本。
+
+客户端可在上报时另行勾选“同时上传诊断日志”。诊断日志沿用自己的规则与同意，字段不变；它使用与本报告相同的随机编号，管理员据此对照查看。两者分别撤回。
 
 ## Opt-in diagnostic logs (diagnostics-2026-10-14)
 

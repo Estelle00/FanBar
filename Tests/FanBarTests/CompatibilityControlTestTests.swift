@@ -7,6 +7,7 @@ private final class ControlTestClient: CompatibilityControlClient {
     enum Failure: Error { case write, restore }
     var manual = false
     var failsWrite = false
+    var writeError: Error = Failure.write
     var failsRestore = false
     var ignoresWrite = false
     var delayedRestoreReads = 0
@@ -21,14 +22,14 @@ private final class ControlTestClient: CompatibilityControlClient {
         calls.append("fixed:\(rpm)")
         restoring = false
         manual = !ignoresWrite
-        if failsWrite { throw Failure.write }
+        if failsWrite { throw writeError }
     }
 
     func setCoolingFraction(_ fraction: Float) async throws {
         calls.append("curve")
         restoring = false
         manual = !ignoresWrite
-        if failsWrite { throw Failure.write }
+        if failsWrite { throw writeError }
     }
 
     func restoreAutomatic() async throws {
@@ -105,5 +106,34 @@ struct CompatibilityControlTestTests {
         #expect(result.cancelled)
         #expect(result.manual == .unverified)
         #expect(result.controlError == nil)
+    }
+
+    @Test func recordsTheHelperFailureAndWhetherSystemControlCameBack() async {
+        let client = ControlTestClient()
+        client.failsWrite = true
+        client.writeError = HelperClientError(message: HelperControlFailure(
+            code: .unlockTimeout, fanIndex: 1, durationMS: 10_512, message: "Timed out unlocking system mode for fan 2"
+        ).encodedReply())
+        let result = await CompatibilityControlTest.run(client: client, curveFraction: 0.5)
+        #expect(result.manualFailure == CompatibilityControlFailure(
+            code: .unlockTimeout, fanIndex: 1, durationMS: 10_512, restoredAutomatic: true))
+        #expect(result.curveFailure?.code == .unlockTimeout)
+        // The user still sees the helper's own words, not the encoded payload.
+        #expect(result.controlError == "Timed out unlocking system mode for fan 2")
+    }
+
+    @Test func recordsPerFanReadbackWhenTheWriteIsIgnored() async {
+        let client = ControlTestClient()
+        client.ignoresWrite = true
+        let result = await CompatibilityControlTest.run(client: client, curveFraction: nil)
+        #expect(result.manualFailure == CompatibilityControlFailure(
+            code: .readbackNotManual, readbackManual: [false], restoredAutomatic: true))
+        #expect(result.curveFailure == nil)
+    }
+
+    @Test func leavesNoFailureOnSuccess() async {
+        let result = await CompatibilityControlTest.run(client: ControlTestClient(), curveFraction: 0.5)
+        #expect(result.manualFailure == nil)
+        #expect(result.curveFailure == nil)
     }
 }

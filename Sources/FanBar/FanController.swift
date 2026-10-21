@@ -104,6 +104,10 @@ final class FanController: ObservableObject {
         didSet { persistCompatibilityControlEvidence() }
     }
 
+    // Assigned just before the matching evidence, whose didSet persists both.
+    @Published private(set) var manualControlFailure: CompatibilityControlFailure?
+    @Published private(set) var curveControlFailure: CompatibilityControlFailure?
+
     @Published private(set) var controlEvidenceRecordedAt: Date?
     private let compatibilityHistoryStore: CompatibilityControlHistoryStore?
     private var isLoadingControlHistory = true
@@ -336,6 +340,8 @@ final class FanController: ObservableObject {
             }
         }
         if let saved = savedHistory {
+            manualControlFailure = saved.manualFailure
+            curveControlFailure = saved.curveFailure
             manualControlEvidence = saved.manual
             curveControlEvidence = saved.curve
             controlEvidenceRecordedAt = saved.recordedAt
@@ -617,7 +623,8 @@ final class FanController: ObservableObject {
     private func persistCompatibilityControlEvidence() {
         guard !isLoadingControlHistory, !isTestingCompatibilityControl, let compatibilityHistoryStore else { return }
         let record = CompatibilityControlHistory(device: compatibilityDevice, manual: manualControlEvidence,
-            curve: curveControlEvidence, recordedAt: Date())
+            curve: curveControlEvidence, manualFailure: manualControlFailure, curveFailure: curveControlFailure,
+            recordedAt: Date())
         compatibilityHistoryStore.save(record)
         controlEvidenceRecordedAt = record.recordedAt
     }
@@ -636,8 +643,14 @@ final class FanController: ObservableObject {
             let result = await CompatibilityControlTest.run(client: helperClient, curveFraction: fraction)
             compatibilityControlNeedsRestore = !result.restored
             if !Task.isCancelled {
-                if result.manual != .unverified { manualControlEvidence = result.manual }
-                if result.curve != .unverified { curveControlEvidence = result.curve }
+                if result.manual != .unverified {
+                    manualControlFailure = result.manualFailure
+                    manualControlEvidence = result.manual
+                }
+                if result.curve != .unverified {
+                    curveControlFailure = result.curveFailure
+                    curveControlEvidence = result.curve
+                }
             }
             compatibilityControlMessage = Self.compatibilityControlMessage(for: result)
             isTestingCompatibilityControl = false
@@ -754,6 +767,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setAllFans(rpm: rpm)
+                manualControlFailure = nil
                 manualControlEvidence = .requestSucceeded
                 mode = .fixed(rpm)
                 // Remember hand-entered values only once they actually applied.
@@ -772,6 +786,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                manualControlFailure = CompatibilityControlFailure(error: error)
                 manualControlEvidence = .requestFailed
                 let failure = fanBarFormat(
                     "控制失败：%@",
@@ -1272,6 +1287,7 @@ final class FanController: ObservableObject {
             do {
                 await finishPendingCurveUpdate()
                 try await helperClient.setCoolingFraction(fraction)
+                curveControlFailure = nil
                 curveControlEvidence = .requestSucceeded
                 completeCurveActivation(
                     preset: preset,
@@ -1291,6 +1307,7 @@ final class FanController: ObservableObject {
                 clearModeActionFeedback()
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: true) }
             } catch {
+                curveControlFailure = CompatibilityControlFailure(error: error)
                 curveControlEvidence = .requestFailed
                 clearTemperatureCurveState()
                 let failure = fanBarFormat(

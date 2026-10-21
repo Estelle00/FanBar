@@ -60,7 +60,10 @@ struct DeviceCompatibilityView: View {
         }
         .sheet(item: $presentation) { item in
             switch item {
-            case .report(let data): CompatibilityReportPreview(data: data, preparesSubmission: true)
+            case .report(let data):
+                CompatibilityReportPreview(data: data, preparesSubmission: true) { [controller] in
+                    await controller.collectDiagnosticReport()
+                }
             case .receipts: CompatibilityReceiptsView()
             case .diagnostics: DiagnosticUploadView(controller: controller)
             }
