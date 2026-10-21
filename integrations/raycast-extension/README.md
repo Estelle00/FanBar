@@ -57,11 +57,10 @@ npm run build
 npm run lint
 ```
 
-`npm run publish` is disabled on purpose: the extension goes to the Raycast
-Store only after a FanBar release ships the `fanbar` CLI. Before publishing,
-restore the standard script (`npx @raycast/api@latest publish`), check that
-`author` in `package.json` is the Raycast Store username, and add screenshots
-under `metadata/`.
+`npm run publish` opens a pull request against `raycast/extensions` for Store
+review. FanBar 0.7.0 and later ship the `fanbar` CLI the extension needs.
+Before publishing, check that `author` in `package.json` is the Raycast Store
+username and that `metadata/` holds the Store screenshots.
 
 ## Follow-ups for the CLI contract
 
