@@ -137,6 +137,17 @@ jobs:
             python3 scripts/coverage-report.py
           fi
 
+      - name: Upload failed language snapshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-language-snapshots
+          path: |
+            /tmp/fanbar-*-actual.png
+            /tmp/fanbar-*-expected.png
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload lcov
         if: always()
         uses: actions/upload-artifact@v4

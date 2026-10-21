@@ -22,6 +22,32 @@ struct CompatibilityControlTestResult {
     var restored = true
     var restoreError: String?
     var controlError: String?
+    var restoreFailure: Error?
+    var controlFailure: Error?
+    var restoreReadbackUnconfirmed = false
+
+    var currentControlError: String? { controlFailure?.localizedDescription ?? controlError }
+
+    var currentRestoreError: String? {
+        if restoreReadbackUnconfirmed {
+            return fanBarText("恢复请求已接受，但回读仍未确认自动模式。",
+                "Restore request accepted, but automatic mode was not confirmed by readback.")
+        }
+        return restoreFailure?.localizedDescription ?? restoreError
+    }
+
+    mutating func clearRestoreError() {
+        restoreError = nil
+        restoreFailure = nil
+        restoreReadbackUnconfirmed = false
+    }
+
+    mutating func markRestoreReadbackUnconfirmed() {
+        restoreReadbackUnconfirmed = true
+        restoreFailure = nil
+        restoreError = currentRestoreError
+    }
+
     /// The user stopped the test. An interrupted step is left unverified, not failed.
     var cancelled = false
 }
@@ -64,13 +90,14 @@ enum CompatibilityControlTest {
                 result.cancelled = true
             } catch {
                 result.controlError = error.localizedDescription
+                result.controlFailure = error
                 failure = CompatibilityControlFailure(error: error)
                 if isCurve { result.curve = .requestFailed } else { result.manual = .requestFailed }
             }
             // Also restore after a failed/timeout write: it may have partly applied.
             // Do not check cancellation here; closing the view must still restore.
             result.restored = false
-            result.restoreError = nil
+            result.clearRestoreError()
             for _ in 0..<2 {
                 do {
                     try await client.restoreAutomatic()
@@ -83,15 +110,16 @@ enum CompatibilityControlTest {
                         let feedback = try await client.fans()
                         if !feedback.isEmpty, feedback.allSatisfy({ !$0.isManual }) {
                             result.restored = true
-                            result.restoreError = nil
+                            result.clearRestoreError()
                             break
                         }
                     }
                     if result.restored { break }
-                    result.restoreError = fanBarText("恢复请求已接受，但回读仍未确认自动模式。",
-                        "Restore request accepted, but automatic mode was not confirmed by readback.")
+                    result.markRestoreReadbackUnconfirmed()
                 } catch {
                     result.restoreError = error.localizedDescription
+                    result.restoreFailure = error
+                    result.restoreReadbackUnconfirmed = false
                     continue
                 }
             }

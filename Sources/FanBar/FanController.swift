@@ -66,13 +66,20 @@ final class FanController: ObservableObject {
         }
 
         let kind: Kind
-        let message: String
+        private let localizedMessage: LocalizedControlText
+        var message: String { localizedMessage.text }
         /// Connection failures can be resolved from Login Items settings.
         let offersHelperSettings: Bool
 
         init(kind: Kind, message: String, offersHelperSettings: Bool = false) {
             self.kind = kind
-            self.message = message
+            localizedMessage = LocalizedControlText { message }
+            self.offersHelperSettings = offersHelperSettings
+        }
+
+        init(kind: Kind, localizedMessage: LocalizedControlText, offersHelperSettings: Bool = false) {
+            self.kind = kind
+            self.localizedMessage = localizedMessage
             self.offersHelperSettings = offersHelperSettings
         }
     }
@@ -113,13 +120,15 @@ final class FanController: ObservableObject {
     private var isLoadingControlHistory = true
     @Published private(set) var isTestingCompatibilityControl = false
     @Published private(set) var compatibilityControlNeedsRestore = false
-    @Published private(set) var compatibilityControlMessage: String?
+    @Published private var compatibilityControlText: LocalizedControlText?
+    var compatibilityControlMessage: String? { compatibilityControlText?.text }
     private var compatibilityControlTask: Task<Void, Never>?
     lazy var compatibilityDevice = CompatibilityDevice.current(helperVersion: helperBuildVersion)
 
     @Published private(set) var fans: [FanReading] = []
     @Published private(set) var mode: Mode = .automatic
-    @Published private(set) var message = fanBarText("正在读取风扇…", "Reading fans…")
+    @Published private var messageText = LocalizedControlText { fanBarText("正在读取风扇…", "Reading fans…") }
+    var message: String { messageText.text }
     @Published private(set) var isAvailable = false
     @Published private(set) var isBusy = false
     @Published private(set) var helperState: HelperState = .notRegistered
@@ -295,7 +304,8 @@ final class FanController: ObservableObject {
         makeDiagnosticSource: @escaping @Sendable () throws -> FanReadingSource = { try SMCClient() },
         queryRunningHelperBuild: @escaping @Sendable () async -> HelperBuildQuery = { await HelperClient.queryRunningBuild() },
         compatibilityHistoryStore: CompatibilityControlHistoryStore? = nil,
-        readUsage: (() -> SystemUsage)? = nil
+        readUsage: (() -> SystemUsage)? = nil,
+        refreshInterval: TimeInterval? = 2
     ) {
         let usageReader = SystemUsageReader()
         self.readUsage = readUsage ?? { usageReader.sample() }
@@ -363,8 +373,10 @@ final class FanController: ObservableObject {
         refreshHelperStatus()
         refreshLaunchAtLoginStatus()
         refresh()
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+        if let refreshInterval {
+            refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
+                Task { @MainActor in self?.refresh() }
+            }
         }
         helperClient.onConnectionReset = { [weak self] in
             Task { @MainActor in self?.scheduleReapplyCurrentMode(after: 1) }
@@ -472,7 +484,7 @@ final class FanController: ObservableObject {
                     sampledAt: Date(), thermal: nil, fanCount: nil, connectionFailed: true
                 )
                 isAvailable = false
-                message = error.localizedDescription
+                messageText = LocalizedControlText { error.localizedDescription }
                 return
             }
         }
@@ -495,7 +507,7 @@ final class FanController: ObservableObject {
             isAvailable = true
             if mode == .automatic {
                 // Permission state has its own actionable row; keep the header focused on fan mode.
-                message = fanBarText("由 macOS 自动管理", "Managed automatically by macOS")
+                messageText = LocalizedControlText { fanBarText("由 macOS 自动管理", "Managed automatically by macOS") }
             }
         } catch {
             // Fanless Macs report no fan keys; the temperatures read above are still worth logging.
@@ -508,7 +520,7 @@ final class FanController: ObservableObject {
             self.localClient = nil
             isAvailable = false
             publishUnavailableWidgetSnapshot()
-            message = error.localizedDescription
+            messageText = LocalizedControlText { error.localizedDescription }
         }
     }
 
@@ -599,9 +611,9 @@ final class FanController: ObservableObject {
         guard result.restored else {
             return fanBarFormat("恢复系统控制失败：%@。请点击“恢复系统控制”重试。",
                 "Restoring system control failed: %@. Retry Restore System Control.",
-                result.restoreError ?? result.controlError ?? "unknown")
+                result.currentRestoreError ?? result.currentControlError ?? "unknown")
         }
-        if let error = result.controlError {
+        if let error = result.currentControlError {
             return fanBarFormat("控制测试失败：%@。已恢复系统自动控制。",
                 "Control test failed: %@. System automatic control restored.", error)
         }
@@ -634,7 +646,7 @@ final class FanController: ObservableObject {
         guard !isBusy, helperState == .enabled, mode == .automatic else { return }
         isBusy = true
         isTestingCompatibilityControl = true
-        compatibilityControlMessage = fanBarText("正在测试控制能力并恢复系统控制…", "Testing control and restoring system control…")
+        compatibilityControlText = LocalizedControlText { fanBarText("正在测试控制能力并恢复系统控制…", "Testing control and restoring system control…") }
         compatibilityControlTask = Task {
             await finishPendingCurveUpdate()
             let fraction = latestThermalReading().flatMap { reading in
@@ -652,7 +664,7 @@ final class FanController: ObservableObject {
                     curveControlEvidence = result.curve
                 }
             }
-            compatibilityControlMessage = Self.compatibilityControlMessage(for: result)
+            compatibilityControlText = LocalizedControlText { Self.compatibilityControlMessage(for: result) }
             isTestingCompatibilityControl = false
             if !Task.isCancelled, result.manual != .unverified || result.curve != .unverified {
                 persistCompatibilityControlEvidence()
@@ -676,15 +688,13 @@ final class FanController: ObservableObject {
             }
             refreshLaunchAtLoginStatus()
             if launchAtLoginRequiresApproval {
-                message = fanBarText("请在“登录项与扩展”中允许 FanBar", "Allow FanBar in Login Items & Extensions")
+                messageText = LocalizedControlText { fanBarText("请在“登录项与扩展”中允许 FanBar", "Allow FanBar in Login Items & Extensions") }
             }
         } catch {
             refreshLaunchAtLoginStatus()
-            message = fanBarFormat(
-                "无法更新登录项：%@",
-                "Unable to update login item: %@",
-                error.localizedDescription
-            )
+            messageText = LocalizedControlText {
+                fanBarFormat("无法更新登录项：%@", "Unable to update login item: %@", error.localizedDescription)
+            }
         }
     }
 
@@ -697,18 +707,16 @@ final class FanController: ObservableObject {
             try helperService.register()
             refreshHelperStatus()
             if helperState == .requiresApproval {
-                message = fanBarText("请在“登录项与扩展”中允许 FanBar", "Allow FanBar in Login Items & Extensions")
+                messageText = LocalizedControlText { fanBarText("请在“登录项与扩展”中允许 FanBar", "Allow FanBar in Login Items & Extensions") }
                 helperService.openSettings()
             } else {
-                message = helperState.title
+                messageText = LocalizedControlText { [state = helperState] in state.title }
             }
         } catch {
             refreshHelperStatus()
-            message = fanBarFormat(
-                "无法注册控制服务：%@",
-                "Unable to register control service: %@",
-                error.localizedDescription
-            )
+            messageText = LocalizedControlText {
+                fanBarFormat("无法注册控制服务：%@", "Unable to register control service: %@", error.localizedDescription)
+            }
             if helperState == .requiresApproval {
                 helperService.openSettings()
             }
@@ -740,8 +748,8 @@ final class FanController: ObservableObject {
     /// rejected here too, not only in the editor.
     func setCustomFixedRPM(_ rpm: Int) {
         guard let range = fixedRPMRange, range.contains(rpm) else {
-            let failure = fanBarText("转速超出风扇支持的范围", "That RPM is outside the fans' supported range")
-            message = failure
+            let failure = LocalizedControlText { fanBarText("转速超出风扇支持的范围", "That RPM is outside the fans' supported range") }
+            messageText = failure
             failModeAction(failure)
             return
         }
@@ -750,18 +758,17 @@ final class FanController: ObservableObject {
 
     private func applyFixedRPM(_ rpm: Int, resetsAutomaticRestore: Bool) {
         guard helperState == .enabled, !isBusy else {
-            let failure = fanBarText(
-                "请先启用并批准控制服务",
-                "Enable and approve the control service first"
-            )
-            message = failure
+            let failure = LocalizedControlText {
+                fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
+            }
+            messageText = failure
             failModeAction(failure)
             return
         }
         isBusy = true
         if resetsAutomaticRestore { switchFeedback = .began }
-        let progress = fanBarFormat("正在切换到 %d RPM…", "Switching to %d RPM…", rpm)
-        message = progress
+        let progress = LocalizedControlText { fanBarFormat("正在切换到 %d RPM…", "Switching to %d RPM…", rpm) }
+        messageText = progress
         beginModeAction(progress)
         Task {
             do {
@@ -779,7 +786,7 @@ final class FanController: ObservableObject {
                 if resetsAutomaticRestore {
                     scheduleAutomaticRestore()
                 }
-                message = fanBarFormat("固定目标：%d RPM", "Fixed target: %d RPM", rpm)
+                messageText = LocalizedControlText { fanBarFormat("固定目标：%d RPM", "Fixed target: %d RPM", rpm) }
                 if let readings = try? await helperClient.fans() {
                     fans = readings
                 }
@@ -788,12 +795,10 @@ final class FanController: ObservableObject {
             } catch {
                 manualControlFailure = CompatibilityControlFailure(error: error)
                 manualControlEvidence = .requestFailed
-                let failure = fanBarFormat(
-                    "控制失败：%@",
-                    "Control failed: %@",
-                    error.localizedDescription
-                )
-                message = failure
+                let failure = LocalizedControlText {
+                    fanBarFormat("控制失败：%@", "Control failed: %@", error.localizedDescription)
+                }
+                messageText = failure
                 failModeAction(
                     failure,
                     offersHelperSettings: helperSettingsActionNeeded(for: error)
@@ -1223,10 +1228,12 @@ final class FanController: ObservableObject {
                         false,
                         forKey: ThermalAlertSettings.notificationsEnabledKey
                     )
-                    self.message = fanBarText(
-                        "未获得通知权限，请在系统设置中允许 FanBar 发送通知",
-                        "Notification permission was not granted. Allow FanBar notifications in System Settings."
-                    )
+                    self.messageText = LocalizedControlText {
+                        fanBarText(
+                            "未获得通知权限，请在系统设置中允许 FanBar 发送通知",
+                            "Notification permission was not granted. Allow FanBar notifications in System Settings."
+                        )
+                    }
                     return
                 }
 
@@ -1252,22 +1259,19 @@ final class FanController: ObservableObject {
         resetsAutomaticRestore: Bool = true
     ) {
         guard helperState == .enabled, !isBusy else {
-            let failure = fanBarText(
-                "请先启用并批准控制服务",
-                "Enable and approve the control service first"
-            )
-            message = failure
+            let failure = LocalizedControlText {
+                fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
+            }
+            messageText = failure
             failModeAction(failure)
             return
         }
         guard let reading = latestThermalReading(),
               let temperature = controlTemperature(from: reading, profile: profile) else {
-            let failure = fanBarFormat(
-                "未读取到可用于%@温控的温度来源",
-                "No temperature is available for %@ curve control",
-                profile.sensor.title
-            )
-            message = failure
+            let failure = LocalizedControlText {
+                fanBarFormat("未读取到可用于%@温控的温度来源", "No temperature is available for %@ curve control", profile.sensor.title)
+            }
+            messageText = failure
             failModeAction(failure)
             return
         }
@@ -1276,12 +1280,11 @@ final class FanController: ObservableObject {
         let fraction = profile.fraction(at: temperature)
         isBusy = true
         if resetsAutomaticRestore { switchFeedback = .began }
-        let progress = fanBarFormat(
-            "正在切换到%@温控…",
-            "Switching to %@ curve…",
-            presetTitle(for: preset)
-        )
-        message = progress
+        let progress = LocalizedControlText { [weak self = self] in
+            guard let self else { return "" }
+            return fanBarFormat("正在切换到%@温控…", "Switching to %@ curve…", self.presetTitle(for: preset))
+        }
+        messageText = progress
         beginModeAction(progress)
         Task {
             do {
@@ -1310,13 +1313,16 @@ final class FanController: ObservableObject {
                 curveControlFailure = CompatibilityControlFailure(error: error)
                 curveControlEvidence = .requestFailed
                 clearTemperatureCurveState()
-                let failure = fanBarFormat(
-                    "%@温控开启失败：%@",
-                    "Unable to enable %@ curve: %@",
-                    presetTitle(for: preset),
-                    error.localizedDescription
-                )
-                message = failure
+                let failure = LocalizedControlText { [weak self = self] in
+                    guard let self else { return "" }
+                    return fanBarFormat(
+                        "%@温控开启失败：%@",
+                        "Unable to enable %@ curve: %@",
+                        self.presetTitle(for: preset),
+                        error.localizedDescription
+                    )
+                }
+                messageText = failure
                 failModeAction(
                     failure,
                     offersHelperSettings: helperSettingsActionNeeded(for: error)
@@ -1336,7 +1342,9 @@ final class FanController: ObservableObject {
             // Idle GPUs briefly drop out of the sensor list; only give up
             // after ~30 s with no usable chip temperature at all.
             if curveMissingTemperatureSamples >= 15 {
-                message = fanBarText("温度传感器不可用，正在恢复系统控制…", "Temperature sensor unavailable; restoring system control…")
+                messageText = LocalizedControlText {
+                    fanBarText("温度传感器不可用，正在恢复系统控制…", "Temperature sensor unavailable; restoring system control…")
+                }
                 restoreAutomatic(triggeredByTimer: false)
             }
             return
@@ -1369,11 +1377,9 @@ final class FanController: ObservableObject {
             } catch {
                 // A transient failure (sleep, helper restart) is not compatibility evidence.
                 guard self.mode == .temperatureCurve else { return }
-                self.message = fanBarFormat(
-                    "智能温控更新失败：%@",
-                    "Smart cooling update failed: %@",
-                    error.localizedDescription
-                )
+                self.messageText = LocalizedControlText {
+                    fanBarFormat("智能温控更新失败：%@", "Smart cooling update failed: %@", error.localizedDescription)
+                }
             }
         }
     }
@@ -1447,13 +1453,16 @@ final class FanController: ObservableObject {
     private func updateCurveMessage() {
         guard let temperature = curveTemperatureCelsius,
               let fraction = curveOutputFraction else { return }
-        message = fanBarFormat(
-            "%@：%.0f°C · %.0f%%",
-            "%@: %.0f°C · %.0f%%",
-            presetTitle(for: curveCoolingPreset),
-            temperature,
-            fraction * 100
-        )
+        messageText = LocalizedControlText { [weak self = self] in
+            guard let self else { return "" }
+            return fanBarFormat(
+                "%@：%.0f°C · %.0f%%",
+                "%@: %.0f°C · %.0f%%",
+                self.presetTitle(for: curveCoolingPreset),
+                temperature,
+                fraction * 100
+            )
+        }
     }
 
     private func finishPendingCurveUpdate() async {
@@ -1497,13 +1506,13 @@ final class FanController: ObservableObject {
             mode = .automatic
             clearTemperatureCurveState()
             clearAutomaticRestore()
-            message = helperState.title
+            messageText = LocalizedControlText { [state = helperState] in state.title }
             return
         }
         isBusy = true
         switchFeedback = .began
-        let progress = fanBarText("正在恢复系统控制…", "Restoring system control…")
-        message = progress
+        let progress = LocalizedControlText { fanBarText("正在恢复系统控制…", "Restoring system control…") }
+        messageText = progress
         beginModeAction(progress)
         Task {
             do {
@@ -1512,26 +1521,26 @@ final class FanController: ObservableObject {
                 mode = .automatic
                 clearTemperatureCurveState()
                 clearAutomaticRestore()
-                message = triggeredByTimer
-                    ? fanBarText("定时结束，已恢复 macOS 自动控制", "Timer ended; macOS automatic control restored")
-                    : fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored")
+                messageText = LocalizedControlText {
+                    triggeredByTimer
+                        ? fanBarText("定时结束，已恢复 macOS 自动控制", "Timer ended; macOS automatic control restored")
+                        : fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored")
+                }
                 if let readings = try? await helperClient.fans() {
                     fans = readings
                 }
                 compatibilityControlNeedsRestore = false
                 if compatibilityControlMessage != nil {
-                    compatibilityControlMessage = fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored")
+                    compatibilityControlText = LocalizedControlText { fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored") }
                 }
                 clearModeActionFeedback()
                 switchFeedback = .ended(successfully: true)
             } catch {
-                let failure = fanBarFormat(
-                    "恢复失败：%@",
-                    "Restore failed: %@",
-                    error.localizedDescription
-                )
-                message = failure
-                if compatibilityControlMessage != nil { compatibilityControlMessage = failure }
+                let failure = LocalizedControlText {
+                    fanBarFormat("恢复失败：%@", "Restore failed: %@", error.localizedDescription)
+                }
+                messageText = failure
+                if compatibilityControlMessage != nil { compatibilityControlText = failure }
                 failModeAction(
                     failure,
                     offersHelperSettings: helperSettingsActionNeeded(for: error)
@@ -1620,6 +1629,14 @@ final class FanController: ObservableObject {
         (error as? HelperClientError)?.isConnectionFailure == true
     }
 
+    private func beginModeAction(_ message: LocalizedControlText) {
+        modeActionFeedback = ModeActionFeedback(kind: .inProgress, localizedMessage: message)
+    }
+
+    private func failModeAction(_ message: LocalizedControlText, offersHelperSettings: Bool = false) {
+        modeActionFeedback = ModeActionFeedback(kind: .failure, localizedMessage: message, offersHelperSettings: offersHelperSettings)
+    }
+
     func clearModeActionFeedback() {
         modeActionFeedback = nil
     }
@@ -1699,7 +1716,9 @@ final class FanController: ObservableObject {
                 try await self.reRegisterHelper()
                 self.helperService.refresh()
                 guard self.helperService.status == .enabled else {
-                    self.message = fanBarText("请在系统设置中批准新版控制服务", "Approve the updated control service in System Settings")
+                    self.messageText = LocalizedControlText {
+                        fanBarText("请在系统设置中批准新版控制服务", "Approve the updated control service in System Settings")
+                    }
                     self.refreshHelperStatus()
                     return
                 }
@@ -1714,7 +1733,9 @@ final class FanController: ObservableObject {
                 self.refreshHelperStatus()
             } catch {
                 // Keep the actionable permission state visible; the next launch retries.
-                self.message = fanBarText("控制服务更新失败，请重新打开 FanBar", "Control service update failed; reopen FanBar")
+                self.messageText = LocalizedControlText {
+                    fanBarText("控制服务更新失败，请重新打开 FanBar", "Control service update failed; reopen FanBar")
+                }
                 self.refreshHelperStatus()
             }
         }

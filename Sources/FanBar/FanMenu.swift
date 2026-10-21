@@ -116,6 +116,7 @@ struct FanMenu: View {
         }
         .frame(width: Self.panelWidth, height: min(contentHeight, max(240, (NSScreen.main?.visibleFrame.height ?? 800) - 70)))
         .background(PanelGlassBackground())
+        .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
 
     /// Measure the final intrinsic height without interpolation. The popover grows

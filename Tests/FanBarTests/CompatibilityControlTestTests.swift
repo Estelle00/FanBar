@@ -90,6 +90,16 @@ struct CompatibilityControlTestTests {
         #expect(client.calls == ["fixed:2350", "restore"])
     }
 
+    @Test func reportsAcceptedRestoreThatReadbackNeverConfirms() async {
+        let client = ControlTestClient()
+        client.delayedRestoreReads = 100
+        let result = await CompatibilityControlTest.run(client: client, curveFraction: nil)
+        #expect(!result.restored)
+        #expect(result.restoreReadbackUnconfirmed)
+        #expect(result.currentRestoreError != nil)
+        #expect(client.calls == ["fixed:2350", "restore", "restore"])
+    }
+
     @Test func cancellationStillRestoresSystemControl() async {
         let client = ControlTestClient()
         let task = Task { await CompatibilityControlTest.run(client: client, curveFraction: 0.5) }
