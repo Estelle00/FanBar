@@ -11,16 +11,27 @@ private final class MemoryReceipts: CompatibilityReceiptStoring {
         items.append(receipt)
     }
 
-    func receipts() throws -> [CompatibilitySavedReceipt] { items }
-    func remove(reportID: String) throws { items.removeAll { $0.reportID == reportID } }
+    func receipts() throws -> [CompatibilitySavedReceipt] {
+        items
+    }
+
+    func remove(reportID: String) throws {
+        items.removeAll { $0.reportID == reportID }
+    }
 }
 
 @MainActor
 private final class StubReports: CompatibilityReportServing {
     let servicePolicy: CompatibilityServicePolicy
     var failSubmission = false
-    init(policy: CompatibilityServicePolicy) { servicePolicy = policy }
-    func policy() async throws -> CompatibilityServicePolicy { servicePolicy }
+    init(policy: CompatibilityServicePolicy) {
+        servicePolicy = policy
+    }
+
+    func policy() async throws -> CompatibilityServicePolicy {
+        servicePolicy
+    }
+
     func submit(_ receipt: CompatibilitySavedReceipt) async throws -> CompatibilitySubmissionResponse {
         if failSubmission { throw CompatibilityServiceError.network }
         return CompatibilitySubmissionResponse(
@@ -37,7 +48,10 @@ private final class StubDiagnostics: DiagnosticUploadServing {
     let configuration: CompatibilityServiceConfiguration
     var failNextSubmission = false
     var submissions: [CompatibilitySavedReceipt] = []
-    init(configuration: CompatibilityServiceConfiguration) { self.configuration = configuration }
+    init(configuration: CompatibilityServiceConfiguration) {
+        self.configuration = configuration
+    }
+
     func diagnosticPolicy() async throws -> DiagnosticPolicy {
         DiagnosticPolicy(version: DiagnosticPolicy.supportedVersion,
                          serviceOrigin: "https://report.getfanbar.com", retentionDays: 90, maximumBytes: 262_144)
@@ -119,7 +133,7 @@ final class CompatibilityFailureReportingTests: XCTestCase {
 
     // MARK: Report
 
-    func testFailureIsAttachedOnlyToFailedControlRows() throws {
+    func testFailureIsAttachedOnlyToFailedControlRows() {
         let failed = snapshot().results
         XCTAssertEqual(failed.first { $0.capability == .manualControl }?.failure?.code, .unlockTimeout)
         // Smart cooling is unverified here, so its stale failure must not leak into the report.
