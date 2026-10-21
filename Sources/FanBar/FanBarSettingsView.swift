@@ -255,6 +255,7 @@ struct FanBarSettingsView: View {
             languageRow
             SettingsChrome.rowDivider
             softwareUpdateRow
+            ToolIntegrationRows()
         }
     }
 
