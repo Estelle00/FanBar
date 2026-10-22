@@ -18,7 +18,10 @@ git clone https://github.com/helson-lin/FanBar.git
 cd FanBar
 git switch -c my-change
 swift build
+zsh scripts/install-git-hooks.sh
 ```
+
+The installer points `core.hooksPath` at `.githooks/`. Its pre-commit hook refuses a commit until SwiftFormat and SwiftLint pass on the staged Swift files, Stylelint passes on staged compatibility-site CSS, `scripts/find-unused-code.py` finds nothing unused in `Sources`, and `swift test` (unit, integration and SwiftUI layout/render tests) passes. The last two run when the commit touches anything the Swift build can see, and need every Swift change under `Sources` and `Tests` staged so the tests describe the commit. The test run takes a few minutes. CI runs the same unused-code scan and Stylelint check.
 
 The main areas are `Sources/FanBar` (app), `Sources/FanBarShared` (shared models and localization), `Sources/FanBarUI` (shared UI), `Sources/FanBarHelper` and `Sources/AppleSMC` (privileged control), `Sources/FanBarWidget` and `WidgetExtension` (widget), and `services/compatibility` (report service). The service setup and local-only credentials are documented in its [README](services/compatibility/README.md).
 
@@ -51,8 +54,11 @@ brew install swiftlint swiftformat
 swiftlint lint --strict --baseline .swiftlint-baseline.json
 swiftformat --lint .
 swift build -Xswiftc -warnings-as-errors -Xcc -Werror
+python3 scripts/find-unused-code.py
 swift test --enable-code-coverage
 ```
+
+The unused-code scan reports any declaration in `Sources` that only its own declaration mentions; references from `Tests` do not count. Delete such code. A name the system or a test calls by convention (a delegate method, an `@main` type, a test hook) goes in `scripts/unused-code-allowlist.txt` with the reason.
 
 Add a meaningful regression test when changing behavior. Do not expand the lint baseline to hide new violations. The [quality guide](docs/code-quality.md) explains coverage and the optional local service integration tests; describe any environment-dependent checks you could not run.
 
@@ -61,6 +67,7 @@ For compatibility service changes, run these in `services/compatibility` after c
 ```sh
 npm ci
 npm run check
+npm run lint:css
 npm test
 npm run dry-run
 ```
@@ -75,4 +82,4 @@ Contributions are made under the repository's [GPL-3.0 license](LICENSE). Preser
 
 ## 中文提示
 
-欢迎提交问题、翻译、文档和代码改进；四种界面语言都可以用于 Issue。请使用现有问题表单，较大改动先讨论，PR 中说明改动效果和验证方式。安全漏洞请通过 [安全政策](SECURITY.md) 私下报告，社区行为问题请按 [行为准则](CODE_OF_CONDUCT.md) 联系维护者。ad-hoc 包仅用于构建验证，无法验证特权 Helper。
+欢迎提交问题、翻译、文档和代码改进；四种界面语言都可以用于 Issue。请使用现有问题表单，较大改动先讨论，PR 中说明改动效果和验证方式。安全漏洞请通过 [安全政策](SECURITY.md) 私下报告，社区行为问题请按 [行为准则](CODE_OF_CONDUCT.md) 联系维护者。ad-hoc 包仅用于构建验证，无法验证特权 Helper。克隆后请运行 `zsh scripts/install-git-hooks.sh` 启用提交钩子：提交前会依次检查 SwiftFormat、SwiftLint、Stylelint、未使用代码扫描和全部测试（含 UI 渲染测试），任何一项不通过都无法提交。

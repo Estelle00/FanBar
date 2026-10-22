@@ -68,6 +68,10 @@ jobs:
       - name: SwiftFormat
         run: swiftformat --lint --reporter github-actions-log .
 
+      - name: Unused code
+        # Every declaration in Sources must be used by Sources; see scripts/unused-code-allowlist.txt.
+        run: python3 scripts/find-unused-code.py
+
   test:
     name: Build (0 warnings) + tests + coverage
     needs: changes
