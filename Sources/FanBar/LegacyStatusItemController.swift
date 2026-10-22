@@ -250,7 +250,9 @@ final class LegacyStatusItemController: NSObject {
             iconAnimator.stop()
         }
         if !iconAnimator.isAnimating {
-            button.image = MenuBarIconAnimator.staticIcon(style: iconStyle, isManual: controller.isManualStatus)
+            let still = stillIcon(style: iconStyle, isManual: controller.isManualStatus)
+            // Assigning even an equal new image re-snapshots every menu bar.
+            if button.image !== still { button.image = still }
         }
         // Digits should not change their advance width as the reading changes.
         button.font = text == nil
@@ -331,6 +333,16 @@ final class LegacyStatusItemController: NSObject {
         let textWidth = (widestText as NSString).size(withAttributes: [.font: font]).width
         // icon + image/title gap + text + button's horizontal inset on both sides.
         return ceil(iconWidth + 3 + textWidth + 3)
+    }
+
+    private var stillIcons: [String: NSImage] = [:]
+
+    private func stillIcon(style: MenuBarIconStyle, isManual: Bool) -> NSImage {
+        let key = "\(style.rawValue)-\(isManual)"
+        if let cached = stillIcons[key] { return cached }
+        let image = MenuBarIconAnimator.staticIcon(style: style, isManual: isManual)
+        stillIcons[key] = image
+        return image
     }
 
     private func temperatureText(for controller: FanController) -> String {
