@@ -65,22 +65,70 @@ final class FanController: ObservableObject {
             case failure
         }
 
+        /// What the failure banner's one button does.
+        enum Recovery: Equatable {
+            case retry(RetryTarget)
+            case openHelperSettings
+            case enableHelper
+            case chooseTemperatureSource
+        }
+
+        enum RetryTarget: Equatable {
+            case preset(CoolingPresetID)
+            case fixed(Int)
+            case restore
+        }
+
         let kind: Kind
+        /// The complete sentence, error included: the CLI and the status line use it.
         private let localizedMessage: LocalizedControlText
         var message: String { localizedMessage.text }
+        /// The banner's first line, said in terms of the result.
+        private let localizedTitle: LocalizedControlText?
+        var title: String { localizedTitle?.text ?? message }
+        /// The banner's second line: who is driving the fans now.
+        private let localizedSafety: LocalizedControlText?
+        var safety: String? { localizedSafety?.text }
+        /// The fans were left where the user did not want them.
+        let isRisk: Bool
+        let recovery: Recovery?
+        /// The underlying error, kept for the details popover and bug reports.
+        let detail: String?
         /// Connection failures can be resolved from Login Items settings.
-        let offersHelperSettings: Bool
+        var offersHelperSettings: Bool { recovery == .openHelperSettings }
 
         init(kind: Kind, message: String, offersHelperSettings: Bool = false) {
-            self.kind = kind
-            localizedMessage = LocalizedControlText { message }
-            self.offersHelperSettings = offersHelperSettings
+            self.init(
+                kind: kind,
+                localizedMessage: LocalizedControlText { message },
+                offersHelperSettings: offersHelperSettings
+            )
         }
 
         init(kind: Kind, localizedMessage: LocalizedControlText, offersHelperSettings: Bool = false) {
+            self.init(
+                kind: kind,
+                localizedMessage: localizedMessage,
+                recovery: offersHelperSettings ? .openHelperSettings : nil
+            )
+        }
+
+        init(
+            kind: Kind,
+            localizedMessage: LocalizedControlText,
+            title: LocalizedControlText? = nil,
+            safety: LocalizedControlText? = nil,
+            isRisk: Bool = false,
+            recovery: Recovery? = nil,
+            detail: String? = nil
+        ) {
             self.kind = kind
             self.localizedMessage = localizedMessage
-            self.offersHelperSettings = offersHelperSettings
+            localizedTitle = title
+            localizedSafety = safety
+            self.isRisk = isRisk
+            self.recovery = recovery
+            self.detail = detail
         }
     }
 
@@ -166,6 +214,15 @@ final class FanController: ObservableObject {
     @Published private(set) var isRequestingHighTemperatureNotificationPermission = false
     @Published private(set) var switchFeedback: SwitchFeedbackSignal?
     @Published private(set) var modeActionFeedback: ModeActionFeedback?
+    /// What FanBar did, or is about to do, on its own; shown under the mode strip.
+    @Published private(set) var controlNotice: ControlNotice?
+    /// Set once the helper reports that this Mac's SMC has no fan mode key.
+    @Published private(set) var manualControlUnsupported = false
+    @Published private(set) var handBackRemindersEnabled = HandBackNotification.remindersEnabled
+    /// With the panel open, notices stay in the panel instead of becoming notifications.
+    private(set) var isPanelVisible = false
+    /// Opens the panel when a hand-back notification is clicked.
+    var showPanel: (() -> Void)?
 
     /// Describes the per-fan target produced by the active curve output.
     /// A single range keeps the compact UI useful when fans have different
@@ -231,6 +288,10 @@ final class FanController: ObservableObject {
     /// 2s refresh timer does not re-write an unchanged snapshot every tick.
     private var lastPublishedWidgetSnapshot: FanBarWidgetSnapshot?
     private var automaticRestoreTask: Task<Void, Never>?
+    /// Fires one minute before `automaticRestoreTask`.
+    private var automaticRestoreWarningTask: Task<Void, Never>?
+    /// Asked once per launch, when a timed manual mode first starts.
+    private var requestedHandBackNotificationPermission = false
     private var curveUpdateTask: Task<Void, Never>?
     /// When a profile edit arrives while a hardware write is in flight, re-apply once it finishes.
     private var pendingCurveHardwareApply = false
@@ -370,6 +431,11 @@ final class FanController: ObservableObject {
             automaticRestoreDuration = savedDuration
         }
         notificationCenter?.delegate = notificationDelegate
+        notificationDelegate.onResponse = { [weak self] actionIdentifier, requestIdentifier in
+            Task { @MainActor in
+                self?.handleNotificationResponse(action: actionIdentifier, request: requestIdentifier)
+            }
+        }
         refreshHelperStatus()
         refreshLaunchAtLoginStatus()
         refresh()
@@ -408,6 +474,9 @@ final class FanController: ObservableObject {
         automaticRestoreRemainingAtSleep = max(0, deadline.timeIntervalSinceNow)
         automaticRestoreTask?.cancel()
         automaticRestoreTask = nil
+        // Rescheduled from the remaining time on wake, warning included.
+        automaticRestoreWarningTask?.cancel()
+        automaticRestoreWarningTask = nil
     }
 
     private func resumeAutomaticRestoreAfterWake() {
@@ -741,6 +810,7 @@ final class FanController: ObservableObject {
     }
 
     func setFixedRPM(_ rpm: Int) {
+        controlNotice = nil
         applyFixedRPM(rpm, resetsAutomaticRestore: true)
     }
 
@@ -750,7 +820,22 @@ final class FanController: ObservableObject {
         guard let range = fixedRPMRange, range.contains(rpm) else {
             let failure = LocalizedControlText { fanBarText("转速超出风扇支持的范围", "That RPM is outside the fans' supported range") }
             messageText = failure
-            failModeAction(failure)
+            let title = fixedRPMRange.map { range in
+                LocalizedControlText {
+                    fanBarFormat(
+                        "转速需在 %@–%@ RPM 之间",
+                        "Choose %@–%@ RPM",
+                        FanBarNumberFormatter.grouped(range.lowerBound),
+                        FanBarNumberFormatter.grouped(range.upperBound)
+                    )
+                }
+            }
+            modeActionFeedback = ModeActionFeedback(
+                kind: .failure,
+                localizedMessage: failure,
+                title: title,
+                safety: LocalizedControlText { fanBarText("风扇保持原转速", "Fans keep their current speed") }
+            )
             return
         }
         setFixedRPM(rpm)
@@ -758,11 +843,7 @@ final class FanController: ObservableObject {
 
     private func applyFixedRPM(_ rpm: Int, resetsAutomaticRestore: Bool) {
         guard helperState == .enabled, !isBusy else {
-            let failure = LocalizedControlText {
-                fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
-            }
-            messageText = failure
-            failModeAction(failure)
+            rejectSwitchBeforeRequest()
             return
         }
         isBusy = true
@@ -799,9 +880,13 @@ final class FanController: ObservableObject {
                     fanBarFormat("控制失败：%@", "Control failed: %@", error.localizedDescription)
                 }
                 messageText = failure
-                failModeAction(
-                    failure,
-                    offersHelperSettings: helperSettingsActionNeeded(for: error)
+                failSwitch(
+                    error: error,
+                    message: failure,
+                    title: LocalizedControlText {
+                        fanBarText("风扇没有响应，固定转速未生效", "The fans didn't respond; the fixed speed didn't apply")
+                    },
+                    retry: .fixed(rpm)
                 )
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: false) }
             }
@@ -811,11 +896,128 @@ final class FanController: ObservableObject {
 
     /// Activates a cooling preset by running its temperature curve (menu entry).
     func setCoolingPreset(_ preset: CoolingPresetID) {
+        controlNotice = nil
         selectCoolingCurvePreset(preset, enableControl: true, resetsAutomaticRestore: true)
     }
 
     func setAutomatic() {
-        restoreAutomatic(triggeredByTimer: false)
+        controlNotice = nil
+        restoreAutomatic(trigger: .user)
+    }
+
+    // MARK: Notices and recovery
+
+    func dismissControlNotice() {
+        if case .handBackSoon = controlNotice {
+            removeDeliveredHandBackNotification(HandBackNotification.soonIdentifier)
+        }
+        controlNotice = nil
+    }
+
+    /// Turns a handed-back mode on again for `duration`, as "Turn on again" and "Try again" do.
+    func turnOnAgain(_ resumable: ResumableMode, for duration: AutomaticRestoreDuration) {
+        guard mode == .automatic else { return }
+        removeDeliveredHandBackNotification(HandBackNotification.endedIdentifier)
+        automaticRestoreDuration = duration
+        switch resumable {
+        case .preset(let preset): setCoolingPreset(preset)
+        case .fixed(let rpm):
+            controlNotice = nil
+            setFixedRPM(rpm)
+        }
+    }
+
+    /// Runs the failure banner's button.
+    func performRecovery(_ recovery: ModeActionFeedback.Recovery) {
+        switch recovery {
+        case .retry(.preset(let preset)): setCoolingPreset(preset)
+        case .retry(.fixed(let rpm)): setFixedRPM(rpm)
+        case .retry(.restore): setAutomatic()
+        case .openHelperSettings: openHelperSettings()
+        case .enableHelper: enableHelper()
+        case .chooseTemperatureSource:
+            // The source picker lives with the curve in Settings.
+            clearModeActionFeedback()
+            SettingsWindowPresenter.shared.show(controller: self)
+        }
+    }
+
+    #if DEBUG
+    /// Puts the panel into states that otherwise need real fans or a running timer.
+    func setControlStateForTesting(
+        notice: ControlNotice?,
+        feedback: ModeActionFeedback? = nil,
+        unsupported: Bool = false
+    ) {
+        controlNotice = notice
+        modeActionFeedback = feedback
+        manualControlUnsupported = unsupported
+    }
+    #endif
+
+    func setPanelVisible(_ visible: Bool) {
+        isPanelVisible = visible
+        // Whatever the panel now shows needs no banner of its own.
+        if visible { removeDeliveredHandBackNotification(HandBackNotification.soonIdentifier) }
+    }
+
+    func setHandBackRemindersEnabled(_ enabled: Bool) {
+        handBackRemindersEnabled = enabled
+        UserDefaults.standard.set(enabled, forKey: HandBackNotification.remindersEnabledKey)
+        if enabled { requestHandBackNotificationPermissionIfNeeded(force: true) }
+    }
+
+    /// Asked when a timed manual mode starts, while the user is looking at
+    /// FanBar, rather than in the middle of whatever they do next.
+    private func requestHandBackNotificationPermissionIfNeeded(force: Bool = false) {
+        guard handBackRemindersEnabled, let notificationCenter,
+              force || !requestedHandBackNotificationPermission else { return }
+        requestedHandBackNotificationPermission = true
+        notificationCenter.requestAuthorization(options: [.alert, .sound]) { _, _ in }
+    }
+
+    /// Posts a hand-back notice as a notification, only while the panel is closed.
+    private func postHandBackNotification(_ notice: ControlNotice, identifier: String) {
+        guard !isPanelVisible, handBackRemindersEnabled, let notificationCenter else { return }
+        let sessionDuration: AutomaticRestoreDuration
+        switch notice {
+        case .handBackSoon(_, let duration, _), .handedBack(_, _, let duration, _):
+            sessionDuration = duration
+        }
+        notificationCenter.setNotificationCategories(HandBackNotification.categories(sessionDuration: sessionDuration))
+        let request = UNNotificationRequest(
+            identifier: identifier,
+            content: ControlNoticeText.notificationContent(for: notice, controller: self),
+            trigger: nil
+        )
+        notificationCenter.add(request) { error in
+            if let error {
+                NSLog("FanBar hand-back notification failed: %@", error.localizedDescription)
+            }
+        }
+    }
+
+    private func removeDeliveredHandBackNotification(_ identifier: String) {
+        notificationCenter?.removeDeliveredNotifications(withIdentifiers: [identifier])
+        notificationCenter?.removePendingNotificationRequests(withIdentifiers: [identifier])
+    }
+
+    func handleNotificationResponse(action: String, request: String) {
+        guard request.hasPrefix(HandBackNotification.threadIdentifier) else { return }
+        switch action {
+        case HandBackNotification.keepSameAction:
+            guard mode != .automatic else { return }
+            setAutomaticRestoreDuration(automaticRestoreDuration)
+        case HandBackNotification.keepOnAction:
+            guard mode != .automatic else { return }
+            setAutomaticRestoreDuration(.never)
+        case HandBackNotification.turnOnAgainAction:
+            guard case .handedBack(let resumable, _, let duration, _) = controlNotice else { return }
+            turnOnAgain(resumable, for: duration)
+        default:
+            // A click on the notification itself opens the panel, where the notice waits.
+            showPanel?()
+        }
     }
 
     /// Enables smart curve control for the currently selected panel preset.
@@ -1132,22 +1334,6 @@ final class FanController: ObservableObject {
         setCurveProfile(next)
     }
 
-    func addCurvePoint() {
-        var next = curveProfile
-        guard next.points.count < FanCurveProfile.maximumPointCount else { return }
-        let last = next.points.max(by: { $0.celsius < $1.celsius })
-        let celsius = min(
-            (last?.celsius ?? 60) + 5,
-            FanCurveProfile.maximumCelsius
-        )
-        let fraction = min(
-            max(last?.fraction ?? 0.5, FanCurveProfile.minimumFraction),
-            FanCurveProfile.maximumFraction
-        )
-        next.points.append(FanCurvePoint(celsius: celsius, fraction: fraction))
-        setCurveProfile(next)
-    }
-
     /// Inserts a control point after `id` and returns the new point's id.
     @discardableResult
     func insertCurvePoint(after id: UUID) -> UUID? {
@@ -1252,27 +1438,18 @@ final class FanController: ObservableObject {
         }
     }
 
-    // swiftlint:disable:next function_body_length
     private func enableTemperatureCurve(
         preset: CoolingPresetID,
         profile: FanCurveProfile,
         resetsAutomaticRestore: Bool = true
     ) {
         guard helperState == .enabled, !isBusy else {
-            let failure = LocalizedControlText {
-                fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
-            }
-            messageText = failure
-            failModeAction(failure)
+            rejectSwitchBeforeRequest()
             return
         }
         guard let reading = latestThermalReading(),
               let temperature = controlTemperature(from: reading, profile: profile) else {
-            let failure = LocalizedControlText {
-                fanBarFormat("未读取到可用于%@温控的温度来源", "No temperature is available for %@ curve control", profile.sensor.title)
-            }
-            messageText = failure
-            failModeAction(failure)
+            failMissingTemperature(for: preset, profile: profile)
             return
         }
 
@@ -1313,20 +1490,7 @@ final class FanController: ObservableObject {
                 curveControlFailure = CompatibilityControlFailure(error: error)
                 curveControlEvidence = .requestFailed
                 clearTemperatureCurveState()
-                let failure = LocalizedControlText { [weak self = self] in
-                    guard let self else { return "" }
-                    return fanBarFormat(
-                        "%@温控开启失败：%@",
-                        "Unable to enable %@ curve: %@",
-                        self.presetTitle(for: preset),
-                        error.localizedDescription
-                    )
-                }
-                messageText = failure
-                failModeAction(
-                    failure,
-                    offersHelperSettings: helperSettingsActionNeeded(for: error)
-                )
+                failCurveActivation(error: error, preset: preset)
                 if resetsAutomaticRestore { switchFeedback = .ended(successfully: false) }
             }
             isBusy = false
@@ -1345,7 +1509,7 @@ final class FanController: ObservableObject {
                 messageText = LocalizedControlText {
                     fanBarText("温度传感器不可用，正在恢复系统控制…", "Temperature sensor unavailable; restoring system control…")
                 }
-                restoreAutomatic(triggeredByTimer: false)
+                restoreAutomatic(trigger: .missingTemperature(curveProfile.sensor))
             }
             return
         }
@@ -1495,18 +1659,49 @@ final class FanController: ObservableObject {
         }
     }
 
-    private func restoreAutomatic(triggeredByTimer: Bool) {
+    /// Why control is returning to macOS; only the user's own choice goes unannounced.
+    enum RestoreTrigger: Equatable {
+        case user
+        case timer
+        case missingTemperature(FanCurveSensor)
+
+        var handBackReason: HandBackReason? {
+            switch self {
+            case .user: nil
+            case .timer: .timer
+            case .missingTemperature(let sensor): .missingTemperature(sensor)
+            }
+        }
+    }
+
+    /// The manual mode running now, in a form "Turn on again" can repeat.
+    private var currentResumableMode: ResumableMode? {
+        switch mode {
+        case .automatic: nil
+        case .temperatureCurve: .preset(curveCoolingPreset)
+        case .fixed(let rpm): .fixed(rpm)
+        }
+    }
+
+    // Restoring is one transaction: announce, request, then report the outcome.
+    // swiftlint:disable:next function_body_length
+    private func restoreAutomatic(trigger: RestoreTrigger) {
+        let triggeredByTimer = trigger == .timer
         guard !isBusy else {
             if triggeredByTimer {
                 scheduleAutomaticRestoreRetry(after: 1)
             }
             return
         }
+        // Captured before the session is cleared, so the notice can offer the same mode back.
+        let resumable = currentResumableMode
+        let sessionDuration = automaticRestoreDuration
         guard helperState == .enabled else {
             mode = .automatic
             clearTemperatureCurveState()
             clearAutomaticRestore()
             messageText = LocalizedControlText { [state = helperState] in state.title }
+            announceHandBack(of: resumable, trigger: trigger, duration: sessionDuration)
             return
         }
         isBusy = true
@@ -1534,6 +1729,7 @@ final class FanController: ObservableObject {
                     compatibilityControlText = LocalizedControlText { fanBarText("已恢复 macOS 自动控制", "macOS automatic control restored") }
                 }
                 clearModeActionFeedback()
+                announceHandBack(of: resumable, trigger: trigger, duration: sessionDuration)
                 switchFeedback = .ended(successfully: true)
             } catch {
                 let failure = LocalizedControlText {
@@ -1541,9 +1737,17 @@ final class FanController: ObservableObject {
                 }
                 messageText = failure
                 if compatibilityControlMessage != nil { compatibilityControlText = failure }
-                failModeAction(
-                    failure,
-                    offersHelperSettings: helperSettingsActionNeeded(for: error)
+                let isConnection = helperSettingsActionNeeded(for: error)
+                modeActionFeedback = ModeActionFeedback(
+                    kind: .failure,
+                    localizedMessage: failure,
+                    title: isConnection
+                        ? Self.unreachableServiceTitle
+                        : LocalizedControlText { fanBarText("没能交回 macOS", "Couldn't hand back to macOS") },
+                    safety: safetyLine(),
+                    isRisk: true,
+                    recovery: isConnection ? .openHelperSettings : .retry(.restore),
+                    detail: error.localizedDescription
                 )
                 switchFeedback = .ended(successfully: false)
                 if triggeredByTimer {
@@ -1554,8 +1758,26 @@ final class FanController: ObservableObject {
         }
     }
 
+    /// Records a hand-back the user did not ask for, and tells them about it:
+    /// in the panel when it is open, otherwise as a notification.
+    private func announceHandBack(
+        of resumable: ResumableMode?,
+        trigger: RestoreTrigger,
+        duration: AutomaticRestoreDuration
+    ) {
+        removeDeliveredHandBackNotification(HandBackNotification.soonIdentifier)
+        guard let resumable, let reason = trigger.handBackReason else {
+            controlNotice = nil
+            return
+        }
+        let notice = ControlNotice.handedBack(mode: resumable, reason: reason, duration: duration, at: Date())
+        controlNotice = notice
+        postHandBackNotification(notice, identifier: HandBackNotification.endedIdentifier)
+    }
+
     private func scheduleAutomaticRestore(interval overrideInterval: TimeInterval? = nil) {
         automaticRestoreTask?.cancel()
+        cancelHandBackWarning()
         automaticRestoreRemainingAtSleep = nil
         guard mode != .automatic, automaticRestoreDuration != .never else {
             automaticRestoreDeadline = nil
@@ -1563,6 +1785,7 @@ final class FanController: ObservableObject {
             return
         }
 
+        requestHandBackNotificationPermissionIfNeeded()
         let interval = overrideInterval
             ?? automaticRestoreTestInterval
             ?? TimeInterval(automaticRestoreDuration.rawValue)
@@ -1577,6 +1800,34 @@ final class FanController: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.restoreAutomaticAfterTimer()
         }
+        if let warningDelay = HandBackWarning.delay(untilDeadline: interval) {
+            automaticRestoreWarningTask = Task { @MainActor [weak self] in
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(warningDelay * 1_000_000_000))
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
+                self?.warnBeforeHandBack(deadline: deadline)
+            }
+        }
+    }
+
+    /// The last minute: offer to extend before the fans go back to macOS.
+    private func warnBeforeHandBack(deadline: Date) {
+        guard mode != .automatic, automaticRestoreDeadline == deadline,
+              let resumable = currentResumableMode else { return }
+        let notice = ControlNotice.handBackSoon(mode: resumable, duration: automaticRestoreDuration, deadline: deadline)
+        controlNotice = notice
+        postHandBackNotification(notice, identifier: HandBackNotification.soonIdentifier)
+    }
+
+    /// Ends a pending warning: the session was extended, changed or is over.
+    private func cancelHandBackWarning() {
+        automaticRestoreWarningTask?.cancel()
+        automaticRestoreWarningTask = nil
+        if case .handBackSoon = controlNotice { controlNotice = nil }
+        removeDeliveredHandBackNotification(HandBackNotification.soonIdentifier)
     }
 
     private func restoreAutomaticAfterTimer() {
@@ -1584,7 +1835,7 @@ final class FanController: ObservableObject {
             clearAutomaticRestore()
             return
         }
-        restoreAutomatic(triggeredByTimer: true)
+        restoreAutomatic(trigger: .timer)
     }
 
     private func scheduleAutomaticRestoreRetry(after interval: TimeInterval) {
@@ -1602,11 +1853,142 @@ final class FanController: ObservableObject {
 
     private func clearAutomaticRestore() {
         automaticRestoreTask?.cancel()
+        cancelHandBackWarning()
         automaticRestoreRemainingAtSleep = nil
         automaticRestoreTask = nil
         automaticRestoreDeadline = nil
         // Back in Automatic: the next manual session starts from the default.
         automaticRestoreDuration = defaultAutomaticRestoreDuration
+    }
+
+    static let unreachableServiceTitle = LocalizedControlText {
+        fanBarText("连不上控制服务", "Can't reach the control service")
+    }
+
+    /// The failure banner's second line: who is driving the fans after the request failed.
+    private func safetyLine() -> LocalizedControlText {
+        switch mode {
+        case .automatic:
+            return LocalizedControlText { fanBarText("风扇仍由 macOS 控制", "macOS is still controlling the fans") }
+        case .fixed(let rpm):
+            return LocalizedControlText {
+                fanBarFormat("风扇仍保持 %@ RPM", "Fans are still held at %@ RPM", FanBarNumberFormatter.grouped(rpm))
+            }
+        case .temperatureCurve:
+            let preset = curveCoolingPreset
+            return LocalizedControlText { [weak self = self] in
+                guard let self else { return "" }
+                return fanBarFormat("风扇仍按%@运行", "Fans still follow %@", self.presetTitle(for: preset))
+            }
+        }
+    }
+
+    /// The helper refused to start a preset's curve.
+    private func failCurveActivation(error: Error, preset: CoolingPresetID) {
+        let failure = LocalizedControlText { [weak self = self] in
+            guard let self else { return "" }
+            return fanBarFormat(
+                "%@温控开启失败：%@",
+                "Unable to enable %@ curve: %@",
+                self.presetTitle(for: preset),
+                error.localizedDescription
+            )
+        }
+        messageText = failure
+        failSwitch(
+            error: error,
+            message: failure,
+            title: LocalizedControlText { [weak self = self] in
+                guard let self else { return "" }
+                return fanBarFormat(
+                    "风扇没有响应，%@未开启",
+                    "The fans didn't respond; %@ didn't start",
+                    self.presetTitle(for: preset)
+                )
+            },
+            retry: .preset(preset)
+        )
+    }
+
+    /// A curve that cannot start because its temperature source reads nothing.
+    private func failMissingTemperature(for preset: CoolingPresetID, profile: FanCurveProfile) {
+        let failure = LocalizedControlText {
+            fanBarFormat("未读取到可用于%@温控的温度来源", "No temperature is available for %@ curve control", profile.sensor.title)
+        }
+        messageText = failure
+        let sensor = profile.sensor
+        modeActionFeedback = ModeActionFeedback(
+            kind: .failure,
+            localizedMessage: failure,
+            title: LocalizedControlText { [weak self = self] in
+                guard let self else { return "" }
+                return fanBarFormat(
+                    "读不到 %@ 温度，无法开启%@",
+                    "Can't read the %@ temperature, so %@ can't start",
+                    sensor.shortName,
+                    self.presetTitle(for: preset)
+                )
+            },
+            safety: safetyLine(),
+            recovery: .chooseTemperatureSource
+        )
+    }
+
+    /// A switch the controller refused before asking the helper.
+    private func rejectSwitchBeforeRequest() {
+        let failure = LocalizedControlText {
+            fanBarText("请先启用并批准控制服务", "Enable and approve the control service first")
+        }
+        messageText = failure
+        let title: LocalizedControlText
+        let recovery: ModeActionFeedback.Recovery?
+        if helperState == .enabled {
+            // Only reachable while another switch is still in flight.
+            title = LocalizedControlText { fanBarText("上一次切换还没完成", "The last switch hasn't finished yet") }
+            recovery = nil
+        } else {
+            title = LocalizedControlText { fanBarText("控制服务未启用", "The control service is off") }
+            switch helperState {
+            case .notRegistered: recovery = .enableHelper
+            case .requiresApproval: recovery = .openHelperSettings
+            case .enabled, .unavailable: recovery = nil
+            }
+        }
+        modeActionFeedback = ModeActionFeedback(
+            kind: .failure,
+            localizedMessage: failure,
+            title: title,
+            safety: safetyLine(),
+            recovery: recovery
+        )
+    }
+
+    /// Reports a helper request that failed, or marks the Mac as unable to
+    /// take manual control at all when that is what the helper said.
+    private func failSwitch(
+        error: Error,
+        message: LocalizedControlText,
+        title: LocalizedControlText,
+        retry: ModeActionFeedback.RetryTarget
+    ) {
+        if (error as? HelperClientError)?.indicatesMissingFanModeKey == true {
+            // A permanent hardware limit, not a failed attempt: the panel
+            // disables the mode strip and explains instead of failing each time.
+            manualControlUnsupported = true
+            clearModeActionFeedback()
+            return
+        }
+        // A failed start from Automatic leaves no session whose duration to keep.
+        if mode == .automatic { automaticRestoreDuration = defaultAutomaticRestoreDuration }
+        let isConnection = helperSettingsActionNeeded(for: error)
+        modeActionFeedback = ModeActionFeedback(
+            kind: .failure,
+            localizedMessage: message,
+            title: isConnection ? Self.unreachableServiceTitle : title,
+            safety: safetyLine(),
+            recovery: isConnection ? .openHelperSettings : .retry(retry),
+            detail: error.localizedDescription
+        )
     }
 
     /// Starts/replaces local mode feedback so a second attempt immediately

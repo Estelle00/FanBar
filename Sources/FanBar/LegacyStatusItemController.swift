@@ -38,6 +38,7 @@ final class LegacyStatusItemController: NSObject {
         guard statusItem == nil else { return }
 
         self.controller = controller
+        controller.showPanel = { [weak self] in self?.showPopover() }
 
         // A square item accommodates only the icon; text modes need their intrinsic width.
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -249,7 +250,9 @@ final class LegacyStatusItemController: NSObject {
             iconAnimator.stop()
         }
         if !iconAnimator.isAnimating {
-            button.image = MenuBarIconAnimator.staticIcon(style: iconStyle, isManual: controller.isManualStatus)
+            let still = stillIcon(style: iconStyle, isManual: controller.isManualStatus)
+            // Assigning even an equal new image re-snapshots every menu bar.
+            if button.image !== still { button.image = still }
         }
         // Digits should not change their advance width as the reading changes.
         button.font = text == nil
@@ -332,6 +335,16 @@ final class LegacyStatusItemController: NSObject {
         return ceil(iconWidth + 3 + textWidth + 3)
     }
 
+    private var stillIcons: [String: NSImage] = [:]
+
+    private func stillIcon(style: MenuBarIconStyle, isManual: Bool) -> NSImage {
+        let key = "\(style.rawValue)-\(isManual)"
+        if let cached = stillIcons[key] { return cached }
+        let image = MenuBarIconAnimator.staticIcon(style: style, isManual: isManual)
+        stillIcons[key] = image
+        return image
+    }
+
     private func temperatureText(for controller: FanController) -> String {
         controller.temperatureHistory.last?.cpuDisplayCelsius
             .map { "\(Int($0.rounded()))°" } ?? "—°"
@@ -354,6 +367,7 @@ final class LegacyStatusItemController: NSObject {
 extension LegacyStatusItemController: NSPopoverDelegate {
     func popoverWillShow(_ notification: Notification) {
         panelVisibility.isVisible = true
+        controller?.setPanelVisible(true)
         controller?.refreshServiceStatus()
     }
 
@@ -361,6 +375,7 @@ extension LegacyStatusItemController: NSPopoverDelegate {
         // Also clean up when AppKit closes the transient popover itself.
         stopOutsideClickMonitoring()
         panelVisibility.isVisible = false
+        controller?.setPanelVisible(false)
         schedulePanelRelease()
     }
 }

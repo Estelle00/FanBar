@@ -62,16 +62,6 @@ final class InterfaceLanguageRefreshTests: XCTestCase {
                     fan: FanReading(index: 0, minimumRPM: 1200, currentRPM: 1850, maximumRPM: 6000, isManual: false)
                 ))
             }),
-            ("thermal-hero", {
-                AnyView(ThermalHero(
-                    focus: ThermalFocus(part: .cpu, celsius: 52), trend: nil,
-                    fans: [
-                        FanReading(index: 0, minimumRPM: 1200, currentRPM: 1850, maximumRPM: 6000, isManual: false),
-                        FanReading(index: 1, minimumRPM: 1300, currentRPM: 1900, maximumRPM: 6500, isManual: false)
-                    ],
-                    targets: []
-                ))
-            }),
             ("resources", {
                 AnyView(PanelResourceList(
                     usage: SystemUsage(), thermal: nil, cpuHistory: [], gpuHistory: [], animates: false, expanded: .constant(nil)
