@@ -12,10 +12,13 @@ final class ControlNoticeRenderingTests: XCTestCase {
     override func setUp() async throws {
         savedLanguage = UserDefaults.standard.object(forKey: FanBarLanguage.preferenceKey)
         UserDefaults.standard.set(FanBarLanguage.chinese.rawValue, forKey: FanBarLanguage.preferenceKey)
+        // CI runners have short displays that would cap the panel's height.
+        FanMenu.visibleScreenHeight = { 4_000 }
     }
 
     override func tearDown() async throws {
         UserDefaults.standard.set(savedLanguage, forKey: FanBarLanguage.preferenceKey)
+        FanMenu.visibleScreenHeight = { NSScreen.main?.visibleFrame.height ?? 800 }
     }
 
     private func makeHost(_ controller: FanController, scheme: ColorScheme = .light) -> NSHostingView<some View> {

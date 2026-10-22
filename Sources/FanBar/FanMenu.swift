@@ -29,6 +29,9 @@ struct FanMenu: View {
 
     /// Width of the v2 panel.
     static let panelWidth: CGFloat = 368
+    /// The panel never grows past the screen; layout tests raise this so a
+    /// short CI display cannot cap the height they measure.
+    static var visibleScreenHeight: () -> CGFloat = { NSScreen.main?.visibleFrame.height ?? 800 }
     static let padding: CGFloat = 16
     static let headerIconSize: CGFloat = 32
     static let headerSpacing: CGFloat = 10
@@ -99,7 +102,7 @@ struct FanMenu: View {
                         .onChange(of: proxy.size.height) { updateContentHeight($0) }
                 })
         }
-        .frame(width: Self.panelWidth, height: min(contentHeight, max(240, (NSScreen.main?.visibleFrame.height ?? 800) - 70)))
+        .frame(width: Self.panelWidth, height: min(contentHeight, max(240, Self.visibleScreenHeight() - 70)))
         .background(PanelGlassBackground())
         .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
     }
