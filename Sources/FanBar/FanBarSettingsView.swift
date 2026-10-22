@@ -205,7 +205,7 @@ struct FanBarSettingsView: View {
     @ViewBuilder
     private var generalTab: some View {
         fanControlSection
-        notificationsSection
+        NotificationSettingsSection(controller: controller)
         appSection
         ToolIntegrationsSection()
         compatibilitySection
@@ -319,73 +319,6 @@ struct FanBarSettingsView: View {
             .settingsRow()
             .accessibilityElement(children: .contain)
         }
-    }
-
-    private var notificationsSection: some View {
-        SettingsSection(title: fanBarText("通知", "Notifications")) {
-            Toggle(
-                isOn: Binding(
-                    get: { controller.highTemperatureNotificationsEnabled },
-                    set: { controller.setHighTemperatureNotificationsEnabled($0) }
-                )
-            ) {
-                SettingsRowText(
-                    title: fanBarText("高温提醒", "High-temperature alerts"),
-                    detail: fanBarText(
-                        "同一次高温只提醒一次，降温后重置。面板会同时显示过热提示。",
-                        "One alert per high-temperature episode; it resets after cooling down. The panel shows the same warning."
-                    )
-                )
-            }
-            .toggleStyle(.switch)
-            .disabled(controller.isRequestingHighTemperatureNotificationPermission)
-            .settingsRow()
-
-            SettingsChrome.rowDivider
-
-            thresholdRow
-
-            SettingsChrome.rowDivider
-
-            ThermalAlertSoundRow(controller: controller)
-        }
-    }
-
-    /// Inline stepper: reachable by keyboard and VoiceOver without a
-    /// disclosure step, and matches the curve editor's Advanced rows.
-    private var thresholdRow: some View {
-        let range = ThermalAlertSettings.thresholdRange
-        let value = controller.highTemperatureThresholdCelsius
-        let valueText = String(format: "%.0f°C", value)
-        return HStack {
-            SettingsRowText(
-                title: fanBarText("提醒温度", "Alert temperature"),
-                detail: fanBarFormat(
-                    "默认 %.0f°C；面板和曲线上的告警线使用同一数值。",
-                    "Default %.0f°C. The panel and the curve's alert line use the same value.",
-                    ThermalAlertSettings.defaultThresholdCelsius
-                )
-            )
-            Spacer(minLength: 12)
-            Stepper(
-                value: Binding(
-                    get: { Int(controller.highTemperatureThresholdCelsius.rounded()) },
-                    set: { controller.setHighTemperatureThreshold(Double($0)) }
-                ),
-                in: Int(range.lowerBound)...Int(range.upperBound)
-            ) {
-                // The panel's warm step: this value is where its alert line sits.
-                Text(valueText)
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundColor(PanelPalette(colorScheme: colorScheme).warmInk)
-                    .frame(width: 40, alignment: .trailing)
-            }
-            .fixedSize()
-            .accessibilityLabel(fanBarText("提醒温度", "Alert temperature"))
-            .accessibilityValue(valueText)
-        }
-        .settingsRow()
-        .disabled(!controller.highTemperatureNotificationsEnabled)
     }
 
     private var automaticRestoreRow: some View {
@@ -544,5 +477,114 @@ struct ControlServiceBanner: View {
         )
         .accessibilityElement(children: .contain)
         .environment(\.locale, (FanBarLanguage(rawValue: languageRawValue) ?? .system).locale)
+    }
+}
+
+/// Turns the one-minute warning and the hand-back notification on or off.
+private struct HandBackReminderRow: View {
+    /// Repaints the copy when the interface language changes.
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+    @ObservedObject var controller: FanController
+
+    var body: some View {
+        Toggle(
+            isOn: Binding(
+                get: { controller.handBackRemindersEnabled },
+                set: { controller.setHandBackRemindersEnabled($0) }
+            )
+        ) {
+            // swiftlint:disable line_length
+            SettingsRowText(
+                title: fanBarText("控制交回 macOS 前提醒", "Remind before handing back to macOS"),
+                detail: fanBarText(
+                    "定时结束前 1 分钟提醒，可以直接延长；没有处理，交回后再提示一次。面板开着时只在面板里显示。",
+                    "One minute before a timer ends, with a button to extend; if nothing changes, once more after the hand-back. With the panel open, it shows there instead."
+                )
+            )
+            // swiftlint:enable line_length
+        }
+        .toggleStyle(.switch)
+        .settingsRow()
+    }
+}
+
+/// High-temperature alerts and hand-back reminders.
+private struct NotificationSettingsSection: View {
+    /// Repaints the copy when the interface language changes.
+    @AppStorage(FanBarLanguage.preferenceKey)
+    private var languageRawValue = FanBarLanguage.defaultValue
+    @ObservedObject var controller: FanController
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        SettingsSection(title: fanBarText("通知", "Notifications")) {
+            HandBackReminderRow(controller: controller)
+
+            SettingsChrome.rowDivider
+
+            Toggle(
+                isOn: Binding(
+                    get: { controller.highTemperatureNotificationsEnabled },
+                    set: { controller.setHighTemperatureNotificationsEnabled($0) }
+                )
+            ) {
+                SettingsRowText(
+                    title: fanBarText("高温提醒", "High-temperature alerts"),
+                    detail: fanBarText(
+                        "同一次高温只提醒一次，降温后重置。面板会同时显示过热提示。",
+                        "One alert per high-temperature episode; it resets after cooling down. The panel shows the same warning."
+                    )
+                )
+            }
+            .toggleStyle(.switch)
+            .disabled(controller.isRequestingHighTemperatureNotificationPermission)
+            .settingsRow()
+
+            SettingsChrome.rowDivider
+
+            thresholdRow
+
+            SettingsChrome.rowDivider
+
+            ThermalAlertSoundRow(controller: controller)
+        }
+    }
+
+    /// Inline stepper: reachable by keyboard and VoiceOver without a
+    /// disclosure step, and matches the curve editor's Advanced rows.
+    private var thresholdRow: some View {
+        let range = ThermalAlertSettings.thresholdRange
+        let value = controller.highTemperatureThresholdCelsius
+        let valueText = String(format: "%.0f°C", value)
+        return HStack {
+            SettingsRowText(
+                title: fanBarText("提醒温度", "Alert temperature"),
+                detail: fanBarFormat(
+                    "默认 %.0f°C；面板和曲线上的告警线使用同一数值。",
+                    "Default %.0f°C. The panel and the curve's alert line use the same value.",
+                    ThermalAlertSettings.defaultThresholdCelsius
+                )
+            )
+            Spacer(minLength: 12)
+            Stepper(
+                value: Binding(
+                    get: { Int(controller.highTemperatureThresholdCelsius.rounded()) },
+                    set: { controller.setHighTemperatureThreshold(Double($0)) }
+                ),
+                in: Int(range.lowerBound)...Int(range.upperBound)
+            ) {
+                // The panel's warm step: this value is where its alert line sits.
+                Text(valueText)
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundColor(PanelPalette(colorScheme: colorScheme).warmInk)
+                    .frame(width: 40, alignment: .trailing)
+            }
+            .fixedSize()
+            .accessibilityLabel(fanBarText("提醒温度", "Alert temperature"))
+            .accessibilityValue(valueText)
+        }
+        .settingsRow()
+        .disabled(!controller.highTemperatureNotificationsEnabled)
     }
 }

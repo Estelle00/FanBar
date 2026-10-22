@@ -38,6 +38,7 @@ final class LegacyStatusItemController: NSObject {
         guard statusItem == nil else { return }
 
         self.controller = controller
+        controller.showPanel = { [weak self] in self?.showPopover() }
 
         // A square item accommodates only the icon; text modes need their intrinsic width.
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -354,6 +355,7 @@ final class LegacyStatusItemController: NSObject {
 extension LegacyStatusItemController: NSPopoverDelegate {
     func popoverWillShow(_ notification: Notification) {
         panelVisibility.isVisible = true
+        controller?.setPanelVisible(true)
         controller?.refreshServiceStatus()
     }
 
@@ -361,6 +363,7 @@ extension LegacyStatusItemController: NSPopoverDelegate {
         // Also clean up when AppKit closes the transient popover itself.
         stopOutsideClickMonitoring()
         panelVisibility.isVisible = false
+        controller?.setPanelVisible(false)
         schedulePanelRelease()
     }
 }

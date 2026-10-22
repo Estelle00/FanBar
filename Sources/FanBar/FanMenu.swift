@@ -25,6 +25,7 @@ struct FanMenu: View {
     @State private var expandedResource: PanelResourceList.Resource?
     @State private var fixedSliderRPM = 0.0
     @State private var isDraggingFixedSlider = false
+    @State private var isShowingFailureDetail = false
 
     /// Width of the v2 panel.
     static let panelWidth: CGFloat = 368
@@ -407,7 +408,7 @@ struct FanMenu: View {
             PanelSegmentedControl(options: modeOptions, selection: selectedMode, systemImage: modeIcon) { option in
                 select(option)
             }
-            .disabled(controller.isBusy || controller.helperState != .enabled)
+            .disabled(controller.isBusy || controller.helperState != .enabled || controller.manualControlUnsupported)
             .animation(
                 animatesPanel ? .spring(response: 0.3, dampingFraction: 1) : .easeOut(duration: 0.15),
                 value: selectedMode
@@ -440,7 +441,14 @@ struct FanMenu: View {
                 modeLine
                     .padding(.top, 8)
             }
+
+            if controller.manualControlUnsupported {
+                unsupportedNote
+            } else if controller.controlNotice != nil {
+                controlNoticeRow
+            }
         }
+        .animation(animatesPanel ? .easeOut(duration: 0.2) : .easeOut(duration: 0.15), value: controller.controlNotice)
     }
 
     private func select(_ option: ModeOption) {
@@ -565,83 +573,295 @@ struct FanMenu: View {
         .accessibilityHidden(inProgressFeedback == nil)
     }
 
-    // swiftlint:disable:next function_body_length
+    /// What failed, whether the fans are safe, one way to recover, and the
+    /// raw error behind the info button. Overlays the strip, so it never resizes the panel.
     private func modeActionFeedbackBanner(
         _ feedback: FanController.ModeActionFeedback
     ) -> some View {
-        let isFailure = feedback.kind == .failure
-        let tint = isFailure ? palette.hot : palette.accent
+        HStack(alignment: .center, spacing: 9) {
+            Image(systemName: feedback.recovery == .openHelperSettings ? "powerplug" : "exclamationmark.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(palette.hot)
+                .frame(width: 16)
+                .accessibilityHidden(true)
 
-        return HStack(alignment: .center, spacing: 9) {
-            Group {
-                if isFailure {
-                    Image(systemName: "exclamationmark.circle.fill")
-                } else {
-                    ProgressView()
-                        .scaleEffect(0.65)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(feedback.title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.primary)
+                if let safety = feedback.safety {
+                    Text(safety)
+                        .font(.system(size: 11, weight: feedback.isRisk ? .medium : .regular).monospacedDigit())
+                        .foregroundColor(feedback.isRisk ? palette.hot : palette.secondaryText)
                 }
             }
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(tint)
-            .frame(width: 16, height: 16)
-            .accessibilityHidden(true)
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // The banner overlays the fixed-height control strip, so it must not grow.
-            Text(feedback.message)
-                .font(.caption)
-                .foregroundColor(isFailure ? .primary : .secondary)
-                .lineLimit(2)
-                .minimumScaleFactor(0.85)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help(feedback.message)
-
-            if isFailure {
-                if feedback.offersHelperSettings {
-                    Button(fanBarText("打开系统设置", "Open System Settings")) {
-                        controller.openHelperSettings()
-                    }
-                    .buttonStyle(.plain)
-                    .font(.caption.weight(.medium))
-                    .foregroundColor(palette.accent)
-                    .fixedSize()
-                    .accessibilityHint(fanBarText(
-                        "前往“登录项与扩展”批准控制服务",
-                        "Approve the control service in Login Items & Extensions"
-                    ))
-                }
-
-                Button {
-                    controller.clearModeActionFeedback()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .frame(width: 18, height: 18)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.secondary)
-                .accessibilityLabel(fanBarText("关闭错误提示", "Dismiss error"))
-            }
+            failureActions(feedback)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 2)
+        .padding(.leading, 10)
+        .padding(.trailing, 4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Two lines need more than the strip's height; reach into the gaps
+        // around it instead of growing the panel.
+        .padding(.vertical, -5)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(tint.opacity(isFailure ? 0.09 : 0.06))
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(palette.raised)
+                .shadow(color: .black.opacity(0.08), radius: 1.5, y: 1)
+                .padding(.vertical, -5)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(tint.opacity(isFailure ? 0.22 : 0.12), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(palette.hairline, lineWidth: 0.5)
+                .padding(.vertical, -5)
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            isFailure
-                ? fanBarText("控制模式切换失败", "Control mode switch failed")
-                : fanBarText("正在切换控制模式", "Switching control mode")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(fanBarText("控制模式切换失败", "Control mode switch failed"))
+        .onAppear { Self.announce([feedback.title, feedback.safety].compactMap { $0 }.joined(separator: "\n")) }
+    }
+
+    /// One recovery button, the details button, and dismiss.
+    @ViewBuilder
+    private func failureActions(_ feedback: FanController.ModeActionFeedback) -> some View {
+        if let recovery = feedback.recovery {
+            Button {
+                controller.performRecovery(recovery)
+            } label: {
+                Text(Self.recoveryTitle(recovery))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(palette.surface)
+                    .padding(.horizontal, 10)
+                    .frame(height: 24)
+                    .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color.primary))
+                    .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .buttonStyle(PanelDimButtonStyle())
+            .fixedSize()
+            .disabled(controller.isBusy)
+        }
+
+        if feedback.detail != nil {
+            PanelIconButton(systemImage: "info.circle", size: 22) {
+                isShowingFailureDetail.toggle()
+            }
+            .accessibilityLabel(fanBarText("错误详情", "Error details"))
+            .popover(isPresented: $isShowingFailureDetail, arrowEdge: .bottom) {
+                failureDetail(feedback)
+            }
+        }
+
+        PanelIconButton(systemImage: "xmark", size: 22) {
+            controller.clearModeActionFeedback()
+        }
+        .accessibilityLabel(fanBarText("关闭提示", "Dismiss"))
+    }
+
+    static func recoveryTitle(_ recovery: FanController.ModeActionFeedback.Recovery) -> String {
+        switch recovery {
+        case .retry: fanBarText("重试", "Try again")
+        case .openHelperSettings: fanBarText("打开系统设置", "Open System Settings")
+        case .enableHelper: fanBarText("启用控制服务", "Turn on control service")
+        case .chooseTemperatureSource: fanBarText("换温度来源", "Change source")
+        }
+    }
+
+    /// The raw error, with enough context to paste into a bug report.
+    private func failureDetail(_ feedback: FanController.ModeActionFeedback) -> some View {
+        let report = Self.failureReport(feedback, device: controller.compatibilityDevice)
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(fanBarText("错误详情", "Error details"))
+                .font(.system(size: 12, weight: .semibold))
+            Text(report)
+                .font(.system(size: 10.5, design: .monospaced))
+                .foregroundColor(palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(palette.track))
+            HStack {
+                Text(fanBarText("反馈问题时附上这段文字", "Include this when reporting a problem"))
+                    .font(.system(size: 11))
+                    .foregroundColor(palette.secondaryText)
+                Spacer(minLength: 8)
+                Button(fanBarText("复制", "Copy")) {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(report, forType: .string)
+                }
+            }
+        }
+        .padding(12)
+        .frame(width: 300)
+    }
+
+    static func failureReport(_ feedback: FanController.ModeActionFeedback, device: CompatibilityDevice) -> String {
+        [
+            feedback.detail ?? feedback.message,
+            "FanBar \(device.appVersion) · Helper \(device.helperVersion) · macOS \(device.macOSVersion)",
+            device.modelIdentifier,
+        ].joined(separator: "\n")
+    }
+
+    /// Speaks a notice that appeared without the user moving focus to it.
+    static func announce(_ text: String) {
+        guard !text.isEmpty else { return }
+        NSAccessibility.post(
+            element: NSApp as Any,
+            notification: .announcementRequested,
+            userInfo: [.announcement: text, .priority: NSAccessibilityPriorityLevel.high.rawValue]
         )
-        .accessibilityValue(feedback.message)
+    }
+
+    // MARK: Control notices
+
+    /// The notice to show, if it is still current and no failure covers the strip.
+    private func visibleControlNotice(at date: Date) -> ControlNotice? {
+        guard let notice = controller.controlNotice, !notice.isExpired(at: date),
+              !isShowingModeFailureBanner else { return nil }
+        return notice
+    }
+
+    /// A quiet row under the mode strip for what FanBar did, or is about to do, on its own.
+    private var controlNoticeRow: some View {
+        CountdownTimerView { date in
+            noticeBody(at: date)
+        }
+    }
+
+    @ViewBuilder
+    private func noticeBody(at date: Date) -> some View {
+        if let notice = visibleControlNotice(at: date) {
+            HStack(spacing: 8) {
+                Image(systemName: Self.noticeSymbol(notice))
+                    .font(.system(size: 12))
+                    .foregroundColor(palette.secondaryText)
+                    .frame(width: 14)
+                    .accessibilityHidden(true)
+                Text(ControlNoticeText.panelMessage(
+                    notice,
+                    controller: controller,
+                    countdown: Self.countdown(for: notice, at: date)
+                ))
+                .font(.system(size: 11).monospacedDigit())
+                .foregroundColor(.primary)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                noticeAction(notice)
+
+                PanelIconButton(systemImage: "xmark", size: 20) {
+                    controller.dismissControlNotice()
+                }
+                .accessibilityLabel(fanBarText("关闭提示", "Dismiss"))
+            }
+            .padding(.leading, 9)
+            .padding(.trailing, 4)
+            .padding(.vertical, 4)
+            .frame(minHeight: 30)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(palette.track))
+            .padding(.top, 8)
+            .accessibilityElement(children: .contain)
+            .transition(.opacity)
+            .onAppear {
+                Self.announce(ControlNoticeText.panelMessage(
+                    notice, controller: controller, countdown: Self.countdown(for: notice, at: date)
+                ))
+            }
+        }
+    }
+
+    private static func noticeSymbol(_ notice: ControlNotice) -> String {
+        if case .handedBack(_, .missingTemperature, _, _) = notice { return "thermometer" }
+        return "arrow.uturn.backward"
+    }
+
+    private static func countdown(for notice: ControlNotice, at date: Date) -> String {
+        guard case .handBackSoon(_, _, let deadline) = notice else { return "" }
+        let remaining = max(0, Int(ceil(deadline.timeIntervalSince(date))))
+        return String(format: "%d:%02d", remaining / 60, remaining % 60)
+    }
+
+    @ViewBuilder
+    private func noticeAction(_ notice: ControlNotice) -> some View {
+        switch notice {
+        case .handBackSoon(let mode, _, _):
+            durationMenu(
+                title: fanBarText("延长", "Extend"),
+                header: fanBarFormat("%@再保持", "Keep %@ on for", ControlNoticeText.modeName(mode, controller: controller)),
+                selected: controller.automaticRestoreDuration
+            ) { controller.setAutomaticRestoreDuration($0) }
+        case .handedBack(let mode, .timer, let duration, _):
+            durationMenu(
+                title: fanBarText("重新开启", "Turn on again"),
+                header: fanBarFormat("重新开启%@，保持", "Turn %@ on again for", ControlNoticeText.modeName(mode, controller: controller)),
+                selected: duration
+            ) { controller.turnOnAgain(mode, for: $0) }
+        case .handedBack(let mode, .missingTemperature, let duration, _):
+            PanelTextButton {
+                controller.turnOnAgain(mode, for: duration)
+            } label: {
+                Text(fanBarText("重试", "Try again")).fontWeight(.semibold)
+            }
+            .disabled(controller.isBusy || controller.helperState != .enabled)
+        }
+    }
+
+    private func durationMenu(
+        title: String,
+        header: String,
+        selected: FanController.AutomaticRestoreDuration,
+        choose: @escaping (FanController.AutomaticRestoreDuration) -> Void
+    ) -> some View {
+        Menu {
+            Section(header: Text(header)) {
+                ForEach(FanController.AutomaticRestoreDuration.allCases) { duration in
+                    Button {
+                        choose(duration)
+                    } label: {
+                        let label = duration == .never ? fanBarText("一直保持", "Keep on") : duration.title
+                        if duration == selected {
+                            Label(label, systemImage: "checkmark")
+                        } else {
+                            Text(label)
+                        }
+                    }
+                }
+            }
+        } label: {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.primary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .disabled(controller.isBusy || controller.helperState != .enabled)
+    }
+
+    /// Permanent on Macs whose SMC cannot hand fan control to an app.
+    private var unsupportedNote: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: "nosign")
+                .font(.system(size: 12))
+                .foregroundColor(palette.secondaryText)
+                .accessibilityHidden(true)
+            (Text(fanBarText(
+                "这台 Mac 不提供风扇模式键，无法手动控制风扇。温度与转速仍可查看。",
+                "This Mac has no fan mode key, so fans can't be controlled manually. Temperatures and speeds still show."
+            )) + Text(" "))
+                .font(.system(size: 11))
+                .foregroundColor(palette.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            PanelTextButton {
+                CompatibilityWindowPresenter.shared.show(controller: controller)
+            } label: {
+                Text(fanBarText("查看兼容性", "Compatibility")).fontWeight(.semibold)
+            }
+        }
+        .padding(.top, 8)
     }
 
     private func automaticRestoreValue(at date: Date) -> String {
