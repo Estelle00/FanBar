@@ -86,22 +86,6 @@ struct FanMenu: View {
         focus?.level ?? .normal
     }
 
-    private var fanWord: String {
-        switch controller.fans.count {
-        case 1: fanBarText("单风扇", "Single fan")
-        case 2: fanBarText("双风扇", "Dual fans")
-        default: fanBarFormat("%d 个风扇", "%d fans", controller.fans.count)
-        }
-    }
-
-    private var modeName: String {
-        switch controller.mode {
-        case .automatic: fanBarText("系统", "Automatic")
-        case .temperatureCurve: controller.presetTitle(for: controller.curveCoolingPreset)
-        case .fixed: fanBarText("固定", "Fixed")
-        }
-    }
-
     // MARK: Body
 
     var body: some View {

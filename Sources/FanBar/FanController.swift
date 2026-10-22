@@ -1117,22 +1117,6 @@ final class FanController: ObservableObject {
         setCurveProfile(next)
     }
 
-    func addCurvePoint() {
-        var next = curveProfile
-        guard next.points.count < FanCurveProfile.maximumPointCount else { return }
-        let last = next.points.max(by: { $0.celsius < $1.celsius })
-        let celsius = min(
-            (last?.celsius ?? 60) + 5,
-            FanCurveProfile.maximumCelsius
-        )
-        let fraction = min(
-            max(last?.fraction ?? 0.5, FanCurveProfile.minimumFraction),
-            FanCurveProfile.maximumFraction
-        )
-        next.points.append(FanCurvePoint(celsius: celsius, fraction: fraction))
-        setCurveProfile(next)
-    }
-
     /// Inserts a control point after `id` and returns the new point's id.
     @discardableResult
     func insertCurvePoint(after id: UUID) -> UUID? {
