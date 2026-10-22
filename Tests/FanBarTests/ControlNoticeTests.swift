@@ -121,6 +121,15 @@ final class ControlNoticeTests: XCTestCase {
 
     // MARK: Failures
 
+    func testMissingFanModeKeyIsRecognizedFromTheStructuredCode() {
+        let missing = HelperControlFailure(code: .modeKeyMissing, message: "No fan mode key")
+        XCTAssertTrue(HelperClientError(message: missing.encodedReply()).indicatesMissingFanModeKey)
+        // The code decides, whatever the localized message says.
+        let other = HelperControlFailure(code: .smcOperationFailed, smcKey: "F0Md", resultCode: -1, message: "F0Md/F0md")
+        XCTAssertFalse(HelperClientError(message: other.encodedReply()).indicatesMissingFanModeKey)
+    }
+
+    /// Helpers that predate structured failures only send the message.
     func testMissingFanModeKeyIsRecognizedInEveryLanguage() {
         XCTAssertTrue(HelperClientError(
             message: "This Mac's SMC has no fan mode key (F0Md/F0md/FS!), so manual fan control is unavailable"

@@ -191,9 +191,11 @@ extension FanCurveSensor {
 }
 
 extension HelperClientError {
-    /// The helper reports a Mac whose SMC has no fan mode key with a message
-    /// naming those keys in every language; manual control can never work there.
+    /// Manual control can never work on a Mac whose SMC has no fan mode key.
+    /// A current helper says so with a structured code; an older one only in a
+    /// message that names those keys in every language.
     var indicatesMissingFanModeKey: Bool {
-        message.contains("F0Md/F0md")
+        if let failure { return failure.code == .modeKeyMissing }
+        return message.contains("F0Md/F0md")
     }
 }
