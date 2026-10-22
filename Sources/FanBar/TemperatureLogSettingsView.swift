@@ -67,7 +67,7 @@ struct TemperatureLogSettingsView: View {
                     }
                 }
                 .labelsHidden()
-            .id(languageRawValue)
+                .id(languageRawValue)
                 .frame(width: SettingsChrome.trailingControlMinWidth)
             }
             .settingsRow()
@@ -136,7 +136,7 @@ struct TemperatureLogSettingsView: View {
                 }
                 .pickerStyle(.radioGroup)
                 .labelsHidden()
-            .id(languageRawValue)
+                .id(languageRawValue)
             }
             .settingsRow()
         }

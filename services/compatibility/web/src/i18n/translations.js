@@ -671,9 +671,13 @@ export const translations = {
     "en": "Source and policy changes",
     "ja": "ソースコードと方針の変更"
   },
-  "规则版本为 2026-10-13。规则变化后，旧确认不能直接用于新提交。": {
-    "en": "Policy version: 2026-10-13. After policy changes, previous consent cannot be used directly for new submissions. ",
-    "ja": "方針のバージョンは2026-10-13です。変更後の新規提出に以前の同意をそのまま使うことはできません。"
+  "规则版本为 2026-10-21，新增控制失败证据。FanBar 0.7.0 及更早版本仍按 2026-10-13 规则提交，不包含这些字段。规则变化后，旧确认不能直接用于新提交。": {
+    "en": "Policy version: 2026-10-21, which adds control failure evidence. FanBar 0.7.0 and earlier still submit under the 2026-10-13 rules, without these fields. After policy changes, previous consent cannot be used directly for new submissions. ",
+    "ja": "方針のバージョンは2026-10-21で、制御失敗の証拠が追加されました。FanBar 0.7.0以前は引き続き2026-10-13の方針で提出し、これらの項目は含みません。変更後の新規提出に以前の同意をそのまま使うことはできません。"
+  },
+  "控制请求失败时附带固定失败码和有限的数值证据：SMC 键名、返回码、风扇序号、耗时、回读是否为手动模式、是否已恢复系统控制。不上传错误描述文本。": {
+    "en": "When a control request fails: a fixed failure code and bounded numeric evidence (SMC key name, result code, fan number, duration, whether readback showed manual mode, and whether system control was restored). No error text is uploaded.",
+    "ja": "制御リクエストが失敗した場合：固定の失敗コードと限定的な数値の証拠（SMCキー名、戻り値、ファン番号、所要時間、読み戻しが手動モードだったか、システム制御に戻ったか）。エラーの説明文はアップロードしません。"
   },
   "服务端源码": {
     "en": "Server source code",

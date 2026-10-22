@@ -66,7 +66,7 @@ Custom Domain 固定为 `report.getfanbar.com`；workers.dev 和预览 URL 关�
 
 | 方法与路径 | 行为 |
 | --- | --- |
-| GET /api/policy | 当前规则版本、服务 origin、字段白名单、90 天在线与最多 30 天恢复点说明 |
+| GET /api/policy | 规则版本（默认 2026-10-13，供 0.7.0 及更早客户端；`?version=2026-10-21` 返回当前规则）、服务 origin、字段白名单、90 天在线与最多 30 天恢复点说明 |
 | POST /api/reports | 提交严格 JSON；必须带三个确认／凭证头 |
 | GET /api/reports/:id/receipt | 凭所属报告 credential 查询回执 |
 | DELETE /api/reports/:id | 凭所属 credential 撤回 |

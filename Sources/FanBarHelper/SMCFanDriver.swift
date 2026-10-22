@@ -29,6 +29,27 @@ enum FanHardwareError: LocalizedError {
     }
 }
 
+extension FanHardwareError {
+    /// The structured form sent to the app; only fixed codes, SMC key names and numbers.
+    func controlFailure(durationMS: Int? = nil) -> HelperControlFailure {
+        let message = errorDescription ?? ""
+        switch self {
+        case .unavailable(let code):
+            return HelperControlFailure(code: .smcConnectionFailed, resultCode: code, durationMS: durationMS, message: message)
+        case .operation(let key, let code):
+            return HelperControlFailure(code: .smcOperationFailed, smcKey: key, resultCode: code,
+                                        durationMS: durationMS, message: message)
+        case .invalidValue(let key):
+            // Some call sites pass a localized parameter name; the failure keeps only real key names.
+            return HelperControlFailure(code: .smcInvalidValue, smcKey: key, durationMS: durationMS, message: message)
+        case .unlockTimeout(let fan):
+            return HelperControlFailure(code: .unlockTimeout, fanIndex: fan, durationMS: durationMS, message: message)
+        case .modeKeyMissing:
+            return HelperControlFailure(code: .modeKeyMissing, durationMS: durationMS, message: message)
+        }
+    }
+}
+
 /// Raw SMC key access. The helper talks to AppleSMC; tests substitute an
 /// in-memory key table so the control logic can run without hardware.
 protocol SMCKeyStore: AnyObject {

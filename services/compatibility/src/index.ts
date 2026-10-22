@@ -24,7 +24,7 @@ async function route(request: Request, env: Env): Promise<Response> {
     await rateLimit(request, env, 'write');
     return deleteDiagnostic(request, env, diagnosticMatch[1]);
   }
-  if (path === '/api/policy'  && request.method === 'GET') return json(policy(url.origin));
+  if (path === '/api/policy'  && request.method === 'GET') return json(policy(url.origin, url.searchParams.get('version')));
   if (path === '/api/reports' && request.method === 'POST') {
     await rateLimit(request, env, 'write');
     return submitReport(request, env, await boundedJSON(request));
